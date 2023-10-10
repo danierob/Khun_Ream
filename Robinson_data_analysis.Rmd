@@ -1,0 +1,92 @@
+---
+title: "Robinson_data_analysis"
+author: "Daniel"
+date: "2023-10-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Q3: a) How does probability of fire vary with canopy cover? b) How does this change across the dry season?
+
+``` {r packages}
+library(tidyverse)
+```
+
+###  a) How does probability of fire vary with canopy cover?  
+To compare modeled fire likelihood across canopy cover, I will average the 8 LAI observations over the course of the season for each quadrant (for n = 46 LAI means total). I believe this method, rather than using Basal Area or any single given LAI measurement provides the best representation of the changing canopy cover conditions at any fixed point during the fire season. Averaging LAI values for each quadrant across the season will also mitigate deviations in LAI records due to sky conditions at the time of observation (LAI-2200c is sensitive to slight variation in sensor positioning or angle and to sky conditions, which is partially accounted for with the K-records and scattering corrections, but still prone to deviation).   
+
+```{r LAI}
+#loading in LAI data
+library(readr)
+LAI_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+        LAI = col_number()))
+View(LAI_V1)
+
+#averaging LAI data across all observations for one value per quadrant (n=50)
+LAI_avg <- LAI_V1 %>%
+  group_by(plot_id, quad_id) %>%
+  summarise(mean_LAI = mean(LAI, na.rm = TRUE))
+
+```
+
+For each quadrant (n = 46) we will average the fuel moisture contents from the 8 observations throughout the season. I believe this method of averaging all observations rather than using any single fuel moisture observation will provide the best representation of fuel moisture for a given quadrant across the season and will mitigate the effects of deviations in fuel moisture sampling time. Dead fuel moisture content is very sensitive to diurnal fluctuations in microclimate, and maximum daily fuel curing lags behind the sun’s rising each day. By averaging fuel moisture across the season, we will reduce the variation attributed to differences in fuel moisture collection time (all measurement were taken after 10:00 am to account for this to some degree, but variation still exists). For BehavePlus input we will use fuel moisture from several fuel categories: live woody, live herbaceous, 100 hour, 10 hour, and 1 hour fuel (for 1 hr we will include litter fuel moistures which are structurally similair to 1 hr sticks).
+
+``` {r fuel_moisture}
+
+
+
+```
+
+For comparing fire likelihood across canopy cover, the two biomass observations (early and late season) will also be averaged for each quadrant. 
+Each logger will then serve as the point at which input (response) variables (biomass, fuel moisture, microclimate) and canopy cover (explanatory) variable will be determined for 46 individual sets of models run. We will end up with a scatterplot of 46 fire behavior outputs which we will then use to create a mixed-effects model in R. Quadrants within the same plot will be spatially autocorrelated, so analysis will include random effects for plot type. I anticipate a sigmoidal relationship between canopy cover and fire likelihood, where fire likelihood is relatively similar at canopy covers where grass is unobstructed (0-3 LAI), but experiences a steep decline at the point at which grass growth is restricted (~3 LAI), and then leveling out again at relatively low fire behavior throughout the closed canopy (from 3-6 LAI).
+
+```{r biomass}
+#load in biomass_V2 data
+biomass_V2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V2.csv", 
+     col_types = cols(grass_height = col_number(), litter_depth = col_number(), grass_per = col_number(), wood_per = col_number(), bare_per = col_number(),  litter_per = col_number(), mass_grass = col_number(), mass_liana = col_number(), mass_wood = col_number(), mass_litter = col_number(), seedlings = col_number(), grass_vol = col_number(), grass_bulk = col_number(), litter_vol = col_number(), litter_bulk = col_number(), fine_vol = col_number(), fine_bulk = col_number()))
+
+#there were two biomass observation periods in early and late season and each quadrant consisted of 3 records for a total of n=150 records for each season and n=300 records in total
+#we will average across season and quadrants for n=50 records (4 of which are NA because no data for the missing sensors)
+
+biomass_avg <- biomass_V2 %>%
+  group_by(plot_id, quad_id) %>%
+  summarise(grass_mass = mean(mass_grass), litter_mass = mean(mass_litter), wood_mass = mean(mass_wood), woody_mass = mean(mass_liana + seedlings*10), grass_height = mean(grass_height), litter_depth = mean(litter_depth))
+
+#the biomass input in the model requires mass per unit area so we will determine kg/m^2 for each fuel type. The quadrat was .25m^2.
+
+biomass_load <- biomass_avg %>% 
+  group_by(plot_id) %>% 
+  mutate_at(vars(3:6), ~ . * .004)
+ 
+
+```
+
+Lastly, we will populate the input for surface area to volume ratio (SA:V) and moisture of extinction for each plot by identifying which of the 40 standard fuel models (Scott and Burgan 2005) best fit our field observations.
+
+``` {r fuel models}
+#we will find the average fuel load and fuel depth per plot and convert to tonnes/acre (1 to 4.04686) to help gauge which of Scott and Burgan's 40 models is the best fuel model to pair each plot with.
+
+  biomass_load %>%
+  group_by(plot_id) %>%
+  summarise(across(everything(), mean, na.rm = TRUE)) %>% 
+  mutate_at(vars(3:6), ~ . * 4.04686)
+
+```
+__The plots are aligned with these models:__  
+* TL6/186 - Moderate load, less compact. Spread rate moderate; flame length low. PRIMARY CARRIER OF THE FIRE IS DEAD AND DOWN WOODY FUEL (LITTER) BENEATH A FOREST CANOPY: __DDF2, EVG1, EVG2, EVG3, EVG4, EVG5__  
+* TU3/163 - Fuel bed is moderate litter load with grass and shrub components. Humid climate. Spread rate high; flame length moderate. PRIMARY CARRIER OF THE FIRE IS GRASS OR SHRUBS MIXED WITH LITTER FROM FOREST CANOPY (TIMBER-UNDERSTORY): __DDF3__  
+* GR5/105 - Dense, coarse grass, average depth about 1 to 2 feet (0.3 to 0.6 meters). Spread rate very high; flame length high.Subhumid to humid climate (rainfall adequate in all seasons). Extinction moisture content is 30 to 40 percent. Spread rate high; flame length moderate.PRIMARY CARRIER GRASS: __DDF4, DDF5, DDF6__
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
