@@ -1,5 +1,5 @@
 ---
-title: "Robinson_data_analysis"
+title: "Fuel variability across a Cambodian fire season: Data Analysis"
 author: "Daniel"
 date: "2023-10-09"
 output: html_document
@@ -9,14 +9,81 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Q3: a) How does probability of fire vary with canopy cover? b) How does this change across the dry season?
+The aim of this research is to explore the heterogeneity of the Dipterocarp mosaic: We conducted **field observations** across the dry season to assess the vertical relationship from soil to canopy, across a range of forest structures (from open to closed) to better understand the variability in surface fuel characteristics between forest types in relation to fire-recruitment function.
 
-```{r packages}
+**Field Observations**: Canopy cover influences surface fuel in two primary ways: Q1) canopy cover provides a buffer that moderates microclimate, and Q2) canopy cover restricts shade-tolerant species, reducing the surface fuel load while simultaneously adding to the surface fuel load via leaf shedding. As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to a diversity of phenologies. Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist that describe the relationship in the region. In this research, we observed canopy cover and surface fuel change across the dry season by asking:
+
+*Q1: 1) How does surface fuel composition and structure vary with canopy cover? 2) How does this relationship change throughout the dry season?*
+
+*Q2: 1) How does surface microclimate vary with canopy cover? 2) How does this relationship change throughout the dry season?*
+
+### Q1: 1) How does the makeup of surface fuel vary with canopy cover? 2) How does this relationship change throughout the dry season?
+
+```{r packages, include=FALSE}
 library(tidyverse)
 library(readr)
+library(ggplot2)
 ```
 
-### a) How does probability of fire vary with canopy cover?
+#### 1.1) How does the makeup of surface fuel vary with canopy cover?
+
+**1.1.1) The LAI threshold for grass establishment**
+
+Past studies suggest that surface fuel composition varies across a gradient of canopy cover (Hoffman 2012a, Charles-Dominique 2018). This variation is primarily attributed to a transition of surface fuels from grass to litter as canopy cover increases. At a given canopy density, grass growth is restricted to such an extent that it is no longer relevant as a fuel source. In most tropical studies the value of this threshold is \~3.0 LAI (Hoffman 2012a, Cardosa 2018) but no study, to my knowledge, has quantified this relationship, between canopy cover and grass biomass in Southeast Asia.
+
+In this analysis, we consider the relationship between LAI and grass load at peak biomass (early in the dry season). We will join the LAI observation 1+2 data with the Biomass observation 1 data to assess the relationship. We use observations 1 (Jan. 26) and 2 (Feb. 2) of the LAI data because LAI did not start to decline significantly until LAI ob. 3 (Feb. 8), so averaging obs. 1 and 2 will mitigate deviations in LAI records due to sky conditions at the time of observation without sacrificing data integrity.
+
+```{r 1.1.1 setup, message=FALSE, warning=FALSE, include=TRUE}
+#loading in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+        LAI = col_number()))
+View(LAI)
+
+#isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50)
+LAI_1 <- LAI %>%
+  group_by(plot_id, quad_id) %>%
+  filter(obs_period == "1" | obs_period == "2") %>% 
+  summarise(mean_LAI = mean(LAI))
+
+#loading in biomass_V2 data
+biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V2.csv", 
+     col_types = cols(grass_height = col_number(), litter_depth = col_number(), grass_per = col_number(), wood_per = col_number(), bare_per = col_number(),  litter_per = col_number(), mass_grass = col_number(), mass_liana = col_number(), mass_wood = col_number(), mass_litter = col_number(), seedlings = col_number(), grass_vol = col_number(), grass_bulk = col_number(), litter_vol = col_number(), litter_bulk = col_number(), fine_vol = col_number(), fine_bulk = col_number()))
+
+#isolating ob1 (early) biomass
+biomass_1 <- biomass %>%
+  group_by(plot_id, quad_id) %>% 
+  filter(season == "early") %>% 
+  summarise(grass_mass = mean(mass_grass), litter_mass = mean(mass_litter), wood_mass = mean(mass_wood), woody_mass = mean(mass_liana + seedlings*10), grass_height = mean(grass_height), litter_depth = mean(litter_depth))
+
+#merging LAI_1 and biomass_1 into LAIxbiomass_1
+LAIxbiomass_1 <- left_join(LAI_1, biomass_1, by = c("plot_id", "quad_id"))
+
+#drop the quadrants that did not have biomass records
+LAIxbiomass_1 <- LAIxbiomass_1 %>% drop_na(grass_mass)
+
+```
+
+```{r 1.1.1 plot, message=FALSE, warning=FALSE}
+#PLOT IT OUT
+ggplot(LAIxbiomass_1, aes(mean_LAI, grass_mass)) +
+  geom_point(alpha = .2) + stat_smooth(fill= NA, colour="brown")+
+  ylim(0,250)
+```
+
+**1.1.1 Analysis:**
+
+Fitting a line for grass biomass across the canopy gradient will require an asymptotic regression.
+
+```{r 1.1.1 analysis}
+
+```
+
+**1.1.2: Litter distribution across the canopy gradient**
+
+### Q3: a) How does probability of fire vary with canopy cover? b) How does this change across the dry season?
+
+#### a) How does probability of fire vary with canopy cover?
 
 To compare modeled fire likelihood across canopy cover, I will average the 8 LAI observations over the course of the season for each quadrant (for n = 46 LAI means total). I believe this method, rather than using Basal Area or any single given LAI measurement provides the best representation of the changing canopy cover conditions at any fixed point during the fire season. Averaging LAI values for each quadrant across the season will also mitigate deviations in LAI records due to sky conditions at the time of observation (LAI-2200c is sensitive to slight variation in sensor positioning or angle and to sky conditions, which is partially accounted for with the K-records and scattering corrections, but still prone to deviation).
 
@@ -107,8 +174,9 @@ biomass_load <- biomass_avg %>%
   group_by(plot_id) %>% 
   mutate_at(vars(3:6), ~ . * .004)
  
-
 ```
+
+Additionally, we will average
 
 Lastly, we will populate the input for surface area to volume ratio (SA:V) and moisture of extinction for each plot by identifying which of the 40 standard fuel models (Scott and Burgan 2005) best fit our field observations.
 
@@ -134,7 +202,7 @@ biomass_load %>%
 
 There's probably a faster way to do this, some R package or another, but I'm going to plug all 46 inputs into the Behaveplus software, and then create a new table by hand for the outputs:
 
-**Breakdown of input values:**
+**Breakdown of input values (SURFACE fire spread model and Probability of Ignition (PIG) model):**
 
 -   Fuel Model Number
 
@@ -164,12 +232,6 @@ There's probably a faster way to do this, some R package or another, but I'm goi
 
 -   Slope Steepness (%): Held constant at 0, very little slope involved in area
 
-## Including Plots
+-   Temperature (C):
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+-   Fuel Shading From Sun:
