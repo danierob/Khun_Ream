@@ -72,7 +72,7 @@ LAIxbiomass_1 <- LAIxbiomass_1 %>% drop_na(grass_mass)
 
 **1.1.1 Plot**
 
-```{r 1.1.1 plot, message=FALSE, warning=FALSE}
+```{r 1.1.1 stat_smooth 3rd order polynomial plot, message=FALSE, warning=FALSE}
 # 3rd order polynomial
 # PLOT IT OUT
 ggplot(LAIxbiomass_1, aes(x = mean_LAI, y = grass_mass)) +
@@ -81,12 +81,11 @@ ggplot(LAIxbiomass_1, aes(x = mean_LAI, y = grass_mass)) +
   ylim(0,250)+
   theme_minimal()
 
-help(stat_smooth)
 ```
 
 **1.1.1 Analysis:**
 
-Fitting a line for grass biomass across the canopy gradient will require a polynomial regression.
+Fitting a line for grass biomass across the canopy gradient will require polynomial regression.
 
 ```{r 1.1.1 analysis}
 library(nlme)
@@ -94,6 +93,11 @@ library(nlme)
 model <- lme(grass_mass ~ poly(mean_LAI, degree = 3), random = ~ 1 | plot_id, data = LAIxbiomass_1)
 
 summary(model)
+
+```
+
+``` {r 1.1.1 3rd order polynomial model plot, include = FALSE}
+#This plot is fit with the model predictions but aestetically is not as good as the plot fit with stat_smooth, so for now this plot will be include = FALSE.
 
 pred <- ggpredict(model, terms = "mean_LAI")
 
@@ -147,13 +151,14 @@ LAIxbiomass_2 <- LAIxbiomass_2 %>% drop_na(grass_mass)
 
 ```
 
-1.1.2 Analysis
+**1.1.2 Analysis**
 
 We will look at a simple linear regression and a mixed effects model to see if plot_type needs to be nested.
 
-Simple Linear Model:
+**Simple Linear Model:**
+Assumptions are tested in markdown, but not included in knitted document.
 
-```{r 1.1.2 LMR analysis}
+```{r 1.1.2 SLR analysis, include = FALSE}
 
 #IDK
 hist(LAIxbiomass_2$mean_LAI)
@@ -172,8 +177,12 @@ plot(lm, which = 2)
     theme(legend.position = "none"))
 ```
 
-Mixed Effects Model:
+``` {r 1.1.2 SLR summary}
+summary(lm)
+```
 
+**Mixed Effects Model:**
+Assumptions tested in markdown code, not included here. Mixed effects assumptions tests look better, as does summary statistics.
 ```{r 1.1.2 mixed effects analysis, include = FALSE}
 #Not independent because of plot_type, so...
 
@@ -224,7 +233,7 @@ pred <- ggpredict(mixed.lmer, terms = c("mean_LAI"))  # this gives overall predi
 
 Dry grass and dry leaf litter are the main components of fine dead fuel. However, in the field, grass and litter tend to have contrasting flammability. This contrast is largely due to variation in fuel arrangement, specifically bulk density (g/cm3). The compact arrangement -- high bulk density -- of litter reduces fire likelihood and spread, whereas the light, aerated architecture -- low bulk density -- of curing grasses invites a passing fuel source to ignite and carry fire more readily. In savanna-forest mosaics of other continents, bulk density has been identified as the primary driver in establishing the functional dichotomy between forest and savanna (Hoffman 2012b, Newberry 2020). I anticipate fine fuel bulk densities to increase as grass biomass decreases and litter biomass increases. I predict peak bulk densities will correspond to peak canopy cover, where litter accumulation should be greatest and grass presence should be lowest.
 
-In this analysis, we consider the relationship between LAI and fine fuel bulk density at peak biomass that is, only considering biomass ob. 1 (as in 1.1.1), to evaluate the maximum extent of fine fuel load discrepancy.
+In this analysis, we consider the relationship between LAI and fine fuel bulk density at peak biomass, only considering biomass ob. 1 (as in 1.1.1), to evaluate the maximum extent of fine fuel load discrepancy.
 
 ```{r 1.1.3 setup, include = FALSE}
 #see 1.1.1 to bring in dataframes: LAIxbiomass_1
