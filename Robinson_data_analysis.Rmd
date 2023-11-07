@@ -41,9 +41,9 @@ library(ggeffects)
 
 Canopy cover influences surface fuel in two primary ways: Q1) canopy cover provides a buffer that moderates microclimate, and Q2) canopy cover restricts shade-tolerant species, reducing the surface fuel load while simultaneously adding to the surface fuel load via leaf shedding. As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to a diversity of phenologies. Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist that describe the relationship in the region.
 
-### Q1: 1) How does the makeup of surface fuel vary with canopy cover? 2) How does this relationship change throughout the dry season?
+### Q1: 1) How does the distribution of surface fuel vary with canopy cover? 2) How does this relationship change throughout the dry season?
 
-#### 1.1) How does the makeup of surface fuel vary with canopy cover?
+#### 1.1) How does the distribution of surface fuel vary with canopy cover?
 
 ##### 1.1.1) The LAI threshold for grass establishment
 
@@ -313,7 +313,26 @@ pred <- ggpredict(mixed.lmer2, terms = c("mean_LAI"))  # this gives overall pred
 )
 ```
 
-#### 1.2) How does the relationship between surface fuel and canopy cover change over the dry season?
+
+
+
+#### 1.2) How does the relationship between surface fuel distribution and canopy cover change over the dry season?
+As canopy density transitions from opened to closed, fuel composition shifts away from being grass dominated and toward being litter dominated. Over the course of a dry season the distinction between open and closed surface fuel loads [decreases]{.underline} as grasses senescence and all deciduous and most evergreen trees (to a lesser magnitude) drop their leaves (Williams 2008), adding to the litter component of the surface fuel composition. The timing of senescence is highly variable among species in seasonal tropical forests, but over the season the result is the ultimately the same: As the dry season progresses, more fuel is added to the surface in the form of litter, packing surface fuels more densely.
+
+
+##### 1.2.1) 
+Grasses are at their peak biomass and peak fuel moisture in the early part of the dry season (ref... and observations from the field). As the dry season extends, grasses cure and wilt forming a more compact distribution. 
+
+
+```{r 1.2.1 }
+
+```
+
+##### 1.2.2) 
+Over the course of a dry season the distinction between open and closed surface fuel loads [decreases]{.underline} as all deciduous and most evergreen trees (to a lesser magnitude) drop their leaves (Williams 2008), adding to the litter component of the surface fuel composition. The timing of senescence is highly variable among species in seasonal tropical forests, but over the season the result is the ultimately the same: As the dry season progresses, more fuel is added to the surface in the form of litter, packing surface fuels more densely.
+
+
+
 
 ### Q2: 1) How does surface microclimate vary with canopy cover? 2) How does this relationship change throughout the dry season?
 
@@ -373,6 +392,8 @@ pred <- ggpredict(mixed.lmer4, terms = c("mean_LAI"))  # this gives overall pred
 A major focus of this research is fuel availability, with particular attention placed on the variability of surface fuels between open and closed canopy ecosystems and the variability in surface fuels over the dry season. Fuel is available to fire when fuel moisture is sufficiently low and when fuel composition is distributed in a continuous arrangement conducive to fire spread. The interplay of these variables in determining fuel availability creates a heterogenous distribution of flammability throughout the horizontal and vertical composition of the environment. In Southeast Asia, fires occur every year, but the location, size, and intensity of fires is determined as a product of these concurrent factors.
 
 ### Q3: 1) How does probability of fire vary with canopy cover? 2) How does this change across the dry season?
+
+”Along with litter, grasses represent the most important combustible material in most tropical ecosystems, especially in the savannas and the tropical grasslands (Stott 2000)"
 
 #### 3.1) How does probability of fire vary with canopy cover?
 
