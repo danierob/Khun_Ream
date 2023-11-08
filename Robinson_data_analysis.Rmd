@@ -321,7 +321,7 @@ As canopy density transitions from opened to closed, fuel composition shifts awa
 
 
 ##### 1.2.1) 
-Grasses are at their peak biomass and peak fuel moisture in the early part of the dry season (ref... and observations from the field). As the dry season extends, grasses cure and wilt forming a more compact distribution. 
+Grasses are at their peak biomass and peak fuel moisture in the early part of the dry season (ref... and observations from the field). As the dry season extends, grasses cure and desiccate which decreases overall grass biomass and  compacts grass structure in the savanna.
 
 
 ```{r 1.2.1 }
