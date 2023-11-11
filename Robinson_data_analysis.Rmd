@@ -59,7 +59,7 @@ LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LA
 View(LAI)
 
 #isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50)
-LAI_1 <- LAI %>%
+LAI_early <- LAI %>%
   group_by(plot_id, quad_id, plot_type, season) %>%
   filter(obs_period == "1" | obs_period == "2") %>% 
   summarise(mean_LAI = mean(LAI))
@@ -75,7 +75,7 @@ biomass_1 <- biomass %>%
   summarise(grass_mass = mean(mass_grass), litter_mass = mean(mass_litter), wood_mass = mean(mass_wood), woody_mass = mean(mass_liana + seedlings*10), grass_height = mean(grass_height), litter_depth = mean(litter_depth), fine_bulk = mean(fine_bulk))
 
 #merging LAI_1 and biomass_1 into LAIxbiomass_1
-LAIxbiomass_1 <- left_join(LAI_1, biomass_1, by = c("plot_id", "quad_id"))
+LAIxbiomass_1 <- left_join(LAI_early, biomass_1, by = c("plot_id", "quad_id"))
 
 #drop the quadrants that did not have biomass records
 LAIxbiomass_1 <- LAIxbiomass_1 %>% drop_na(grass_mass)
@@ -142,7 +142,7 @@ LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LA
 View(LAI)
 
 #isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50)
-LAI_1 <- LAI %>%
+LAI_early <- LAI %>%
   group_by(plot_id, quad_id) %>%
   filter(obs_period == "1" | obs_period == "2") %>% 
   summarise(mean_LAI = mean(LAI))
@@ -156,7 +156,7 @@ biomass_avg <- biomass %>%
   summarise(grass_mass = mean(mass_grass), litter_mass = mean(mass_litter), wood_mass = mean(mass_wood), woody_mass = mean(mass_liana + seedlings*10), grass_height = mean(grass_height), litter_depth = mean(litter_depth))
 
 #merging LAI_1 and biomass_avg into LAIxbiomass_2
-LAIxbiomass_2 <- left_join(LAI_1, biomass_avg, by = c("plot_id", "quad_id"))
+LAIxbiomass_2 <- left_join(LAI_early, biomass_avg, by = c("plot_id", "quad_id"))
 
 #drop the quadrants that did not have biomass records
 LAIxbiomass_2 <- LAIxbiomass_2 %>% drop_na(grass_mass)
@@ -334,13 +334,14 @@ biomass_2 <- biomass %>%
   summarise(grass_mass = mean(mass_grass), litter_mass = mean(mass_litter), wood_mass = mean(mass_wood), woody_mass = mean(mass_liana + seedlings*10), grass_height = mean(grass_height), litter_depth = mean(litter_depth), fine_bulk = mean(fine_bulk))
 
 #isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50)
-LAI_1 <- LAI %>%
+
+LAI_early <- LAI %>%
   group_by(plot_id, quad_id) %>%
   filter(obs_period == "1" | obs_period == "2") %>% 
   summarise(mean_LAI = mean(LAI))
 
-#merging LAI_1 and biomass_1 into LAIxbiomass_2
-LAIxbiomass_2 <- right_join(LAI_1, biomass_2, by = c("plot_id", "quad_id"))
+#merging LAI_early and biomass_1 into LAIxbiomass_2
+LAIxbiomass_2 <- right_join(LAI_early, biomass_2, by = c("plot_id", "quad_id"))
 
 #drop the quadrants that did not have biomass records
 LAIxbiomass_2 <- LAIxbiomass_2 %>% drop_na(grass_mass)
@@ -361,17 +362,60 @@ Seasonality does not seem to play a very important role as far as grass *distrib
 ggplot(LAIxbiomass_2, aes(x = mean_LAI, y = grass_mass, color = season)) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = FALSE) +
+  labs(title = "Late Season Grass",
+       x = "Early Season LAI", y = "Grass Load (g)", color = "season") +
+  ylim(0, 230) +
+  theme_minimal()
+```
+
+**1.2.1b)** Now, we will write a model that temporally pairs biomass and LAI obs, so early season grass will be paired with early season LAI obs and late season grass will be paired with late season LAI obs. Where method 1.2.1a was useful for looking at surface fuel change, this method will concentrate on the relationship between canopy cover and grass mass, as both canopy cover and grass mass change across the season.
+
+```{r 1.2.1b setup}
+#we have the early season LAI in LAI_early, now we need to add late season LAI (LAI_late) to create LAI_early_late. We do this rather than using the complete LAI data, as we need 50 + 50 LAI obs that are most representative of LAI at time of collection to pair with the 50 + 50 biomass obs.
+
+LAI_early <- LAI %>%
+  group_by(plot_id, quad_id, plot_type, season) %>%
+  filter(obs_period == "1" | obs_period == "2") %>% 
+  summarise(mean_LAI = mean(LAI))
+
+#to make LAI late, I'm going to do the same thing as LAI_early but with obs 7 & 8, which were the closest LAI obs to the late biomass obs.
+LAI_late <- LAI %>%
+  group_by(plot_id, quad_id, plot_type, season) %>%
+  filter(obs_period == "7" | obs_period == "8") %>% 
+  summarise(mean_LAI = mean(LAI, na.rm = TRUE))
+
+#now to stack these LAI dfs on top of each other
+LAI_early_late <- bind_rows(LAI_early, LAI_late)
+
+#merging LAI_early and biomass_1 into LAIxbiomass_2
+LAIxbiomass_early_late <- right_join(LAI_early_late, biomass_2, by = c("plot_id", "quad_id", "season"))
+
+#drop the quadrants that did not have biomass records
+LAIxbiomass_early_late <- LAIxbiomass_early_late %>% drop_na(grass_mass)
+```
+
+Now that the LAIxbiomass_early_late table is sorted, we run the same modelling steps as above in 1.2.1a.
+
+```{r 1.2.1b model}
+
+lm1.2.1b <- lm(grass_mass ~ poly(mean_LAI, 3)*season, LAIxbiomass_early_late)
+summary(lm1.2.1b)
+
+```
+
+
+```{r 1.2.1a plot}
+ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = grass_mass, color = season)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = FALSE) +
   labs(title = "Scatterplot with Regression Lines",
        x = "mean_LAI", y = "Grass Load (g/", color = "season") +
   ylim(0, 230) +
   theme_minimal()
 ```
+In this plot, the early season regression line is identical to 1.2.1a, but the late season regression has shifted to the left, exaggerating the difference in intercept between early and late season. The difference in the intercept between 1.2.1a and 1.2.1b emphasizes the role
 
-**1.2.1b)** Now, we will write a model that temporally pairs biomass and LAI obs, so early season grass will be paired with early season LAI obs and late season grass will be paired with late season LAI obs. Doing this to see if there are obvious differences between method, a or b. Which may shed some insight into the roll of seasonally changing canopy cover
 
-```{r 1.2.1b setup}
-
-```
 
 #### 1.2.2)
 
@@ -398,7 +442,7 @@ fm_avg <- fm_V4 %>%
  group_by(plot_id, quad_id) %>%
   summarise(woody_leaf = mean(woody_leaf, na.rm = TRUE), grass = mean(grass, na.rm = TRUE), litter = mean(litter, na.rm = TRUE), ten_hr = mean(ten_hr, na.rm = TRUE), hundred_hr = mean(hundred_hr, na.rm = TRUE))
 
-#merge LAI_1 and fm_avg for LAIxfm
+#merge LAI_early and fm_avg for LAIxfm
 LAIxfm <- left_join(LAI_1, fm_avg, by = c("quad_id", "plot_id"))
 
 ```
