@@ -15,7 +15,7 @@ The aim of this research is to explore the heterogeneity of the Dipterocarp mosa
 
 This thesis will be divided into two chapters: **Chapter 1: field observations** and **Chapter 2: fire modelling**.
 
-**Chapter 1** will focus on describing the variability in fuel distribution and fuel microclimate across a canopy gradient and across the dry season. In chapter 1, we will be focusing on how the open and closed canopy forest states differ and how this relationship changes in the presence of prolonged seasonal drought. We will discuss our study system in the context of alternate stable states, and compare the mosaic dynamics of our system with that of mosaics in other studies throughout the tropics. While this Chapter is largely explartory, we will direct our focus by approaching these questions:
+**Chapter 1** will focus on describing the variability in fuel distribution and fuel microclimate across a canopy gradient and across the dry season. In chapter 1, we will be focusing on how the open and closed canopy forest states differ and how this relationship changes in the presence of prolonged seasonal drought. We will discuss our study system in the context of alternate stable states, and compare the mosaic dynamics of our system with that of mosaics in other studies throughout the tropics. While this Chapter is largely exploratory, we will direct our focus by approaching these questions:
 
 *Q1: 1) How does surface fuel composition and structure vary with canopy cover? 2) How does this relationship change throughout the dry season?*
 
@@ -317,13 +317,15 @@ pred <- ggpredict(mixed.lmer2, terms = c("mean_LAI"))  # this gives overall pred
 
 As canopy density transitions from opened to closed, fuel composition shifts away from being grass dominated and toward being litter dominated. Over the course of a dry season the distinction between open and closed surface fuel loads [decreases]{.underline} as grasses senescence and all deciduous and most evergreen trees (to a lesser magnitude) drop their leaves (Williams 2008), adding to the litter component of the surface fuel composition. The timing of senescence is highly variable among species in seasonal tropical forests, but over the season the result is the ultimately the same: As the dry season progresses, more fuel is added to the surface in the form of litter, packing surface fuels more densely.
 
-#### 1.2.1)
+This analysis will expand on the idea from analysis 1.1.1, where we looked at fuel load across the canopy gradient, but we will add a factor to the model to evaluate how vegetation load/structure changes from early to late in the dry season.
+
+#### 1.2.1) Canopy - grass relationships from the early to late dry season
 
 Grasses are at their peak biomass and peak fuel moisture in the early part of the dry season (ref... and observations from the field). As the dry season extends, grasses cure and desiccate which decreases overall grass biomass and compacts grass structure in the savanna.
 
-This analysis will expand on the idea from analysis 1.1.1, where we looked at grass mass across the canopy gradient, but we will add a factor to the model to evaluate how grass structure changes from early to late in the dry season.
+For 1.2.1 analysis I am going to create a 3rd order polynomial model that has an interaction between season (a two-level categorical variable) and LAI (a continuous numerical variable) to test if there is significant difference across the two seasonal levels (early and late) in the relationship between canopy cover (LAI) and grass. First (a), we will restrict canopy cover to LAI observations 1+2 as in 1.1, representing static spatial positions, so each LAI will have two corresponding grass records, one late and one early season. Then (b), we will write a model that temporally pairs biomass and LAI obs, so early season grass will be paired with early season LAI obs and late season grass will be paired with late season LAI obs.
 
-I am going to create a 3rd order polynomial model that has an interaction between season (a two-level categorical variable) and LAI (a continuous numerical variable) to test if there is significant difference across the two seasonal levels (early and late) in the relationship between canopy cover (LAI) and grass. First (a), we will restrict canopy cover to LAI observations 1+2 as in 1.1, representing static spatial positions, so each LAI will have two corresponding grass records, one late and one early season. Then (b), we will write a model that temporally pairs biomass and LAI obs, so early season grass will be paired with early season LAI obs and late season grass will be paired with late season LAI obs.
+**1.2.1a)**
 
 ```{r 1.2.1a setup}
 #see 1.1.1 to bring in LAI data, creation of LAI_1 and biomass data. This will all look very similar to 1.1.1, the only exception being that biomass will include early and late season observations. Where as in 1.1.1 we only looked at early season obs. 
@@ -356,7 +358,7 @@ summary(lm1.2.1)
 
 The "seasonlate" line and "poly(mean_LAI, 3)3:seasonlate" line of the output are the parts we are most interested in for comparing how the early and late season relationship between canopy cover and grass mass differs. "poly(mean_LAI, 3)3:seasonlate" has a high t-value indicating very little difference between polynolial term and seasonal term interaction, time of season does not seem to affect the way grass is distributed, the lines fit for early and late season follow almost identical trends. However, looking at "seasonlate" indicates some significance (.037) in difference in early and late season intercepts. Altogether, there is slightly less grass in the late season but it follows the same declining polynomial trend across the canopy gradient as the early season.
 
-Seasonality does not seem to play a very important role as far as grass *distribution* is concerned. As evidenced by the plot. Note that in the plot, there will be two grass mass records for each LAI observation, since we only consider early season LAI in this analysis (*later this will likely be replaced with Basal Area*). Both early and late season biomass data for a given logger are considered under the same canopy cover, thus the model resulting from this method best represent biomass under a seasonally changing canopy cover. This concept has been difficult for me to wrap my head around, but essentially, **by making the canopy cover static across response variable observations, we create a model that is honest about how seasonal change is happening at the surface fuel level, but not as honest about the relationship between canopy cover and surface fuel.**
+Seasonality alone does not seem to play a very important role as far as grass *distribution* is concerned over the canopy gradient., as evidenced by the plot. Note that in the plot, there will be two grass mass records for each LAI observation, since we only consider early season LAI in this analysis (*later this will likely be replaced with Basal Area*). Both early and late season biomass data for a given logger are considered under the same canopy cover, thus the model resulting from this method best represent changes in surface biomass under a seasonally changing canopy cover. This concept has been difficult for me to wrap my head around, but essentially, **by making the canopy cover static across response variable observations, we create a model that is honest about how seasonal change is happening at the surface fuel level, but not as honest about the more general relationship between canopy cover and surface fuel. Plot 1.2.1a shows how grass load at 46 particular locations is lower in the late season than the early season.**
 
 ```{r 1.2.1a plot}
 ggplot(LAIxbiomass_2, aes(x = mean_LAI, y = grass_mass, color = season)) +
@@ -403,23 +405,79 @@ summary(lm1.2.1b)
 
 ```
 
-
 ```{r 1.2.1a plot}
 ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = grass_mass, color = season)) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = FALSE) +
-  labs(title = "Scatterplot with Regression Lines",
-       x = "mean_LAI", y = "Grass Load (g/", color = "season") +
+  labs(title = "Late season decreases canopy cover AND grass load, exaggerating the canopy threshold for grass growth",
+       x = "LAI", y = "Grass Load (g)", color = "season") +
   ylim(0, 230) +
-  theme_minimal()
+  theme_minimal()                                                                                                                                                                                                                           
 ```
-In this plot, the early season regression line is identical to 1.2.1a, but the late season regression has shifted to the left, exaggerating the difference in intercept between early and late season. The difference in the intercept between 1.2.1a and 1.2.1b emphasizes the role
 
+In this plot, the early season regression line is identical to 1.2.1a, but the late season regression has shifted to the left, exaggerating the difference in intercept and coefficient between early and late season. Note how grass load reaches 0 at around 3 LAI in 1.2.1a and grass load reaches 0 at 2 LAI in 1.2.1b. By pairing late season grass loads with late season LAI we get a better visualization of the
 
-
-#### 1.2.2)
+#### 1.2.2) Changes in litter load across the dry season
 
 Over the course of a dry season the distinction between open and closed surface fuel loads [decreases]{.underline} as all deciduous and most evergreen trees (to a lesser magnitude) drop their leaves (Williams 2008), adding to the litter component of the surface fuel composition. The timing of senescence is highly variable among species in seasonal tropical forests, but over the season the result is the ultimately the same: As the dry season progresses, more fuel is added to the surface in the form of litter, packing surface fuels more densely.
+
+For 1.2.2 analysis, we will use the same tables created in 1.2.1a and 1.2.1b but replace the grass_mass with the litter parameters. The models will look the same as in 1.2.1 with an interaction between LAI and the fuel variable.
+
+**1.2.2a)**
+
+```{r 1.2.2a setup}
+#pull "LAIxbiomass_2" from 1.2.1a
+head(LAIxbiomass_2)
+```
+
+For now the model is simple linear rather than mixed effects (with random effect for plot) because idk how to do mixed effects with an interacting non-numeric term.
+
+```{r 1.2.2a model}
+# linear model with interaction between litter and LAI 
+lm1.2.2a <- lm(litter_mass ~ mean_LAI*season, data = LAIxbiomass_2)
+summary(lm1.2.2a)
+```
+
+```{r 1.2.2a plot}
+ggplot(LAIxbiomass_2, aes(x = mean_LAI, y = litter_mass, color = season)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
+  labs(title = "Late season litter loads are greater than early season loads across the canopy gradient",
+       x = "LAI", y = "Litter Load (g)", color = "Season") +
+  theme_minimal()    
+```
+
+**1.2.2b)** Now, we will write a model that temporally pairs biomass and LAI obs, so early season litter will be paired with early season LAI obs and late season litter will be paired with late season LAI obs. Where method 1.2.2a was useful for looking at surface fuel change, this method will concentrate on the relationship between canopy cover and litter, as both canopy cover and litter change across the season.
+
+```{r 1.2.2b setup}
+#pull "LAIxbiomass_early_late" from 1.2.1b
+head(LAIxbiomass_early_late)
+```
+
+For now the model is simple linear rather than mixed effects (with random effect for plot) because idk how to do mixed effects with an interacting non-numeric term.
+
+```{r 1.2.2b model}
+# linear model with interaction between litter and LAI 
+lm1.2.2b <- lm(litter_mass ~ mean_LAI*season, data = LAIxbiomass_early_late)
+summary(lm1.2.2b)
+```
+
+From both 1.2.2 models we see that the "seasonlate" terms, the intercept differences between seasons, are significant. The late season has much more litter than the early season no matter where you are on the canopy gradient. From the interaction term (mean_LAI:seasonlate) we see minor significance in 1.2.2a and no significance in 1.2.2b. This tells us that the slopes of the two seasons are not much different, but we can see that the late season slope is slightly steeper (explaining the almost significance) which makes sense as there are more trees and thus more potential for litter in the closed canopy.
+
+```{r 1.2.2b plot}
+ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = litter_mass, color = season)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
+  labs(title = "Late season litter loads are greater than early season loads across the canopy gradient",
+       x = "LAI", y = "Litter Load (g)", color = "Season") +
+  theme_minimal()    
+```
+
+#### 1.2.3) Changes in fine fuel bulk density across the dry season
+
+**1.2.3a)...**
+
+**1.2.3b)...**
 
 ## Q2: 1) How does surface microclimate vary with canopy cover? 2) How does this relationship change throughout the dry season?
 
@@ -429,8 +487,9 @@ Closed canopies act as a thermal insulator, buffering surface fuels from atmosph
 
 Past research suggests that relationships between canopy cover and microclimate buffering tend to be linear in tropical forest systems (Hardwick 2015).
 
-```{r microclimate}
-```
+#### 2.1.1) 
+
+In this analysis we will be looking at the relationship between microclimate and canopy cover at a fixed moment in time. We will use the early season data (as in section 1.1) when canopy cover and surface fuels were at peak biomass, which should coincide with peak microclimate buffering potential -- more shade means less exposure to the elements.
 
 ```{r season average fm setup, include = FALSE}
 #fm_V4 comes from the work shown in Q3.1
@@ -449,7 +508,7 @@ LAIxfm <- left_join(LAI_1, fm_avg, by = c("quad_id", "plot_id"))
 
 ```{r season average fm data analysis}
 
-mixed.lmer4 <- lmer(litter ~ mean_LAI + (1|plot_id), data = LAIxfm)
+mixed.lmer2.1.1 <- lmer(litter ~ mean_LAI + (1|plot_id), data = LAIxfm)
 summary(mixed.lmer4)
 
 ```
