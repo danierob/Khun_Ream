@@ -15,7 +15,7 @@ The aim of this research is to explore the heterogeneity of the Dipterocarp mosa
 
 This thesis will be divided into two chapters: **Chapter 1: field observations** and **Chapter 2: fire modelling**.
 
-**Chapter 1** will focus on describing the variability in fuel distribution and fuel microclimate across a canopy gradient and across the dry season. In chapter 1, we will be focusing on how the open and closed canopy forest states differ and how this relationship changes in the presence of prolonged seasonal drought. We will discuss our study system in the context of alternate stable states, and compare the mosaic dynamics of our system with that of mosaics in other studies throughout the tropics. While this Chapter is largely exploratory, we will direct our focus by approaching these questions:
+**Chapter 1** will focus on describing the variability in fuel distribution and fuel microclimate across a canopy gradient and across the dry season. We will explore how the open and closed canopy forest states differ and how this relationship changes in the presence of prolonged seasonal drought. We will discuss our study system in the context of alternate stable states, and compare the mosaic dynamics of our system with that of mosaics in other studies throughout the tropics. While this Chapter is largely exploratory, we will direct our focus by approaching these questions:
 
 *Q1: 1) How does surface fuel composition and structure vary with canopy cover? 2) How does this relationship change throughout the dry season?*
 
@@ -39,7 +39,7 @@ library(ggeffects)
 
 ## Chapter 1: Defining the mosaic throughout the dry season: An assessment of fuel availability across a canopy gradient
 
-Canopy cover influences surface fuel in two primary ways: Q1) canopy cover provides a buffer that moderates microclimate, and Q2) canopy cover restricts shade-tolerant species, reducing the surface fuel load while simultaneously adding to the surface fuel load via leaf shedding. As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to a diversity of phenologies. Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist that describe the relationship in the region.
+Canopy cover influences surface fuel in two primary ways: Q1) canopy cover restricts shade-intolerant species, reducing the surface fuel load while simultaneously adding to the surface fuel load via leaf shedding, and Q2) canopy cover provides a buffer that moderates microclimate. As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to a diversity of phenologies. Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist that describe the relationship in the region.
 
 ## Q1: 1) How does the distribution of surface fuel vary with canopy cover? 2) How does this relationship change throughout the dry season?
 
@@ -327,7 +327,7 @@ For 1.2.1 analysis I am going to create a 3rd order polynomial model that has an
 
 **1.2.1a)**
 
-```{r 1.2.1a setup}
+```{r 1.2.1a setup, include = FALSE}
 #see 1.1.1 to bring in LAI data, creation of LAI_1 and biomass data. This will all look very similar to 1.1.1, the only exception being that biomass will include early and late season observations. Where as in 1.1.1 we only looked at early season obs. 
 
 #we again must average the 3 biomass obs taken at each logger for one observation per logger per seasonal period for a total of 100 (50 x 2) records.
@@ -349,7 +349,7 @@ LAIxbiomass_2 <- right_join(LAI_early, biomass_2, by = c("plot_id", "quad_id"))
 LAIxbiomass_2 <- LAIxbiomass_2 %>% drop_na(grass_mass)
 ```
 
-```{r 1.2.1a model}
+```{r 1.2.1a model, echo = FALSE}
 
 lm1.2.1 <- lm(grass_mass ~ poly(mean_LAI, 3)*season, LAIxbiomass_2)
 summary(lm1.2.1)
@@ -372,7 +372,7 @@ ggplot(LAIxbiomass_2, aes(x = mean_LAI, y = grass_mass, color = season)) +
 
 **1.2.1b)** Now, we will write a model that temporally pairs biomass and LAI obs, so early season grass will be paired with early season LAI obs and late season grass will be paired with late season LAI obs. Where method 1.2.1a was useful for looking at surface fuel change, this method will concentrate on the relationship between canopy cover and grass mass, as both canopy cover and grass mass change across the season.
 
-```{r 1.2.1b setup}
+```{r 1.2.1b setup, include = FALSE}
 #we have the early season LAI in LAI_early, now we need to add late season LAI (LAI_late) to create LAI_early_late. We do this rather than using the complete LAI data, as we need 50 + 50 LAI obs that are most representative of LAI at time of collection to pair with the 50 + 50 biomass obs.
 
 LAI_early <- LAI %>%
@@ -425,7 +425,7 @@ For 1.2.2 analysis, we will use the same tables created in 1.2.1a and 1.2.1b but
 
 **1.2.2a)**
 
-```{r 1.2.2a setup}
+```{r 1.2.2a setup, include=FALSE}
 #pull "LAIxbiomass_2" from 1.2.1a
 head(LAIxbiomass_2)
 ```
@@ -449,7 +449,7 @@ ggplot(LAIxbiomass_2, aes(x = mean_LAI, y = litter_mass, color = season)) +
 
 **1.2.2b)** Now, we will write a model that temporally pairs biomass and LAI obs, so early season litter will be paired with early season LAI obs and late season litter will be paired with late season LAI obs. Where method 1.2.2a was useful for looking at surface fuel change, this method will concentrate on the relationship between canopy cover and litter, as both canopy cover and litter change across the season.
 
-```{r 1.2.2b setup}
+```{r 1.2.2b setup, include = FALSE}
 #pull "LAIxbiomass_early_late" from 1.2.1b
 head(LAIxbiomass_early_late)
 ```
@@ -481,17 +481,23 @@ ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = litter_mass, color = season
 
 ## Q2: 1) How does surface microclimate vary with canopy cover? 2) How does this relationship change throughout the dry season?
 
-Closed canopies act as a thermal insulator, buffering surface fuels from atmospheric extremes (Frenne 2019). In a Dipterocarp fire regime, a closed canopy should restrict light availability at the forest floor resulting in wetter midday fuels and lower relative fuel availability. In contrast, the microclimates of open systems promote flammability at the surface as radiation passes through gaps in the canopy, drying surface fuels with the rising of the sun each day.
+In Q1 we looked at how fuel is distributed along the canopy gradient, in that question we were essentially looking at fuel availability in terms of the physical presence. If fuel is present, its physical availability tends to change slowly unless it is removed by some outside influence, say a cow or a fire. If this influence functions to *maintain* the existing state of ecosystem conditions, such as a fire in a perennial grassland, this is **positive feedback**, positive feedback reinforces the status quo. Alternatively, if an influence functions to *disrupt* the existing state of an ecosystem this would be a **negative feedback**. With the exception of mass leaf shedding events, there is little sporadic change when dealing with the physical presence of fuel or fuel distributio
+
+Now, in Q2, we are concerned with the mercurial side of fuel availability: the components of fuel availability that are determined by **microclimate.**
+
+Tree canopies moderate micrclimate by acting as a thermal insulator, buffering surface fuels from atmospheric extremes (Frenne 2019). In a Dipterocarp fire regime, a closed canopy should restrict light availability at the forest floor resulting in wetter midday fuels and lower relative fuel availability. In contrast, the microclimates of open systems promote flammability at the surface as radiation passes through gaps in the canopy, drying surface fuels with the rising of the sun each day.
 
 ### 2.1) How does surface microclimate vary with canopy cover?
 
 Past research suggests that relationships between canopy cover and microclimate buffering tend to be linear in tropical forest systems (Hardwick 2015).
 
-#### 2.1.1) 
+#### 2.1.1)
 
-In this analysis we will be looking at the relationship between microclimate and canopy cover at a fixed moment in time. We will use the early season data (as in section 1.1) when canopy cover and surface fuels were at peak biomass, which should coincide with peak microclimate buffering potential -- more shade means less exposure to the elements.
+In this analysis we will be looking at the relationship between microclimate and canopy cover at a fixed moment in time. We will use the early season data (as in section 1.1) when canopy cover and surface fuels were at peak biomass, which should coincide with peak microclimate buffering potential -- more shade means less exposure to the elements. Additionally, the early season is the time of year when the majority of Cambodia's grass burns, so looking at this time
 
-```{r season average fm setup, include = FALSE}
+#### 2.1.2)
+
+```{r 2.1.2 setup, include = FALSE}
 #fm_V4 comes from the work shown in Q3.1
 fm_V4 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V4.csv", 
     col_types = cols(date = col_date(format = "%Y-%m-%d"), grass = col_number(), woody_leaf = col_number(),litter = col_number(), hundred_hr = col_number(), ten_hr = col_number(), one_hr = col_number()))
@@ -501,21 +507,34 @@ fm_avg <- fm_V4 %>%
  group_by(plot_id, quad_id) %>%
   summarise(woody_leaf = mean(woody_leaf, na.rm = TRUE), grass = mean(grass, na.rm = TRUE), litter = mean(litter, na.rm = TRUE), ten_hr = mean(ten_hr, na.rm = TRUE), hundred_hr = mean(hundred_hr, na.rm = TRUE))
 
+
+# Bring in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+        LAI = col_number()))
+View(LAI)
+
+#isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50)
+LAI_early <- LAI %>%
+  group_by(plot_id, quad_id) %>%
+  filter(obs_period == "1" | obs_period == "2") %>% 
+  summarise(mean_LAI = mean(LAI))
+
 #merge LAI_early and fm_avg for LAIxfm
-LAIxfm <- left_join(LAI_1, fm_avg, by = c("quad_id", "plot_id"))
+LAIxfm <- left_join(LAI_early, fm_avg, by = c("quad_id", "plot_id"))
 
 ```
 
 ```{r season average fm data analysis}
 
 mixed.lmer2.1.1 <- lmer(litter ~ mean_LAI + (1|plot_id), data = LAIxfm)
-summary(mixed.lmer4)
+summary(mixed.lmer2.1.1)
 
 ```
 
 ```{r season average fm plot}
 # Extract the prediction data frame
-pred <- ggpredict(mixed.lmer4, terms = c("mean_LAI"))  # this gives overall predictions for the model
+pred <- ggpredict(mixed.lmer2.1.1, terms = c("mean_LAI"))  # this gives overall predictions for the model
 
 # Plot the predictions 
 
@@ -526,7 +545,7 @@ pred <- ggpredict(mixed.lmer4, terms = c("mean_LAI"))  # this gives overall pred
    geom_point(data = LAIxfm,                # adding the raw data
               aes(x = LAIxfm$mean_LAI, y = (LAIxfm$litter))) + 
    labs(x = "LAI", y = "Litter Fuel Mositure (%)", 
-        title = "Litter Fuel Mositure Increases Across Canopy Gradient") + 
+        title = "Litter Fuel Mositure Increases Linearly Across Canopy Gradient") + 
    theme_bw()
 )
 
@@ -550,7 +569,6 @@ To compare modeled fire likelihood across canopy cover, I will average the 8 LAI
 LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
     col_types = cols(date = col_date(format = "%m/%d/%Y"), 
         LAI = col_number()))
-View(LAI)
 
 #averaging LAI data across all observations for one value per quadrant (n=50)
 LAI_avg <- LAI %>%
@@ -564,7 +582,6 @@ For each quadrant (n = 46) we will average the fuel moisture contents from the 8
 fm <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V3.csv", 
     col_types = cols(date = col_date(format = "%d/%m/%Y"), 
         fuel_moisture = col_number()))
-View(fm)
 
 #remove the species column as it gets in the way of pivot_wider:
 fm <- fm %>% 
@@ -666,7 +683,6 @@ Additionally, we will determine an average windspeed for each plot across the se
 kestrel_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_V1.csv", 
     col_types = cols(temp = col_number(), 
         rh = col_number(), wind_speed = col_number()))
-View(kestrel_V1)
 
 kestrel_wind <- kestrel_V1 %>% 
   group_by(month, day, plot_id) %>% 
@@ -748,7 +764,7 @@ biomass_load %>%
 
 #### Cumulative Behaveplus table:
 
-Merging all of the above data into one tabel for behave plus input
+Merging all of the above data into one table for behave plus input
 
 ```{r behaveplus table setup}
 #merging all of the relevant input variables, detailed below:
@@ -880,5 +896,11 @@ ggplot(behave_output, aes(x = mean_LAI, y = flame_length)) +
 ```
 
 ```{r}
+ggplot(behave_output, aes(x = mean_LAI, y = ROS)) +
+  geom_point() + stat_smooth(color = "red", fill = NA) +
+    labs(x = "LAI", y = "Flame Length (m)", 
+        title = "Flame Length Across Canopy Gradient") +
+  ylim(0, 5) +
+   theme_bw()
 
 ```
