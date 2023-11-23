@@ -481,7 +481,7 @@ ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = litter_mass, color = season
 
 ## Q2: 1) How does surface microclimate vary with canopy cover? 2) How does this relationship change throughout the dry season?
 
-In Q1 we looked at how fuel is distributed along the canopy gradient, in that question we were essentially looking at fuel availability in terms of the physical presence of flammable vegetation. At the coasest scale, fuel presence is determined by climate (ref...). In our system, the climate is sufficient to support continuous vegetation and the presence of fuel is largely moderated through feedbacks (Pausas, ref..) ( see outline). When fuel is present, its physical availability tends to change due to relatvely slow process (growth and decay), unless it is removed by some outside influence (a grazing cow or a fire). In the absence of cow or fire, surface fuels will accumulate gradually with leaf fall (dry season) or new growth (wet season) or decrease gradually through dessication.
+In Q1 we looked at how fuel is distributed along the canopy gradient, in that question we were essentially looking at fuel availability in terms of the physical presence of flammable vegetation. At the coarsest scale, fuel presence is determined by climate (ref...). In our system, the climate is sufficient to support continuous vegetation and the presence of fuel is largely moderated through feedbacks (Pausas, ref..) ( see outline). When fuel is present, its physical availability tends to change due to relatively slow process (growth and decay), unless it is removed by some outside influence (a grazing cow or a fire). In the absence of cow or fire, surface fuels will accumulate gradually with leaf fall (dry season) or new growth (wet season) or decrease gradually through dessication.
 
 Contrastingly, weather often affects surface fuel on a finer temporal scale (ref). The most direct way that weather affects fuel availability is through precipitation. Wet fuel is not available to fire, no matter how much fuel there is. So after they are saturated, fuels must dry sufficiently before they can be available to fire. The threshold fuel moisture at which combustion can be sustained is referred to as the **moisture of extinction.** The time it takes for a fuel parcel to cross the moisture of extinction and become dry enough for combustion is dependent on several interacting factors ( need to elaborate on this, perhaps, see the fuel moisture section in annotated bib ), most relevant of which is **microclimate buffering** (ref). Fuels that are under a dense canopy take longer to dry that fuels that are in the open exposed to direct sunlight. But the rate at which fuels cure In Q2, we are concerned with this more mercurial side of fuel availability: the components of fuel availability that are determined by **microclimate.**
 
@@ -493,7 +493,7 @@ Past research suggests that relationships between canopy cover and microclimate 
 
 #### 2.1.1)
 
-In this analysis we will be looking at the relationship between microclimate and canopy cover across the two scales that are most important for understanding the role of microclimate in determining fuel availability: daily scales and seasonal scales. At There are two . We will use the early season data (as in section 1.1) when canopy cover and surface fuels were at peak biomass, which should coincide with peak microclimate buffering potential -- more shade means less exposure to the elements. Additionally, the early season is the time of year when the majority of Cambodia's grass burns, so looking at this time
+In this analysis we will be looking at the relationship between microclimate and canopy cover across the two scales that are most important for understanding the role of microclimate in determining fuel availability: daily scales and seasonal scales. We will use the early season data (as in section 1.1) when canopy cover and surface fuels were at peak biomass, which should coincide with peak microclimate buffering potential -- more shade means less exposure to the elements. Additionally, the early season is the time of year when the majority of Cambodia's grass burns, so looking at this time
 
 #### 2.1.2)
 
@@ -551,6 +551,8 @@ pred <- ggpredict(mixed.lmer2.1.1, terms = c("mean_LAI"))  # this gives overall 
 
 
 ```
+
+### 2.2) How does the relationship between microclimate and canopy cover change throughout the dry season?
 
 ## Chapter 2: Fire Modelling
 
