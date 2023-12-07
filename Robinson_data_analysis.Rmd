@@ -406,12 +406,12 @@ summary(lm1.2.1b)
 ```
 
 ```{r 1.2.1a plot}
-ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = grass_mass, color = season)) +
+ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = grass_mass*4, color = season)) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = FALSE) +
-  labs(title = "Late season decreases canopy cover AND grass load, exaggerating the canopy threshold for grass growth",
-       x = "LAI", y = "Grass Load (g)", color = "season") +
-  ylim(0, 230) +
+  labs(title = "Grassy Component of Fuel Makeup is Lower in Late Dry Season",
+       x = "LAI", y = "Grass Load (g/m2)", color = "season") +
+  ylim(0, 900) +
   theme_minimal()                                                                                                                                                                                                                           
 ```
 
@@ -465,11 +465,11 @@ summary(lm1.2.2b)
 From both 1.2.2 models we see that the "seasonlate" terms, the intercept differences between seasons, are significant. The late season has much more litter than the early season no matter where you are on the canopy gradient. From the interaction term (mean_LAI:seasonlate) we see minor significance in 1.2.2a and no significance in 1.2.2b. This tells us that the slopes of the two seasons are not much different, but we can see that the late season slope is slightly steeper (explaining the almost significance) which makes sense as there are more trees and thus more potential for litter in the closed canopy.
 
 ```{r 1.2.2b plot}
-ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = litter_mass, color = season)) +
+ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = litter_mass*4, color = season))+
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
-  labs(title = "Late season litter loads are greater than early season loads across the canopy gradient",
-       x = "LAI", y = "Litter Load (g)", color = "Season") +
+  labs(title = "Seasonal Litter Loads Across Canopy Gradient",
+       x = "LAI", y = "Litter Load (g/m2)", color = "Season") +
   theme_minimal()    
 ```
 
@@ -515,13 +515,15 @@ LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LA
 View(LAI)
 
 #isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50)
-LAI_early <- LAI %>%
-  group_by(plot_id, quad_id) %>%
-  filter(obs_period == "1" | obs_period == "2") %>% 
-  summarise(mean_LAI = mean(LAI))
+LAI_avg <- LAI %>%
+  group_by(plot_id, quad_id) %>% 
+  summarise(mean_LAI = mean(LAI, na.rm = TRUE))
 
 #merge LAI_early and fm_avg for LAIxfm
-LAIxfm <- left_join(LAI_early, fm_avg, by = c("quad_id", "plot_id"))
+LAIxfm <- left_join(LAI_avg, fm_avg, by = c("quad_id", "plot_id"))
+
+write.csv(LAIxfm, "C:\\Users\\d\\Desktop\\UBC 2023\\STAT 545\\assignment-b4-danierob\\data\\field_data.csv")
+
 
 ```
 
@@ -622,7 +624,7 @@ write.csv(fm, "C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moi
 
 ```{r fuel_mositure, include = FALSE}
 fm_V4 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V4.csv", 
-    col_types = cols(date = col_date(format = "%Y-%m-%d"), grass = col_number(), woody_leaf = col_number(),litter = col_number(), hundred_hr = col_number(), ten_hr = col_number(), one_hr = col_number()))
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), grass = col_number(), woody_leaf = col_number(),litter = col_number(), hundred_hr = col_number(), ten_hr = col_number(), one_hr = col_number()))
 
 #Averaging fm for each fuel class across season for behaveplus input
 fm_avg <- fm_V4 %>% 
@@ -690,6 +692,12 @@ kestrel_wind <- kestrel_V1 %>%
   group_by(month, day, plot_id) %>% 
   summarize(wind_speed = max(wind_speed))
 
+kestrel_wind <- kestrel_wind %>% 
+  mutate(season = case_when(
+    month %in% c("1","2") ~ 'early',
+    month %in% c("3","4") ~ 'late'
+  ))
+
 #summary table for wind speed by plot (n=6)
 kestrel_wind %>% 
   group_by(plot_id) %>% 
@@ -711,7 +719,7 @@ ggplot(windxLAI, aes(x = LAI, y = wind_speed)) +
   labs(x = "LAI", y = "Wind Speed") +
   ggtitle("Wind Speed vs LAI regression")
 
-#usning lm to predict windspeeds for 4 no-kestrel plots
+#using lm to predict windspeeds for 4 no-kestrel plots
 missing_rows <- is.na(windxLAI$wind_speed)
 new_data <- windxLAI[missing_rows, ]
 new_data$wind_speed <- predict(lm,newdata= new_data)
@@ -852,8 +860,6 @@ behave_output <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_d
         PIG = col_integer()))
 ```
 
-##### 3.1.1) Probability of Ignition (PIG) across the canopy cover gradient
-
 ```{r PIG analysis}
 #PIG as product of LAI
 lm3.1.1 <- lm(PIG ~ mean_LAI, data = behave_output)
@@ -899,10 +905,184 @@ ggplot(behave_output, aes(x = mean_LAI, y = flame_length)) +
 
 ```{r}
 ggplot(behave_output, aes(x = mean_LAI, y = ROS)) +
-  geom_point() + stat_smooth(color = "red", fill = NA) +
-    labs(x = "LAI", y = "Flame Length (m)", 
-        title = "Flame Length Across Canopy Gradient") +
-  ylim(0, 5) +
-   theme_bw()
+  geom_point() + stat_smooth(color = "red", fill = "NA")+
+    labs(x = "LAI", y = "ROS", 
+        title = "Rate of Spread Across Canopy Gradient") +
+ theme_bw()+
+      ylim(0, 17)
+```
 
+
+### 3.2) How does predicted fire behavior across the gradient of canopy cover change from the early to the late dry season?
+
+Since I messed up the early season fuel moisture by not collecting litter, for the cross season analysis I will use the first viable fuel moisture observations, which are from observation 4 (Feb 16), which is 2-3 weeks after the January biomass sampling, but still before the big LAI and temperature dip. Its not perfect, but will still allow me to compare fuels that are 6 weeks apart. 
+
+I'm still going to average LAI around the obs to account for any missing values or bad recordings. And since early season biomass is in late Jan and the fuel moisture is in mid Feb, including the LAI in the range of those two feels like a good move.
+
+```{r LAI, include = FALSE}
+#loading in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+        obs_period = col_integer(), LAI = col_double(), 
+        month = col_integer()))
+
+#pulling LAI data from early ob: 2-4  and late ob: 6-8
+LAI_3.2_early <- LAI %>% 
+  filter(obs_period %in% c(2,3,4)) %>% 
+  group_by(plot_id, quad_id, season) %>% 
+  summarize(mean_LAI = mean(LAI, na.rm = TRUE))
+
+LAI_3.2_late <- LAI %>% 
+  filter(obs_period %in% c(6,7,8)) %>% 
+  group_by(plot_id, quad_id, season) %>% 
+  summarize(mean_LAI = mean(LAI, na.rm = TRUE))
+
+#stack the tables for early and late together
+LAI_3.2<- dplyr::union(LAI_3.2_early, LAI_3.2_late)
+```
+
+
+```{r fuel_mositure, include = FALSE}
+fm_V4 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V4.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), grass = col_number(), woody_leaf = col_number(),litter = col_number(), hundred_hr = col_number(), ten_hr = col_number(), one_hr = col_number()))
+
+#Averaging fm for each fuel class for obs period 4 and 7
+fm_3.2 <- fm_V4 %>% 
+  filter(obs_period %in% c(4,7)) %>% 
+ group_by(plot_id, quad_id, obs_period, season) %>%
+  summarise(woody_leaf = mean(woody_leaf, na.rm = TRUE), grass = mean(grass, na.rm = TRUE), litter = mean(litter, na.rm = TRUE), ten_hr = mean(ten_hr, na.rm = TRUE), hundred_hr = mean(hundred_hr, na.rm = TRUE))
+```
+
+```{r biomass}
+biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V2.csv", 
+     col_types = cols(grass_height = col_number(), litter_depth = col_number(), grass_per = col_number(), wood_per = col_number(), bare_per = col_number(),  litter_per = col_number(), mass_grass = col_number(), mass_liana = col_number(), mass_wood = col_number(), mass_litter = col_number(), seedlings = col_number(), grass_vol = col_number(), grass_bulk = col_number(), litter_vol = col_number(), litter_bulk = col_number(), fine_vol = col_number(), fine_bulk = col_number()))
+
+#there were two biomass observation periods in early and late season and each quadrant consisted of 3 records for a total of n=150 records for each season and n=300 records in total
+#we will average across quadrants and keep season separate for n=100 records (8 of which are NA because no data for the missing sensors)
+
+biomass_3.2 <- biomass %>%
+  group_by(plot_id, quad_id, season) %>%
+  summarise(grass_mass = mean(mass_grass), litter_mass = mean(mass_litter), wood_mass = mean(mass_wood), woody_mass = mean(mass_liana + seedlings*10), grass_height = mean(grass_height), litter_depth = mean(litter_depth))
+
+#the biomass input in the model requires mass per unit area so we will determine kg/m^2 for each fuel type. The quadrat was .25m^2.
+
+biomass_3.2 <- biomass_3.2 %>% 
+  group_by(plot_id) %>% 
+  mutate_at(vars(4:7), ~ . * .004)
+```
+
+Using the exact same shading from 3.1 (this is an average across the whole season, but honestly I'm afraid that this measurement was too subjective and my early season measurements and Phem's late season measurements may not jive)
+
+```{r shading, include = FALSE}
+shaded <- biomass %>% 
+  group_by(quad_id, plot_id) %>% 
+  filter(shading == 'Y') %>%
+  count()
+
+unshaded <- biomass %>% 
+  group_by(quad_id, plot_id) %>% 
+  filter(shading == 'N') %>% 
+  count()
+
+shade_join <- left_join(shaded, unshaded, by=c("plot_id", "quad_id"))
+
+shade_pct <- shade_join %>% 
+  transmute(shade = n.x/(n.x + n.y)) 
+
+shade_pct$shade <- shade_pct$shade %>% 
+  replace_na(1)
+
+shade_pct <- shade_pct %>% 
+  summarise(shade = shade*100)
+```
+
+
+```{r wind}
+kestrel_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_V1.csv", 
+    col_types = cols(temp = col_number(), 
+        rh = col_number(), wind_speed = col_number()))
+
+kestrel_wind <- kestrel_V1 %>% 
+  group_by(month, day, plot_id) %>% 
+  summarize(wind_speed = max(wind_speed))
+
+kestrel_wind <- kestrel_wind %>% 
+  mutate(season = case_when(
+    month %in% c("1","2") ~ 'early',
+    month %in% c("3","4") ~ 'late'
+  ))
+
+#summary table for wind speed by plot (n=6)
+kestrel_wind %>% 
+  group_by(plot_id, season) %>% 
+  summarize(wind_speed = mean(wind_speed))
+
+LAI_3.2 %>% 
+  group_by(plot_id, season) %>% 
+  summarize(LAI = mean(mean_LAI))
+
+#creating model for wind speed from relationship with LAI to fill in values for 4 missing plots
+#made quick table relating LAI and wind_speed values from above
+windxLAI_3.2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/windxLAI_3.2.csv", 
+    col_types = cols(LAI = col_number(), 
+   wind_speed = col_number()))
+
+
+lm <- lm(wind_speed ~ LAI, data = windxLAI_3.2)
+summary(lm)
+
+ggplot(windxLAI_3.2, aes(x = LAI, y = wind_speed)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "LAI", y = "Wind Speed") +
+  ggtitle("Wind Speed vs LAI regression")
+
+#using lm to predict windspeeds for 4 no-kestrel plots
+missing_rows <- is.na(windxLAI_3.2$wind_speed)
+new_data <- windxLAI_3.2[missing_rows, ]
+new_data$wind_speed <- predict(lm,newdata= new_data)
+windxLAI_3.2[missing_rows, ] <- new_data
+
+```
+
+```{r TOMST temperature}
+TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/TOMST/TOMST_V1.csv", 
+    col_types = cols(date = col_date(format = "%Y.%m.%d"), 
+        date_time = col_datetime(format = "%Y.%m.%d %H:%M"), 
+        air_temp = col_number(), soil_moisture = col_number()))
+
+#average air_temp values for each quadrant for the days that match the fuel moisture
+#first filter data between midday times
+TOMST_filter <- TOMST_V1 %>% 
+filter(hour(date_time) > 10, hour(date_time) < 18) 
+
+TOMST_3.2 <- TOMST_filter %>% 
+  filter(date %in% c("2023-02-16", "2023-03-29", "2023-03-30"))
+
+TOMST_3.2 <- TOMST_3.2 %>%
+  mutate(season = case_when(
+    date %in% c('2023-02-16') ~ 'early',
+    date %in% c('2023-03-29', '2023-03-30') ~ 'late'
+  ))
+
+TOMST_3.2 <- TOMST_3.2 %>% 
+group_by(plot_id, quad_id, season) %>% 
+  summarize(air_temp = mean(air_temp), soil_moist = mean(soil_moisture))
+  
+```
+
+```{r behaveplus table setup}
+#merging all of the relevant input variables, detailed below:
+join1 <- left_join(LAI_3.2, biomass_3.2, by=c("plot_id", "quad_id", "season"))
+
+join2 <- left_join(join1, fm_3.2, by=c("plot_id", "quad_id", "season"))
+
+join3 <- left_join(join2, windxLAI_3.2, by= c("plot_id", "season"))
+
+join4 <- left_join(join3, shade_pct, by=c("plot_id", "quad_id"))
+
+behave_tbl_3.2 <- left_join(join4, TOMST_3.2, by=c("plot_id", "quad_id", "season"))
+
+#going to export to openrefine to clean this up and then bring it back in
+write.csv(behave_tbl_3.2, "C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/behave_tbl_3.2.csv", row.names=FALSE)
 ```
