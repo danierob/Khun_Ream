@@ -35,6 +35,7 @@ library(readr)
 library(ggplot2)
 library(lme4)
 library(ggeffects)
+library(vtable)
 ```
 
 ## Chapter 1: Defining the mosaic throughout the dry season: An assessment of fuel availability across a canopy gradient
@@ -845,7 +846,7 @@ There's probably a faster way to do this, some R package or another, but I'm goi
 **TABLE OF RESULTS FOR BEHAVEPLUS OUTPUT**
 
 ```{r behave output table}
-behave_output <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_Q3.1.csv", 
+behave_output <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_3.1_output.csv", 
     col_types = cols(mean_LAI = col_number(), 
         fuel_model = col_integer(), litter_load = col_number(), 
         hr10_load = col_number(), hr100_load = col_number(), 
@@ -941,7 +942,7 @@ LAI_3.2_late <- LAI %>%
 LAI_3.2<- dplyr::union(LAI_3.2_early, LAI_3.2_late)
 ```
 
-
+Fuel moisture is not averaged, but taken from the closest viable single obs to the biomass obs.
 ```{r fuel_mositure, include = FALSE}
 fm_V4 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V4.csv", 
     col_types = cols(date = col_date(format = "%m/%d/%Y"), grass = col_number(), woody_leaf = col_number(),litter = col_number(), hundred_hr = col_number(), ten_hr = col_number(), one_hr = col_number()))
@@ -952,7 +953,7 @@ fm_3.2 <- fm_V4 %>%
  group_by(plot_id, quad_id, obs_period, season) %>%
   summarise(woody_leaf = mean(woody_leaf, na.rm = TRUE), grass = mean(grass, na.rm = TRUE), litter = mean(litter, na.rm = TRUE), ten_hr = mean(ten_hr, na.rm = TRUE), hundred_hr = mean(hundred_hr, na.rm = TRUE))
 ```
-
+Biomass observations seperated by early and late season.
 ```{r biomass}
 biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V2.csv", 
      col_types = cols(grass_height = col_number(), litter_depth = col_number(), grass_per = col_number(), wood_per = col_number(), bare_per = col_number(),  litter_per = col_number(), mass_grass = col_number(), mass_liana = col_number(), mass_wood = col_number(), mass_litter = col_number(), seedlings = col_number(), grass_vol = col_number(), grass_bulk = col_number(), litter_vol = col_number(), litter_bulk = col_number(), fine_vol = col_number(), fine_bulk = col_number()))
@@ -971,7 +972,7 @@ biomass_3.2 <- biomass_3.2 %>%
   mutate_at(vars(4:7), ~ . * .004)
 ```
 
-Using the exact same shading from 3.1 (this is an average across the whole season, but honestly I'm afraid that this measurement was too subjective and my early season measurements and Phem's late season measurements may not jive)
+Using the exact same shading from 3.1 (this is an average across the whole season, but honestly I'm afraid to change it because this measurement was too subjective and my early season measurements and Phem's late season measurements may not jive)
 
 ```{r shading, include = FALSE}
 shaded <- biomass %>% 
@@ -996,7 +997,7 @@ shade_pct <- shade_pct %>%
   summarise(shade = shade*100)
 ```
 
-
+Re-did this convoluted wind estimation for early and late season, notes detailed in the code.
 ```{r wind}
 kestrel_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_V1.csv", 
     col_types = cols(temp = col_number(), 
@@ -1045,6 +1046,8 @@ windxLAI_3.2[missing_rows, ] <- new_data
 
 ```
 
+
+Temperature taken from the same day as fuel moisture, as fuel moisture is the variable most linked microclimate (and the most mercurial/prone to daily flux).
 ```{r TOMST temperature}
 TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/TOMST/TOMST_V1.csv", 
     col_types = cols(date = col_date(format = "%Y.%m.%d"), 
@@ -1071,6 +1074,8 @@ group_by(plot_id, quad_id, season) %>%
   
 ```
 
+
+Setup same as 3.1. Table written to data folder. 
 ```{r behaveplus table setup}
 #merging all of the relevant input variables, detailed below:
 join1 <- left_join(LAI_3.2, biomass_3.2, by=c("plot_id", "quad_id", "season"))
@@ -1085,4 +1090,81 @@ behave_tbl_3.2 <- left_join(join4, TOMST_3.2, by=c("plot_id", "quad_id", "season
 
 #going to export to openrefine to clean this up and then bring it back in
 write.csv(behave_tbl_3.2, "C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/behave_tbl_3.2.csv", row.names=FALSE)
+```
+
+**Plugging early and late season values into Behave Plus** will look the same as in 3.1.
+
+**TABLE OF RESULTS FOR BEHAVEPLUS OUTPUT**
+
+```{r behave output table}
+behave_output3.2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_3.2_V2.csv", 
+    col_types = cols(mean_LAI = col_number(), 
+        fuel_model = col_integer(), litter_load = col_number(), 
+        hr10_load = col_number(), hr100_load = col_number(), 
+        herb_load = col_number(), woody_load = col_number(), 
+        grass_height = col_number(), litter_depth = col_number(), 
+        litter_fm = col_number(), hr10_fm = col_number(), 
+        hr100_fm = col_number(), grass_fm = col_number(), 
+        woody_fm = col_number(), wind_speed = col_number(), 
+        air_temp = col_number(), shade = col_number(), 
+        soil_moist = col_number(), ROS = col_number(), 
+        intensity = col_number(), flame_length = col_number(), 
+        PIG = col_integer()))
+```
+
+```{r PIG analysis}
+#PIG as product of LAI
+lm3.2.1 <- lm(PIG ~ mean_LAI*season, data = behave_output3.2)
+summary(lm3.2.1)
+
+#residuals look passable
+plot(lm3.2.1, which = 1)
+#QQ quite good
+plot(lm3.2.1, which = 2)
+
+#We know none of this will be independent because of plot. But I'm unsure on how much that matters for every question and if that warrants mler every time? Just sticking with lm for now.
+
+#probability of ignition as a product of LAI looking like a linear regression dream
+
+pred <- ggpredict(lm3.2.1, terms = c("mean_LAI", "season"))  # this gives overall predictions for the model
+
+#with the prediction lines
+ (ggplot(pred) + 
+   geom_line(aes(x = x, y = predicted, color = group)) +          # slope
+   geom_point(data = behave_output3.2,                # adding the raw data
+              aes(x = mean_LAI, y = PIG, color = season)) + 
+   labs(x = "LAI", y = "Probability of Ignition (%)", 
+        title = "Seasonal Difference in Probability of Ignition (PIG)", color = "Season") + 
+   theme_bw()
+)
+
+```
+
+``` {r ROS}
+
+ggplot(behave_output3.2, aes(x = mean_LAI, y = ROS, color = season)) +
+  geom_point() + geom_smooth(fill = "NA")+
+    labs(x = "LAI", y = "ROS", 
+        title = "Rate of Spread Across Canopy Gradient") +
+ theme_bw()+
+      ylim(0, 30)
+
+ggplot(behave_output3.2, aes(x = mean_LAI, y = ROS, color = season)) +
+  geom_point() + geom_boxplot(fill = "NA")+
+ theme_bw()+
+  facet_wrap(vars(plot_type), scales = "free")+
+  labs(x = "Canopy Cover (LAI)", y = "Rate of Spread (m/min)", title = "Rate of spread at relative scales according to canopy cover", color = 'Season')
+
+```
+Zooming in on the closed canopy grants insight into the seasonal component in determining fire spread. Experimental burns have shown that a low threshold for ROS of .198-.252 m/min is necessary to sustain fire (Marsden-Smedley 2001; Fernandes 2008). Late season in closed canopy has average ROS of ~3.5-4 m/min, far above the threshold and far higher than the ROS in the early season. 
+
+Now we will explore this further, looking at how many 
+``` {r Reaction Intensity}
+
+ggplot(behave_output3.2, aes(x = mean_LAI, y = intensity, color = season)) +
+  geom_point() + geom_boxplot(fill = "NA")+
+ theme_bw()+
+  facet_wrap(vars(plot_type), scales = "free")+
+  labs(x = "Canopy Cover (LAI)", y = "Reaction Intensity (kW/m)", title = "Fire Intensity at relative scales according to canopy cover", color = 'Season')
+
 ```
