@@ -1138,6 +1138,14 @@ pred <- ggpredict(lm3.2.1, terms = c("mean_LAI", "season"))  # this gives overal
    theme_bw()
 )
 
+ggplot(behave_output3.2, aes(x = mean_LAI, y = PIG, color = season))+
+     geom_point()+
+  geom_smooth()+
+   labs(x = "LAI", y = "Probability of Ignition (%)", 
+        title = "Seasonal Difference in Probability of Ignition (PIG)", color = "Season")+
+   theme_bw()
+
+
 ```
 
 ``` {r ROS}
