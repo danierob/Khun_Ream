@@ -413,7 +413,15 @@ ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = grass_mass*4, color = seaso
   labs(title = "Grassy Component of Fuel Makeup is Lower in Late Dry Season",
        x = "LAI", y = "Grass Load (g/m2)", color = "season") +
   ylim(0, 900) +
-  theme_minimal()                                                                                                                                                                                                                           
+  theme_minimal()        
+
+ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = grass_mass*4, color = season)) +
+  geom_point() +
+  geom_smooth(fill = "NA") +
+  labs(title = "Grassy Component of Fuel Makeup is Lower in Late Dry Season",
+       x = "LAI", y = "Grass Load (g/m2)", color = "season") +
+  ylim(0, 900) +
+  theme_minimal()   
 ```
 
 In this plot, the early season regression line is identical to 1.2.1a, but the late season regression has shifted to the left, exaggerating the difference in intercept and coefficient between early and late season. Note how grass load reaches 0 at around 3 LAI in 1.2.1a and grass load reaches 0 at 2 LAI in 1.2.1b. By pairing late season grass loads with late season LAI we get a better visualization of the
@@ -440,7 +448,7 @@ summary(lm1.2.2a)
 ```
 
 ```{r 1.2.2a plot}
-ggplot(LAIxbiomass_2, aes(x = mean_LAI, y = litter_mass, color = season)) +
+ggplot(LAIxbiomass_2, aes(x = mean_LAI, y = litter_mass*4, color = season)) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
   labs(title = "Late season litter loads are greater than early season loads across the canopy gradient",
@@ -480,13 +488,22 @@ ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = litter_mass*4, color = seas
 
 **1.2.3b)...**
 
+```{r 1.2.2b plot}
+ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = fine_bulk, color = season))+
+  geom_point() +
+  geom_smooth(formula = y ~ x, se = FALSE) +
+  labs(title = "fine fuel bulk density Across Canopy Gradient",
+       x = "LAI", y = "Fine-fuel bulk density", color = "Season") +
+  theme_minimal()    
+```
+
 ## Q2: 1) How does surface microclimate vary with canopy cover? 2) How does this relationship change throughout the dry season?
 
-In Q1 we looked at how fuel is distributed along the canopy gradient, in that question we were essentially looking at fuel availability in terms of the physical presence of flammable vegetation. At the coarsest scale, fuel presence is determined by climate (ref...). In our system, the climate is sufficient to support continuous vegetation and the presence of fuel is largely moderated through feedbacks (Pausas, ref..) ( see outline). When fuel is present, its physical availability tends to change due to relatively slow process (growth and decay), unless it is removed by some outside influence (a grazing cow or a fire). In the absence of cow or fire, surface fuels will accumulate gradually with leaf fall (dry season) or new growth (wet season) or decrease gradually through dessication.
+In Q1 we looked at how fuel is distributed along the canopy gradient, in that question we were essentially looking at fuel availability in terms of the physical presence of flammable vegetation. At the coarsest scale, fuel presence is determined by climate (Meyn 2007). In our system, the climate is sufficient to support continuous vegetation and the presence of fuel is largely moderated through feedbacks (Pausas, ref..) ( see outline). Once present or absent, fuel amount tends to change due to relatively slow process (growth and decay), unless it is removed by some outside influence (a grazing cow or a fire). In the absence of cow or fire, surface fuels will accumulate gradually with leaf fall (dry season) or new growth (wet season) or decrease gradually through dessication.
 
-Contrastingly, weather often affects surface fuel on a finer temporal scale (ref). The most direct way that weather affects fuel availability is through precipitation. Wet fuel is not available to fire, no matter how much fuel there is. So after they are saturated, fuels must dry sufficiently before they can be available to fire. The threshold fuel moisture at which combustion can be sustained is referred to as the **moisture of extinction.** The time it takes for a fuel parcel to cross the moisture of extinction and become dry enough for combustion is dependent on several interacting factors ( need to elaborate on this, perhaps, see the fuel moisture section in annotated bib ), most relevant of which is **microclimate buffering** (ref). Fuels that are under a dense canopy take longer to dry that fuels that are in the open exposed to direct sunlight. But the rate at which fuels cure In Q2, we are concerned with this more mercurial side of fuel availability: the components of fuel availability that are determined by **microclimate.**
+Contrastingly, weather can affect surface fuel on a finer temporal scale (ref). Weather affects fuel availability through daily fluctuations in temperature and RH, so that fuel that is not available to burn at 0900, may be quite flammable at 1500. However, weather also acts on coarser scales, and it may take weeks or months of drought to dry fuels sufficiently to sustain fire, particularly in moist (high RH) and mesic-dense canopied systems. Atmospheric moisture is absorbed by fuels, particularly dead fuels, and tree canopies buffer surface fuel conditions by moderating microclimates under the canopy. Wet fuel is not available to fire, no matter how much fuel there is. So after they are saturated, fuels must dry sufficiently before they can be available to fire. The threshold fuel moisture at which combustion can be sustained is referred to as the **moisture of extinction.** The moisture of extinction is dependent on fuel composition, fuel amount, and fuel structure (ref), therefore, it is variable throughout the season as the orientation of fuels changes (as described in Q1) (ref. I know this is explicitly stated but i cant find it). The time it takes for a fuel parcel to cross the moisture of extinction and become dry enough for combustion is dependent on several interacting factors ( need to elaborate on this, perhaps, see the fuel moisture section in annotated bib ), most relevant of which is **microclimate buffering** (ref). Fuels that are under a dense canopy take longer to dry that fuels that are in the open exposed to direct sunlight. But the rate at which fuels cure In Q2, we are concerned with this more mercurial side of fuel availability: the components of fuel availability that are determined by **microclimate.**
 
-Tree canopies moderate microclimate by acting as a thermal insulator, buffering surface fuels from atmospheric extremes (Frenne 2019). In a Dipterocarp fire regime, a closed canopy should restrict light availability at the forest floor resulting in wetter midday fuels and lower relative fuel availability. In contrast, the microclimates of open systems promote flammability at the surface as radiation passes through gaps in the canopy, drying surface fuels with the rising of the sun each day.
+Tree canopies moderate microclimate by acting as a thermal insulator, buffering surface fuels from atmospheric extremes (Frenne 2019). In a Dipterocarp fire regime, a closed canopy will restrict light availability at the forest floor resulting in wetter midday fuels and lower relative fuel availability. In contrast, the microclimates of open systems promote flammability at the surface as radiation passes through gaps in the canopy, drying surface fuels with the rising of the sun each day.
 
 ### 2.1) How does surface microclimate vary with canopy cover?
 
@@ -556,6 +573,68 @@ pred <- ggpredict(mixed.lmer2.1.1, terms = c("mean_LAI"))  # this gives overall 
 ```
 
 ### 2.2) How does the relationship between microclimate and canopy cover change throughout the dry season?
+
+#### 2.2.1) Fuel moistures by observation
+
+```{r 2.2.1 setup, include = FALSE}
+#fm_V5 comes from the work shown in Q3.1 plus additions described in FMC readme
+library(readr)
+fm_V5 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V5.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+        obs_period = col_factor(levels = c("0", 
+        "1", "2", "3", "4", "5", "6", "7")), plot_type = col_character(), 
+        grass = col_number(), woody_leaf = col_number(), 
+        litter = col_number(), hundred_hr = col_number(), 
+        ten_hr = col_number(), one_hr = col_number()))
+View(fm_V5)
+
+# Bring in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+        LAI = col_number(),
+        obs_period = col_factor(levels = c("0","1", "2", "3", "4", "5", "6", "7"))))
+View(LAI)
+
+#merge LAI_early and fm_avg for LAIxfm
+LAIxfm2.2 <- left_join(fm_V5, LAI, by = c("quad_id", "plot_id", "obs_period", "plot_type"))
+
+#exclude obs_period=0 because there are no LAI readings (and very few fm samples)
+LAIxfm2.2 <- LAIxfm2.2 %>% 
+  filter(obs_period %in% c("1", "2", "3", "4", "5", "6", "7"))
+
+```
+
+```{r 2.2.1 litter fm plot}
+#For litter, restrict to obs 4-7, because we didn't get sufficient litter prior to obs 4
+litter2.2 <- LAIxfm2.2 %>% 
+  filter(obs_period %in% c("4", "5", "6", "7"))
+
+ggplot(litter2.2, aes(x = LAI, y = litter, color = obs_period)) +
+  geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period)) +
+  scale_color_manual(values = c("4" = "red", "5" = "blue", "6" = "green", "7" = "purple"),
+    labels = c("4" = "16 Feb", "5" = "1 Mar", "6" = "13 Mar", "7" = "30 Mar"))
+
+```
+```{r 2.2.1 grass fm plot}
+
+ggplot(LAIxfm2.2, aes(x = LAI, y = grass, color = obs_period)) +
+  geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period))
+
+```
+```{r 2.2.1 woody leaf fm plot}
+
+ggplot(LAIxfm2.2, aes(x = LAI, y = woody_leaf, color = obs_period)) +
+  geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period))
+
+```
+```{r 2.2.1 woody leaf fm plot}
+
+ggplot(LAIxfm2.2, aes(x = LAI, y = ten_hr, color = obs_period)) +
+  geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period))
+
+```
+
+
 
 ## Chapter 2: Fire Modelling
 
@@ -1094,7 +1173,7 @@ write.csv(behave_tbl_3.2, "C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_d
 
 **Plugging early and late season values into Behave Plus** will look the same as in 3.1.
 
-**TABLE OF RESULTS FOR BEHAVEPLUS OUTPUT**
+#### Behave Output: Table of Results
 
 ```{r behave output table}
 behave_output3.2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_3.2_V2.csv", 
@@ -1174,5 +1253,12 @@ ggplot(behave_output3.2, aes(x = mean_LAI, y = intensity, color = season)) +
  theme_bw()+
   facet_wrap(vars(plot_type), scales = "free")+
   labs(x = "Canopy Cover (LAI)", y = "Reaction Intensity (kW/m)", title = "Fire Intensity at relative scales according to canopy cover", color = 'Season')
+
+ggplot(behave_output3.2, aes(x = mean_LAI, y = intensity, color = season))+
+     geom_point()+
+  geom_smooth(fill = "NA")+
+   labs(x = "LAI", y = "Reaction Intensity", 
+        title = "Seasonal Difference in Reaction Intensity", color = "Season")+
+   theme_bw()
 
 ```
