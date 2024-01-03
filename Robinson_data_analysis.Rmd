@@ -612,7 +612,10 @@ litter2.2 <- LAIxfm2.2 %>%
 ggplot(litter2.2, aes(x = LAI, y = litter, color = obs_period)) +
   geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period)) +
   scale_color_manual(values = c("4" = "red", "5" = "blue", "6" = "green", "7" = "purple"),
-    labels = c("4" = "16 Feb", "5" = "1 Mar", "6" = "13 Mar", "7" = "30 Mar"))
+    labels = c("4" = "16 Feb", "5" = "1 Mar", "6" = "13 Mar", "7" = "30 Mar")) +
+      labs(x = "LAI", y = "Litter Fuel Mositure (%)", color = "Date",
+        title = "Litter Fuel Mositure Slope Decreases in Late Season") + 
+   theme_bw()
 
 ```
 ```{r 2.2.1 grass fm plot}
@@ -621,12 +624,16 @@ ggplot(LAIxfm2.2, aes(x = LAI, y = grass, color = obs_period)) +
   geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period))
 
 ```
+The woody leaf component of the fuel assemblage is far less relevant than the fine fuels (litter and grass) in determining fire likelihood. Furthermore, the woody leaf data is far more variable due to the wide range of species that were sampled for fuel moistures. 
 ```{r 2.2.1 woody leaf fm plot}
 
 ggplot(LAIxfm2.2, aes(x = LAI, y = woody_leaf, color = obs_period)) +
   geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period))
 
 ```
+In the woody leaf graph, you'll notice far poorer fit than in the other surface fuel graphs. The woody leaf data is far more variable in large part due to the wide variety of species that were sampled throughout the season. When sampling for woody fuel, we would pluck leaves from the nearby woody plants in a ratio that roughly represented their distribution in the quadrant. However, due to differences in species traits, and phenologies, and local water availability, different woody species had quite different leaf moisture at different times of the season. 
+The most relevant trend that we can recognize in the woody leaf data aligns temporally with the mid-season (late February) transition presented by the other fuel types. During the first four sampling periods, woody leaf moisture hardly deviated along the canopy gradient, and exhibited a positive relationship with canopy cover. After the mid-season mark, the relationship flipped to negative, and the slope gradually increased with each sampling period until the end of March. Between the early and late season, open canopy leaf moisture hardly deviated (intercepts were insignificant), but closed canopy leaf moistures dropped from 120% to 80%. While this is not terribly relevant for fire likelihood, it helps to corroborate the surprisingly abrupt shift that we see in the mid-season fuel conditions and it less directly speaks to the functional differences across the open and closed- canopy ecosystems. Towards the end of the season, most of the open-canopy deciduous trees had already shed leaves months earlier and some were beginning to flush new leaves, whereas the evergreen species that had never shed leaves were hanging on to visibly parched, wilted leaves. Since we only selected live leaves off of trees, the highly-deciduous quadrants rarely exhibit a change in leaf moisture as a relatively greater proportion of the open-canopy trees actively drop their leaves at the early signed of drought. As their leaves senesce, they contribute to the litter load, rather than hanging on until wilting. 
+
 ```{r 2.2.1 woody leaf fm plot}
 
 ggplot(LAIxfm2.2, aes(x = LAI, y = ten_hr, color = obs_period)) +
