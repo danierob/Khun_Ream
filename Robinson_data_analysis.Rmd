@@ -507,15 +507,66 @@ Tree canopies moderate microclimate by acting as a thermal insulator, buffering 
 
 ### 2.1) How does surface microclimate vary with canopy cover?
 
-Past research suggests that relationships between canopy cover and microclimate buffering tend to be linear in tropical forest systems (Hardwick 2015).
+Past research suggests that relationships between canopy cover and microclimate buffering tend to be linear in tropical forest systems (Hardwick 2015). But extent of buffering, or the slope of microclimate buffering across the canopy gradient should increase as free-air (open-canopy) temperatures increase. Basically, as macroclimate heat gets more extreme, open canopies should be worse bufferers and closed canopies should be better bufferers exaggerating the differences in microclimate between open and closed systems (Davis 2018, De Frenne 2019).
 
-#### 2.1.1)
+#### 2.1.1) Average of peak weather hours across canopy cover over season
 
-In this analysis we will be looking at the relationship between microclimate and canopy cover across the two scales that are most important for understanding the role of microclimate in determining fuel availability: daily scales and seasonal scales. We will use the early season data (as in section 1.1) when canopy cover and surface fuels were at peak biomass, which should coincide with peak microclimate buffering potential -- more shade means less exposure to the elements. Additionally, the early season is the time of year when the majority of Cambodia's grass burns, so looking at this time
+In this analysis we will be looking at the relationship between microclimate and canopy cover across the two scales that are most important for understanding the role of microclimate in determining fuel availability: daily scales and seasonal scales. We will pair each LAI obs with an average of the daytime (1100 - 1700) and nighttime (0000-0600) surface temp, soil temp, and soil moisture, for a total of 46(quadrants) * 8(LAI observations) = 368 rows.
 
-#### 2.1.2)
+```{r 2.1.1 setup}
+LAI_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+     col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+      obs_period = col_character(), LAI = col_number(), 
+      month = col_character()))
 
-```{r 2.1.2 setup, include = FALSE}
+#Turn obs_period into a factor class variable
+LAI$obs_period <- factor(LAI$obs_period)
+
+
+TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/TOMST/TOMST_V1.csv", 
+    col_types = cols(date = col_date(format = "%Y.%m.%d"), 
+        date_time = col_datetime(format = "%Y.%m.%d %H:%M"), 
+        air_temp = col_number(), soil_moisture = col_number()))
+
+#average air_temp values for each quadrant for the days that match with LAI_obs days (this does not match behave plus as of 2024/01/03 because I've realized the importance of extending the daytime period later into the afternoon to capture the peak heat hours of the day)
+#first filter data between midday times
+TOMST_filter <- TOMST_V1 %>% 
+filter(hour(date_time) > 14, hour(date_time) < 19) 
+
+TOMST_2.1 <- TOMST_filter %>% 
+  filter(date %in% c("2023-01-26", "2023-02-02", "2023-02-08", "2023-02-16", "2023-02-17", "2023-02-27", "2023-02-28", "2023-03-13", "2023-03-14", "2023-03-29",
+                     "2023-03-30", "2023-04-10", "2023-04-11"))
+
+TOMST_2.1 <- TOMST_2.1 %>%
+  mutate(obs_period = case_when(
+    date %in% c('2023-01-26') ~ "1", date %in% c('2023-02-02') ~ "2",  date %in% c('2023-02-08') ~ "3", 
+    date %in% c('2023-02-16', '2023-02-17') ~ "4",  date %in% c('2023-02-27', '2023-02-28') ~ "5",  date %in% c('2023-03-13', '2023-03-14') ~ "6",
+     date %in% c('2023-03-29', '2023-03-30') ~ "7",  date %in% c('2023-04-10', '2023-04-11') ~ "8"
+  ))
+
+#turn obs_period into factor calss variable
+TOMST_2.1$obs_period <- factor(TOMST_2.1$obs_period)
+
+TOMST_2.1 <- TOMST_2.1 %>% 
+group_by(plot_id, quad_id, obs_period) %>% 
+  summarize(soil_temp = mean(soil_temp), surface_temp = mean(surface_temp), air_temp = mean(air_temp), soil_moist = mean(soil_moisture))
+
+LAIxTOMST2.1 <- TOMST_2.1 %>% 
+  left_join(LAI, by = c("quad_id", "plot_id", "obs_period"))
+
+```
+
+``` {r 2.1.1 plot}
+ggplot(LAIxTOMST2.1, aes(x = LAI, y = air_temp, color = obs_period)) +
+  geom_point() + geom_smooth(method = "lm", fill = "NA") +
+  facet_wrap(vars(obs_period))
+```
+
+### 2.2) How does the relationship between fuel moisture and canopy cover change throughout the dry season?
+
+#### 2.2.1) Fuel moisture across the canopy gradient: averaged across the season
+
+```{r 2.2.1 setup, include = FALSE}
 #fm_V4 comes from the work shown in Q3.1
 fm_V4 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V4.csv", 
     col_types = cols(date = col_date(format = "%Y-%m-%d"), grass = col_number(), woody_leaf = col_number(),litter = col_number(), hundred_hr = col_number(), ten_hr = col_number(), one_hr = col_number()))
@@ -547,14 +598,14 @@ write.csv(LAIxfm, "C:\\Users\\d\\Desktop\\UBC 2023\\STAT 545\\assignment-b4-dani
 
 ```{r season average fm data analysis}
 
-mixed.lmer2.1.1 <- lmer(litter ~ mean_LAI + (1|plot_id), data = LAIxfm)
-summary(mixed.lmer2.1.1)
+mixed.lmer2.2.1 <- lmer(litter ~ mean_LAI + (1|plot_id), data = LAIxfm)
+summary(mixed.lmer2.2.1)
 
 ```
 
 ```{r season average fm plot}
 # Extract the prediction data frame
-pred <- ggpredict(mixed.lmer2.1.1, terms = c("mean_LAI"))  # this gives overall predictions for the model
+pred <- ggpredict(mixed.lmer2.2.1, terms = c("mean_LAI"))  # this gives overall predictions for the model
 
 # Plot the predictions 
 
@@ -572,11 +623,10 @@ pred <- ggpredict(mixed.lmer2.1.1, terms = c("mean_LAI"))  # this gives overall 
 
 ```
 
-### 2.2) How does the relationship between microclimate and canopy cover change throughout the dry season?
 
-#### 2.2.1) Fuel moistures by observation
+#### 2.2.2) Fuel moistures across canopy cover, by observation period (across the dry season)
 
-```{r 2.2.1 setup, include = FALSE}
+```{r 2.2.2 setup, include = FALSE}
 #fm_V5 comes from the work shown in Q3.1 plus additions described in FMC readme
 library(readr)
 fm_V5 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V5.csv", 
@@ -604,7 +654,7 @@ LAIxfm2.2 <- LAIxfm2.2 %>%
 
 ```
 
-```{r 2.2.1 litter fm plot}
+```{r 2.2.2 litter fm plot}
 #For litter, restrict to obs 4-7, because we didn't get sufficient litter prior to obs 4
 litter2.2 <- LAIxfm2.2 %>% 
   filter(obs_period %in% c("4", "5", "6", "7"))
@@ -618,14 +668,15 @@ ggplot(litter2.2, aes(x = LAI, y = litter, color = obs_period)) +
    theme_bw()
 
 ```
-```{r 2.2.1 grass fm plot}
+
+```{r 2.2.2 grass fm plot}
 
 ggplot(LAIxfm2.2, aes(x = LAI, y = grass, color = obs_period)) +
   geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period))
 
 ```
 The woody leaf component of the fuel assemblage is far less relevant than the fine fuels (litter and grass) in determining fire likelihood. Furthermore, the woody leaf data is far more variable due to the wide range of species that were sampled for fuel moistures. 
-```{r 2.2.1 woody leaf fm plot}
+```{r 2.2.2 woody leaf fm plot}
 
 ggplot(LAIxfm2.2, aes(x = LAI, y = woody_leaf, color = obs_period)) +
   geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period))
@@ -634,13 +685,12 @@ ggplot(LAIxfm2.2, aes(x = LAI, y = woody_leaf, color = obs_period)) +
 In the woody leaf graph, you'll notice far poorer fit than in the other surface fuel graphs. The woody leaf data is far more variable in large part due to the wide variety of species that were sampled throughout the season. When sampling for woody fuel, we would pluck leaves from the nearby woody plants in a ratio that roughly represented their distribution in the quadrant. However, due to differences in species traits, and phenologies, and local water availability, different woody species had quite different leaf moisture at different times of the season. 
 The most relevant trend that we can recognize in the woody leaf data aligns temporally with the mid-season (late February) transition presented by the other fuel types. During the first four sampling periods, woody leaf moisture hardly deviated along the canopy gradient, and exhibited a positive relationship with canopy cover. After the mid-season mark, the relationship flipped to negative, and the slope gradually increased with each sampling period until the end of March. Between the early and late season, open canopy leaf moisture hardly deviated (intercepts were insignificant), but closed canopy leaf moistures dropped from 120% to 80%. While this is not terribly relevant for fire likelihood, it helps to corroborate the surprisingly abrupt shift that we see in the mid-season fuel conditions and it less directly speaks to the functional differences across the open and closed- canopy ecosystems. Towards the end of the season, most of the open-canopy deciduous trees had already shed leaves months earlier and some were beginning to flush new leaves, whereas the evergreen species that had never shed leaves were hanging on to visibly parched, wilted leaves. Since we only selected live leaves off of trees, the highly-deciduous quadrants rarely exhibit a change in leaf moisture as a relatively greater proportion of the open-canopy trees actively drop their leaves at the early signed of drought. As their leaves senesce, they contribute to the litter load, rather than hanging on until wilting. 
 
-```{r 2.2.1 woody leaf fm plot}
+```{r 2.2.2 10 hr fm plot}
 
 ggplot(LAIxfm2.2, aes(x = LAI, y = ten_hr, color = obs_period)) +
   geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period))
 
 ```
-
 
 
 ## Chapter 2: Fire Modelling
