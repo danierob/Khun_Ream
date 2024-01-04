@@ -514,7 +514,7 @@ Past research suggests that relationships between canopy cover and microclimate 
 In this analysis we will be looking at the relationship between microclimate and canopy cover across the two scales that are most important for understanding the role of microclimate in determining fuel availability: daily scales and seasonal scales. We will pair each LAI obs with an average of the daytime (1100 - 1700) and nighttime (0000-0600) surface temp, soil temp, and soil moisture, for a total of 46(quadrants) * 8(LAI observations) = 368 rows.
 
 ```{r 2.1.1 setup}
-LAI_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
      col_types = cols(date = col_date(format = "%m/%d/%Y"), 
       obs_period = col_character(), LAI = col_number(), 
       month = col_character()))
@@ -533,6 +533,12 @@ TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/T
 TOMST_filter <- TOMST_V1 %>% 
 filter(hour(date_time) > 14, hour(date_time) < 19) 
 
+TOMST_filter <- TOMST_V1 %>%
+  group_by(date, plot_id, quad_id, plot_type) %>%
+  summarize(max_air_temp = max(air_temp), min_air_temp = min(air_temp), max_surface_temp = max(surface_temp), min_surface_temp = min(surface_temp),
+            max_soil_temp = max(soil_temp), min_soil_temp = min(soil_temp), max_soil_moisture = max(soil_moisture), min_soil_moisture = min(soil_moisture))
+
+
 TOMST_2.1 <- TOMST_filter %>% 
   filter(date %in% c("2023-01-26", "2023-02-02", "2023-02-08", "2023-02-16", "2023-02-17", "2023-02-27", "2023-02-28", "2023-03-13", "2023-03-14", "2023-03-29",
                      "2023-03-30", "2023-04-10", "2023-04-11"))
@@ -549,7 +555,10 @@ TOMST_2.1$obs_period <- factor(TOMST_2.1$obs_period)
 
 TOMST_2.1 <- TOMST_2.1 %>% 
 group_by(plot_id, quad_id, obs_period) %>% 
-  summarize(soil_temp = mean(soil_temp), surface_temp = mean(surface_temp), air_temp = mean(air_temp), soil_moist = mean(soil_moisture))
+  summarize(max_soil_temp = mean(max_soil_temp), min_soil_temp = mean(min_soil_temp), 
+            max_surface_temp = mean(max_surface_temp), min_surface_temp = mean(min_surface_temp),
+            max_air_temp = mean(max_air_temp), min_air_temp = mean(min_air_temp),
+            max_soil_moist = mean(max_soil_moisture), min_soil_moist = mean(min_soil_moisture))
 
 LAIxTOMST2.1 <- TOMST_2.1 %>% 
   left_join(LAI, by = c("quad_id", "plot_id", "obs_period"))
@@ -557,10 +566,31 @@ LAIxTOMST2.1 <- TOMST_2.1 %>%
 ```
 
 ``` {r 2.1.1 plot}
-ggplot(LAIxTOMST2.1, aes(x = LAI, y = air_temp, color = obs_period)) +
+ggplot(LAIxTOMST2.1, aes(x = LAI, y = max_air_temp, color = obs_period)) +
   geom_point() + geom_smooth(method = "lm", fill = "NA") +
   facet_wrap(vars(obs_period))
 ```
+``` {r 2.1.1 data analysis}
+#Here we will get the slope of each 
+slope2.1.1 <- LAIxTOMST2.1 %>%
+  group_by(obs_period) %>%
+  do(model = lm(max_air_temp ~ LAI, data = .)) %>%
+  summarize(obs_period, slope = coef(model)[2])      #coef[2] extracts just the slope from the huge list that results from the lm()
+
+ggplot(slope2.1.1, aes(x= obs_period, y=slope))+
+         geom_point()
+
+#obs_period convert)ed to numeric from factor to do lm
+slope2.1.1$obs_period <- as.numeric(as.character(slope2.1.1$obs_period))
+
+model2.1.1 <- lm(slope ~ obs_period, data = slope2.1.1)
+
+# View the model summary
+summary(model2.1.1)
+```
+
+Across the season, as the temperatures increase and yearly temperature extremes set in, the relationship between microclimate and canopy cover did *not* change. This is in contrast with many microclimate buffering studies (De Frenne, Davis) that suggest that microclimate buffering from canopies should become more polarized between open and closed systems as temperatures increase. We see no change in slope related to microclimate over the dry season, despite seeing max daily temperature increases of up to 10 C. 
+
 
 ### 2.2) How does the relationship between fuel moisture and canopy cover change throughout the dry season?
 
@@ -876,7 +906,7 @@ TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/T
         date_time = col_datetime(format = "%Y.%m.%d %H:%M"), 
         air_temp = col_number(), soil_moisture = col_number()))
 
-#average air_temp values for each quadrant across whole season for 10:00-18:00
+#average air_temp values for each quadrant across whole season for 11:00-18:00
 #first filter data between midday times
 TOMST_filter <- TOMST_V1 %>% 
 filter(hour(date_time) > 10, hour(date_time) < 18) 
