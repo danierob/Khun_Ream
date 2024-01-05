@@ -528,21 +528,19 @@ TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/T
         date_time = col_datetime(format = "%Y.%m.%d %H:%M"), 
         air_temp = col_number(), soil_moisture = col_number()))
 
-#average air_temp values for each quadrant for the days that match with LAI_obs days (this does not match behave plus as of 2024/01/03 because I've realized the importance of extending the daytime period later into the afternoon to capture the peak heat hours of the day)
-#first filter data between midday times
-TOMST_filter <- TOMST_V1 %>% 
-filter(hour(date_time) > 14, hour(date_time) < 19) 
 
+#Initially I had tried to filter the temps around the heat of the day, but had an issue where in the early season some of the loggers time zones were not calibrated, so instead we look at daily max and min, which is more aligned with the literature we are comparing to anyway. 
 TOMST_filter <- TOMST_V1 %>%
   group_by(date, plot_id, quad_id, plot_type) %>%
   summarize(max_air_temp = max(air_temp), min_air_temp = min(air_temp), max_surface_temp = max(surface_temp), min_surface_temp = min(surface_temp),
             max_soil_temp = max(soil_temp), min_soil_temp = min(soil_temp), max_soil_moisture = max(soil_moisture), min_soil_moisture = min(soil_moisture))
 
-
+#Filter for the dates that match the LAI records
 TOMST_2.1 <- TOMST_filter %>% 
   filter(date %in% c("2023-01-26", "2023-02-02", "2023-02-08", "2023-02-16", "2023-02-17", "2023-02-27", "2023-02-28", "2023-03-13", "2023-03-14", "2023-03-29",
                      "2023-03-30", "2023-04-10", "2023-04-11"))
 
+#create obs_periods for easy merge with LAI, because some LAI were collected over two days
 TOMST_2.1 <- TOMST_2.1 %>%
   mutate(obs_period = case_when(
     date %in% c('2023-01-26') ~ "1", date %in% c('2023-02-02') ~ "2",  date %in% c('2023-02-08') ~ "3", 
@@ -550,9 +548,10 @@ TOMST_2.1 <- TOMST_2.1 %>%
      date %in% c('2023-03-29', '2023-03-30') ~ "7",  date %in% c('2023-04-10', '2023-04-11') ~ "8"
   ))
 
-#turn obs_period into factor calss variable
+#turn obs_period into factor class variable
 TOMST_2.1$obs_period <- factor(TOMST_2.1$obs_period)
 
+#Average the values for the obs_periods that have 2 dates
 TOMST_2.1 <- TOMST_2.1 %>% 
 group_by(plot_id, quad_id, obs_period) %>% 
   summarize(max_soil_temp = mean(max_soil_temp), min_soil_temp = mean(min_soil_temp), 
@@ -566,10 +565,20 @@ LAIxTOMST2.1 <- TOMST_2.1 %>%
 ```
 
 ``` {r 2.1.1 plot}
+
+facet_labels <- c("Jan 26", "Feb2", "Feb 8", "Feb 17", "Feb 28", "Mar 14", "Mar 29", "Apr 11")
+names(facet_labels) <- c("1", "2", "3", "4", "5", "6", "7", "8")
+
 ggplot(LAIxTOMST2.1, aes(x = LAI, y = max_air_temp, color = obs_period)) +
-  geom_point() + geom_smooth(method = "lm", fill = "NA") +
-  facet_wrap(vars(obs_period))
+  geom_point() +
+  geom_smooth(method = "lm", fill = NA) +
+  facet_wrap(~obs_period, labeller = labeller(obs_period = facet_labels)) +
+  labs(x = "LAI", y = "Max Daily Air Temperature (Celsius)", color = "Observation",
+       title = "Slope between microclimate and LAI unchanged over season") +
+  theme_bw()
 ```
+
+
 ``` {r 2.1.1 data analysis}
 #Here we will get the slope of each 
 slope2.1.1 <- LAIxTOMST2.1 %>%
