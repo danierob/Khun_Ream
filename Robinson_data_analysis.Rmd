@@ -574,7 +574,7 @@ ggplot(LAIxTOMST2.1, aes(x = LAI, y = max_air_temp, color = obs_period)) +
   geom_smooth(method = "lm", fill = NA) +
   facet_wrap(~obs_period, labeller = labeller(obs_period = facet_labels)) +
   labs(x = "LAI", y = "Max Daily Air Temperature (Celsius)", color = "Observation",
-       title = "Slope between microclimate and LAI unchanged over season") +
+       title = "No change in slope between microclimate and LAI over season") +
   theme_bw()
 ```
 
@@ -1119,14 +1119,20 @@ LAI_3.2<- dplyr::union(LAI_3.2_early, LAI_3.2_late)
 
 Fuel moisture is not averaged, but taken from the closest viable single obs to the biomass obs.
 ```{r fuel_mositure, include = FALSE}
-fm_V4 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V4.csv", 
+fm_V5 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V5.csv", 
     col_types = cols(date = col_date(format = "%m/%d/%Y"), grass = col_number(), woody_leaf = col_number(),litter = col_number(), hundred_hr = col_number(), ten_hr = col_number(), one_hr = col_number()))
 
 #Averaging fm for each fuel class for obs period 4 and 7
-fm_3.2 <- fm_V4 %>% 
+fm_3.2 <- fm_V5 %>% 
   filter(obs_period %in% c(4,7)) %>% 
- group_by(plot_id, quad_id, obs_period, season) %>%
+ group_by(plot_id, quad_id, obs_period) %>%
   summarise(woody_leaf = mean(woody_leaf, na.rm = TRUE), grass = mean(grass, na.rm = TRUE), litter = mean(litter, na.rm = TRUE), ten_hr = mean(ten_hr, na.rm = TRUE), hundred_hr = mean(hundred_hr, na.rm = TRUE))
+
+fm_3.2 <- fm_3.2 %>% 
+  mutate(season = case_when(
+    obs_period == 4 ~ "early",
+    obs_period == 7 ~ "late"
+  ))
 ```
 Biomass observations seperated by early and late season.
 ```{r biomass}
@@ -1173,7 +1179,7 @@ shade_pct <- shade_pct %>%
 ```
 
 Re-did this convoluted wind estimation for early and late season, notes detailed in the code.
-```{r wind}
+```{r wind, message=FALSE, warning=FALSE, include=FALSE}
 kestrel_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_V1.csv", 
     col_types = cols(temp = col_number(), 
         rh = col_number(), wind_speed = col_number()))
@@ -1358,3 +1364,10 @@ ggplot(behave_output3.2, aes(x = mean_LAI, y = intensity, color = season))+
    theme_bw()
 
 ```
+
+#### Where our temperature ranges too broad/ variation in fuel sampling times?
+After noticing that the air temperatures yielded from the original 1100 to 1700 time range were quite a bit lower than the daily maxes (which were around more like 1700-1900),
+we looked at how the behave plus might change when input with daily highs for temp, it seems
+to have only changed the PIG by a couple of percent, so all should be well, but worth mentioning in the analysis.
+
+This also means that the differences in fuel moisture are the primary determinant of microclimate variability, since RH and Temp are not taken into consideration, whcih makes sense. But also very important to mention that deviations in our sampling times (which were excluded to 11:00 - sunset) almost certainly result in underestimations of peak fire danger for the day (particularly since only one fuel moisture sampling observation (4 or 7) was used in cross seasonal behaveplus analysis. 
