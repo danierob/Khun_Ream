@@ -11,17 +11,17 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-The aim of this research is to explore the heterogeneity of the Dipterocarp mosaic: We conducted field observations across the dry season to assess the vertical relationship from soil to canopy, across a range of forest structures (from open to closed) to better understand the variability in surface fuel (vegetation) characteristics between forest types in relation to fire-recruitment function.
+The aim of this research is to explore the heterogeneity of fire recruitment function in the Dipterocarp mosaic: We conducted field observations across the dry season to assess the horizontal distribution of fuel structure and microclimate across a range of canopy cover, from open to closed, to better understand how Cambodia's mosaic is shaped by fire.
 
-This thesis will be divided into two chapters: **Chapter 1: field observations** and **Chapter 2: fire modelling**.
+This Chapter will be divided into two parts: **Part 1: field observations** and **Part 2: fire modelling**.
 
-**Chapter 1** will focus on describing the variability in fuel distribution and fuel microclimate across a canopy gradient and across the dry season. We will explore how the open and closed canopy forest states differ and how this relationship changes in the presence of prolonged seasonal drought. We will discuss our study system in the context of alternate stable states, and compare the mosaic dynamics of our system with that of mosaics in other studies throughout the tropics. While this Chapter is largely exploratory, we will direct our focus by approaching these questions:
+**Part 1** will focus on describing the variability in fuel distribution and fuel microclimate across a canopy gradient and across the dry season. We will explore how the surface conditions of open and closed canopy states differ and how this relationship changes in the presence of prolonged seasonal drought. We will discuss our study system in the context of alternate stable states, and compare the mosaic dynamics of our system with that of mosaics in other studies throughout the tropics. We will direct our focus by approaching these questions:
 
 *Q1: 1) How does surface fuel composition and structure vary with canopy cover? 2) How does this relationship change throughout the dry season?*
 
 *Q2: 1) How does surface microclimate vary with canopy cover? 2) How does this relationship change throughout the dry season?*
 
-**Chapter 2** utilizes fire modelling to better understand the variable role of fire recruitment across the mosaic. Understanding fire likelihood and severity is complicated by interacting factors and nonlinear relationships among the various determinants of fire. In an effort to provide some additional clarity and to tease out the shifting relationships between composition and fuel moisture and microclimate across the dry season, we will be using the fire model Behaveplus6 to evaluate predicted fire effects in the absence of physical fire data by asking:
+**Part 2** utilizes fire modelling to better understand the variable role of fire recruitment across the mosaic. Understanding fire likelihood and severity is complicated by interacting factors and nonlinear relationships among the various determinants of fire. In an effort to provide some additional clarity and to tease out the shifting relationships between composition and fuel moisture and microclimate across the dry season, we will be using the fire model Behaveplus6 to evaluate predicted fire effects in the absence of physical fire data by asking:
 
 *Q3: 1) How does probability of fire vary with canopy cover? 2) How does this change across the dry season?*
 
@@ -38,17 +38,19 @@ library(ggeffects)
 library(vtable)
 ```
 
-## Chapter 1: Defining the mosaic throughout the dry season: An assessment of fuel availability across a canopy gradient
+## Part 1: Defining the mosaic throughout the dry season: An assessment of fuel availability across a canopy gradient
 
-Canopy cover influences surface fuel in two primary ways: Q1) canopy cover restricts shade-intolerant species, reducing the surface fuel load while simultaneously adding to the surface fuel load via leaf shedding, and Q2) canopy cover provides a buffer that moderates microclimate. As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to a diversity of phenologies. Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist that describe the relationship in the region.
+Canopy cover influences surface fuel in two primary ways: Q1) canopy cover restricts shade-intolerant species, like C4 grasses, reducing the surface fuel load while simultaneously/contrastingly adding to the surface fuel load via leaf shedding, and Q2) canopy cover provides a buffer that moderates microclimate by decreasing daily highs in temp and daily lows in RH (and less significantly by buffering nighttime temp lows and RH highs). As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to a diversity of phenologies. Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist (particlaurly when compared to similar mosaicked ecosystems in Australia, Africa, and South America) that describe the relationship in the region. We will explore how the multiple variables associated with these two drivers of fuel availability - fuel structure and fuel microclimate - vary in relation to canopy cover and across a dry season.
 
 ## Q1: 1) How does the distribution of surface fuel vary with canopy cover? 2) How does this relationship change throughout the dry season?
+The amount and type of surface fuel is critical to the distribution of forest savanna mosaics (ref). Savannas can be difficult to delineate given the wide range of physiognomies in tree cover that they support, so we define savannas here as an area with continuous grassy understory and a significant tree component (Lehmann et al 2011, Ratnam 2011). This definition is intentionally unconcerned with an upper margin of canopy cover or tree cover or stand height or stand structure because to set a rigid boundary (say anything below 60% is savanna, and anything above is forest) is to ignore the variability in functional traits and site specific conditions of both the woody and herbaceous communities that exist throughout the savanna range. Instead, this definition relies on the ubiquitous relationship between canopy shading and grass exclusion. This is particularly true for the highly flammable C4 grasses, which generally have a lower capacity for establishment in low-light environments (ref).
+
 
 ### 1.1) How does the distribution of surface fuel vary with canopy cover?
 
 #### 1.1.1) The LAI threshold for grass establishment
 
-Past studies suggest that surface fuel composition varies across a gradient of canopy cover (Hoffman 2012a, Charles-Dominique 2018). This variation is primarily attributed to a transition of surface fuels from grass to litter as canopy cover increases. At a given canopy density, grass growth is restricted to such an extent that it is no longer relevant as a fuel source. In most tropical studies the value of this threshold is \~3.0 LAI (Hoffman 2012a, Cardosa 2018) but no study, to my knowledge, has quantified this relationship, between canopy cover and grass biomass in Southeast Asia.
+Past studies suggest that surface fuel composition varies across a gradient of canopy cover (Hoffman 2012a, Charles-Dominique 2018). This variation is primarily attributed to a transition of surface fuels from grass to litter as canopy cover increases. Furthermore, studies of forest-savanna mosaics often emphasize the sharpness of the boundaries between open and closed canopy ecosystems. At a given canopy density, grass growth is restricted to such an extent that it is no longer relevant as a fuel source (fire-threshold). In most tropical studies the value of this threshold is ~3.0 LAI (Hoffman 2012a, Cardosa 2018) but no study, to my knowledge, has quantified this relationship, between canopy cover and grass biomass in Southeast Asia (Khaing 2019 looked at the C4 layer and herb layer relationship with BAsal Area).
 
 In this analysis, we consider the relationship between LAI and grass load at peak biomass (early in the dry season). We will join the LAI observation 1+2 data with the Biomass observation 1 data to assess the relationship. We use observations 1 (Jan. 26) and 2 (Feb. 2) of the LAI data because LAI did not start to decline significantly until LAI ob. 3 (Feb. 8), so averaging obs. 1 and 2 will mitigate deviations in LAI records due to sky conditions at the time of observation without sacrificing data integrity.
 
@@ -357,7 +359,7 @@ summary(lm1.2.1)
 
 ```
 
-The "seasonlate" line and "poly(mean_LAI, 3)3:seasonlate" line of the output are the parts we are most interested in for comparing how the early and late season relationship between canopy cover and grass mass differs. "poly(mean_LAI, 3)3:seasonlate" has a high t-value indicating very little difference between polynolial term and seasonal term interaction, time of season does not seem to affect the way grass is distributed, the lines fit for early and late season follow almost identical trends. However, looking at "seasonlate" indicates some significance (.037) in difference in early and late season intercepts. Altogether, there is slightly less grass in the late season but it follows the same declining polynomial trend across the canopy gradient as the early season.
+The "seasonlate" line and "poly(mean_LAI, 3)3:seasonlate" line of the output are the parts we are most interested in for comparing how the early and late season relationship between canopy cover and grass mass differs. "poly(mean_LAI, 3)3:seasonlate" has a low t-value indicating very little difference between polynomial term and seasonal term interaction, time of season does not seem to affect the way grass is distributed, the lines fit for early and late season follow almost identical trends. However, looking at "seasonlate" indicates some significance (.037) in difference in early and late season intercepts. Altogether, there is slightly less grass in the late season but it follows the same declining polynomial trend across the canopy gradient as the early season.
 
 Seasonality alone does not seem to play a very important role as far as grass *distribution* is concerned over the canopy gradient., as evidenced by the plot. Note that in the plot, there will be two grass mass records for each LAI observation, since we only consider early season LAI in this analysis (*later this will likely be replaced with Basal Area*). Both early and late season biomass data for a given logger are considered under the same canopy cover, thus the model resulting from this method best represent changes in surface biomass under a seasonally changing canopy cover. This concept has been difficult for me to wrap my head around, but essentially, **by making the canopy cover static across response variable observations, we create a model that is honest about how seasonal change is happening at the surface fuel level, but not as honest about the more general relationship between canopy cover and surface fuel. Plot 1.2.1a shows how grass load at 46 particular locations is lower in the late season than the early season.**
 
@@ -406,7 +408,7 @@ summary(lm1.2.1b)
 
 ```
 
-```{r 1.2.1a plot}
+```{r 1.2.1b plot}
 ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = grass_mass*4, color = season)) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ poly(x, 3), se = FALSE) +
@@ -488,7 +490,7 @@ ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = litter_mass*4, color = seas
 
 **1.2.3b)...**
 
-```{r 1.2.2b plot}
+```{r 1.2.3 plot}
 ggplot(LAIxbiomass_early_late, aes(x = mean_LAI, y = fine_bulk, color = season))+
   geom_point() +
   geom_smooth(formula = y ~ x, se = FALSE) +
@@ -1079,7 +1081,7 @@ ggplot(behave_output, aes(x = mean_LAI, y = flame_length)) +
 
 ```
 
-```{r}
+```{r ROS plot}
 ggplot(behave_output, aes(x = mean_LAI, y = ROS)) +
   geom_point() + stat_smooth(color = "red", fill = "NA")+
     labs(x = "LAI", y = "ROS", 
@@ -1095,7 +1097,7 @@ Since I messed up the early season fuel moisture by not collecting litter, for t
 
 I'm still going to average LAI around the obs to account for any missing values or bad recordings. And since early season biomass is in late Jan and the fuel moisture is in mid Feb, including the LAI in the range of those two feels like a good move.
 
-```{r LAI, include = FALSE}
+```{r behave3.2 LAI, include = FALSE}
 #loading in LAI data
 LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
     col_types = cols(date = col_date(format = "%m/%d/%Y"), 
@@ -1118,7 +1120,7 @@ LAI_3.2<- dplyr::union(LAI_3.2_early, LAI_3.2_late)
 ```
 
 Fuel moisture is not averaged, but taken from the closest viable single obs to the biomass obs.
-```{r fuel_mositure, include = FALSE}
+```{r behave3.2 fuel_mositure, include = FALSE}
 fm_V5 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V5.csv", 
     col_types = cols(date = col_date(format = "%m/%d/%Y"), grass = col_number(), woody_leaf = col_number(),litter = col_number(), hundred_hr = col_number(), ten_hr = col_number(), one_hr = col_number()))
 
@@ -1134,8 +1136,8 @@ fm_3.2 <- fm_3.2 %>%
     obs_period == 7 ~ "late"
   ))
 ```
-Biomass observations seperated by early and late season.
-```{r biomass}
+Biomass observations separated by early and late season.
+```{r behave3.2 biomass}
 biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V2.csv", 
      col_types = cols(grass_height = col_number(), litter_depth = col_number(), grass_per = col_number(), wood_per = col_number(), bare_per = col_number(),  litter_per = col_number(), mass_grass = col_number(), mass_liana = col_number(), mass_wood = col_number(), mass_litter = col_number(), seedlings = col_number(), grass_vol = col_number(), grass_bulk = col_number(), litter_vol = col_number(), litter_bulk = col_number(), fine_vol = col_number(), fine_bulk = col_number()))
 
@@ -1155,7 +1157,7 @@ biomass_3.2 <- biomass_3.2 %>%
 
 Using the exact same shading from 3.1 (this is an average across the whole season, but honestly I'm afraid to change it because this measurement was too subjective and my early season measurements and Phem's late season measurements may not jive)
 
-```{r shading, include = FALSE}
+```{r behave 3.2 shading, include = FALSE}
 shaded <- biomass %>% 
   group_by(quad_id, plot_id) %>% 
   filter(shading == 'Y') %>%
@@ -1179,7 +1181,7 @@ shade_pct <- shade_pct %>%
 ```
 
 Re-did this convoluted wind estimation for early and late season, notes detailed in the code.
-```{r wind, message=FALSE, warning=FALSE, include=FALSE}
+```{r behave 3.2 wind, message=FALSE, warning=FALSE, include=FALSE}
 kestrel_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_V1.csv", 
     col_types = cols(temp = col_number(), 
         rh = col_number(), wind_speed = col_number()))
@@ -1229,7 +1231,7 @@ windxLAI_3.2[missing_rows, ] <- new_data
 
 
 Temperature taken from the same day as fuel moisture, as fuel moisture is the variable most linked microclimate (and the most mercurial/prone to daily flux).
-```{r TOMST temperature}
+```{r behave 3.2 TOMST temperature}
 TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/TOMST/TOMST_V1.csv", 
     col_types = cols(date = col_date(format = "%Y.%m.%d"), 
         date_time = col_datetime(format = "%Y.%m.%d %H:%M"), 
@@ -1257,7 +1259,7 @@ group_by(plot_id, quad_id, season) %>%
 
 
 Setup same as 3.1. Table written to data folder. 
-```{r behaveplus table setup}
+```{r behave3.2 table setup}
 #merging all of the relevant input variables, detailed below:
 join1 <- left_join(LAI_3.2, biomass_3.2, by=c("plot_id", "quad_id", "season"))
 
@@ -1277,7 +1279,7 @@ write.csv(behave_tbl_3.2, "C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_d
 
 #### Behave Output: Table of Results
 
-```{r behave output table}
+```{r behave3.2 output table}
 behave_output3.2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_3.2_V2.csv", 
     col_types = cols(mean_LAI = col_number(), 
         fuel_model = col_integer(), litter_load = col_number(), 
@@ -1293,7 +1295,7 @@ behave_output3.2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/K
         PIG = col_integer()))
 ```
 
-```{r PIG analysis}
+```{r 3.2 PIG analysis}
 #PIG as product of LAI
 lm3.2.1 <- lm(PIG ~ mean_LAI*season, data = behave_output3.2)
 summary(lm3.2.1)
@@ -1329,7 +1331,7 @@ ggplot(behave_output3.2, aes(x = mean_LAI, y = PIG, color = season))+
 
 ```
 
-``` {r ROS}
+``` {r 3.2 ROS}
 
 ggplot(behave_output3.2, aes(x = mean_LAI, y = ROS, color = season)) +
   geom_point() + geom_smooth(fill = "NA")+
@@ -1348,7 +1350,7 @@ ggplot(behave_output3.2, aes(x = mean_LAI, y = ROS, color = season)) +
 Zooming in on the closed canopy grants insight into the seasonal component in determining fire spread. Experimental burns have shown that a low threshold for ROS of .198-.252 m/min is necessary to sustain fire (Marsden-Smedley 2001; Fernandes 2008). Late season in closed canopy has average ROS of ~3.5-4 m/min, far above the threshold and far higher than the ROS in the early season. 
 
 Now we will explore this further, looking at how many 
-``` {r Reaction Intensity}
+``` {r 3.2 Reaction Intensity}
 
 ggplot(behave_output3.2, aes(x = mean_LAI, y = intensity, color = season)) +
   geom_point() + geom_boxplot(fill = "NA")+
