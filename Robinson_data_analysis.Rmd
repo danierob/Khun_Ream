@@ -38,7 +38,6 @@ library(lme4)
 library(nlme)
 library(ggeffects)
 library(vtable)
-library(mgcv)
 ```
 
 ## Part 1: Defining the mosaic throughout the dry season: An assessment of fuel availability across a canopy gradient
@@ -717,7 +716,7 @@ ggplot(LAIxTOMST2.1, aes(x = LAI, y = max_air_temp, color = obs_period)) +
   geom_smooth(fill = NA) +
   facet_wrap(~obs_period, labeller = labeller(obs_period = facet_labels)) +
   labs(x = "LAI", y = "Max Daily Air Temperature (Celsius)", color = "Observation",
-       title = "No change in slope between microclimate and LAI over season") +
+       title = "Slope changes from threshold to linear across season") +
   theme_bw()
 ```
 
@@ -786,7 +785,7 @@ model2.1.2 <- lm(slope ~ obs_period, data = slope2.1.2)
 
 ```
 
-This is actually pretty cool. There is a steeper slope 
+This is actually pretty cool. There is a steeper slope in the early to midseason prior to a sort of *tipping point* in microclimate around late Feb likely coinciding with the beginning of a big leaf shedding event which is why this relationship is evident in this graph where canopy cover is static and not in the previous chart where LAI cahnges with each ob.
 
 
 
