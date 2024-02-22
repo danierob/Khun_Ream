@@ -1,4 +1,4 @@
-#Honing Behave output by separating seasons as separate models and running as GAMS.
+#Honing Behave output by separating seasons as separate models and running as GAMS. ----
 
 bh3.2_early <- subset(behave_output3.2, season == "early")
 
@@ -73,6 +73,11 @@ factor_interact <- gam(PIG ~ season + s(mean_LAI, by = season),
                          data = behave_output3.2, method = "REML")
 
 summary(factor_interact)
+k.check(factor_interact)
+gam.check(factor_interact)
+
+
+#looks great under the normal distribution
 
 #PLOT
 new_data <- expand.grid(mean_LAI = seq(min(behave_output3.2$mean_LAI), max(behave_output3.2$mean_LAI), length = 100),
@@ -85,10 +90,12 @@ new_data$predicted <- predict(factor_interact, newdata = new_data, type = "respo
 ggplot(new_data, aes(x = mean_LAI, y = predicted, color = season)) +
   geom_line() +
   geom_point(data = behave_output3.2, aes(x = mean_LAI, y = PIG, color = season), alpha = 0.5) +
-  labs(title = "Relationship between mean_LAI and PIG by Season",
+  labs(title = "Relationship between canopy cover and PIG by Season",
        x = "mean_LAI",
        y = "PIG") +
   theme_minimal()
+
+
 
 #NOW TO ADD RANDOM EFFECT FOR PLOT (FROM GAM TO GAMM) ----
 #first, make plot_id a factor
@@ -105,6 +112,7 @@ gamm_model<- gam(PIG ~ season + s(mean_LAI, by = season) + s(plot_id, bs = "re")
 
 summary(gamm_model)
 
+
 #PLOT
 new_data <- expand.grid(mean_LAI = seq(min(behave_output3.2$mean_LAI), max(behave_output3.2$mean_LAI), length = 100),
                         season = unique(behave_output3.2$season))
@@ -116,7 +124,67 @@ new_data$predicted <- predict(factor_interact, newdata = new_data, type = "respo
 ggplot(new_data, aes(x = mean_LAI, y = predicted, color = season)) +
   geom_line() +
   geom_point(data = behave_output3.2, aes(x = mean_LAI, y = PIG, color = season), alpha = 0.5) +
-  labs(title = "Seasonal Difference in PIG and LAI (GAM)",
+  labs(title = "Seasonal Difference in PIG and LAI (GAMM)",
+       x = "LAI",
+       y = "PIG") +
+  theme_minimal()
+
+##Random effect didn't change much so I think we can just stick with the GAM! Unless for like research design reasons we need to include the effect?
+
+
+#Were gonna check out random slope + intercept ----
+
+gamm_slope_int <- gam(PIG ~ season + s(mean_LAI, by = season) + s(plot_id, mean_LAI, bs = "re"),
+                 data = behave_output3.2, method = "REML")
+
+summary(gamm_slope_int)
+
+#okay, it didn't change anything because it seems plot_id really doesn't matter to PIG
+
+
+# But For future reference here is how to compare random intercepts for when plot id is a random effect.
+
+plot_smooth(gamm_model_tw, view = "mean_LAI", rm.ranef = FALSE, cond = list(plot_id = "ddf2"),
+            main = "... + s(plot_id)", col = "orange", ylim = c(-10,5))
+plot_smooth(gamm_model_tw, view = "mean_LAI", rm.ranef = FALSE, cond = list(plot_id = "ddf3"),
+            add = TRUE, col = "red")
+plot_smooth(gamm_model_tw, view = "mean_LAI", rm.ranef = FALSE, cond = list(plot_id = "ddf4"),
+            add = TRUE, col = "purple")
+plot_smooth(gamm_model_tw, view = "mean_LAI", rm.ranef = FALSE, cond = list(plot_id = "ddf5"),
+            add = TRUE, col = "turquoise")
+plot_smooth(gamm_model_tw, view = "mean_LAI", rm.ranef = FALSE, cond = list(plot_id = "ddf6"),
+            add = TRUE, col = "green")
+plot_smooth(gamm_model_tw, view = "mean_LAI", rm.ranef = FALSE, cond = list(plot_id = "evg1"),
+            add = TRUE, col = "black")
+plot_smooth(gamm_model_tw, view = "mean_LAI", rm.ranef = FALSE, cond = list(plot_id = "evg2"),
+            add = TRUE, col = "magenta")
+plot_smooth(gamm_model_tw, view = "mean_LAI", rm.ranef = FALSE, cond = list(plot_id = "evg3"),
+            add = TRUE, col = "blue")
+plot_smooth(gamm_model_tw, view = "mean_LAI", rm.ranef = FALSE, cond = list(plot_id = "evg4"),
+            add = TRUE, col = "forestgreen")
+plot_smooth(gamm_model_tw, view = "mean_LAI", rm.ranef = FALSE, cond = list(plot_id = "evg5"),
+            add = TRUE, col = "yellow")
+
+## This is the same as above but added plot_id to test_data for the graph which looks exactly the same idk,----
+##i think its just because the plot_id was not very relevant in this instance. 
+test_model <- gam(PIG ~ season + s(mean_LAI, by = season) + s(plot_id, bs = "re"),
+                  data = behave_output3.2, method = "REML")
+
+summary(test_model)
+
+# PLOT using the GAMM model
+test_data <- expand.grid(mean_LAI = seq(min(behave_output3.2$mean_LAI), max(behave_output3.2$mean_LAI), length = 100),
+                        season = unique(behave_output3.2$season),
+                        plot_id = unique(behave_output3.2$plot_id))
+
+# Make predictions using the GAMM model
+test_data$predicted <- predict(test_model, newdata = test_data, type = "response")
+
+# Create a plot using ggplot2
+ggplot(test_data, aes(x = mean_LAI, y = predicted, color = season)) +
+  geom_line() +
+  geom_point(data = test_data, aes(x = mean_LAI, y = predicted, color = season), alpha = 0.5) +
+  labs(title = "Seasonal Difference in PIG and LAI (GAMM)",
        x = "LAI",
        y = "PIG") +
   theme_minimal()
