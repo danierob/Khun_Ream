@@ -509,8 +509,7 @@ gam.check(gam_model_tw)
 ## Now try adding a random effect for plot_id
 
 # Creating a GAM model with a random intercept for 'plot_id'
-gamm_model_tw <- gam(grass_mass ~ season + s(mean_LAI, by = season) + s(plot_id, bs = "re"),
-                    family = tw(link = "log"), data = LAI_earlyxbiomass_seasons, method = "REML")
+gamm_model_tw <- gam(grass_mass ~ season + s(mean_LAI, by = season) + s(plot_id, bs = "re"), family = tw(link = "log"), data = LAI_earlyxbiomass_seasons, method = "REML")
                     
 summary(gamm_model_tw)
 k.check(gamm_model_tw)
@@ -537,14 +536,14 @@ gamm_data <- expand.grid(mean_LAI = seq(min(data$mean_LAI), max(data$mean_LAI), 
                         plot_id = unique(data$plot_id))
 
 # Make predictions using the GAM model
-gamm_data$predicted <- predict(gamm_model_tw, newdata = gamm_data, type = "response")
+gamm_data$predicted <- predict(gam_model_tw, newdata = gamm_data, type = "response")
 
 
 # Create a plot using ggplot2
 ggplot(gamm_data, aes(x = mean_LAI, y = predicted, color = season)) +
   geom_line()+
   geom_point(data = data, aes(x = mean_LAI, y = grass_mass, color = season), alpha = 0.5) +
-  labs(title = "Seasonal Difference in ROS and LAI (GAMM)",
+  labs(title = "Seasonal Difference in ROS and LAI (GAM)",
        x = "LAI",
        y = "grass") +
   geom_hline(yintercept = 180.4, linetype = "dashed") +
@@ -667,7 +666,7 @@ summary(model)
 ```
 
 ```{r 1.2.2a plot}
-ggplot(LAI_earlyxbiomass_seasons, aes(x = mean_LAI, y = litter_mass*4, color = season)) +
+ggplot(LAI_earlyxbiomass_seasons, aes(x = mean_LAI, y = litter_mass, color = season)) +
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
   labs(title = "Seasonal Litter Loads Across the Canopy Gradient (LAI Fixed)",
@@ -724,14 +723,6 @@ summary(gam_model)
 k.check(gam_model)
 gam.check(gam_model)
 ```
-```{r GAM tw}
-gam_model_tw <- gam(litter_mass ~ season + s(mean_LAI, by = season),
-                    family = tw(link = "log"), data = LAI_earlyxbiomass_seasons, method = "REML")
-
-summary(gam_model_tw)
-k.check(gam_model_tw)
-gam.check(gam_model_tw)
-```
 
 The assumptions from the gam.check are looking pretty good so no need to change distribution or basis.
 We'll see how adding the random factor looks.
@@ -741,7 +732,7 @@ We'll see how adding the random factor looks.
 
 # Creating a GAM model with a random intercept for 'plot_id'
 gamm_model <- gam(litter_mass ~ season + s(mean_LAI, by = season) + s(plot_id, bs = "re"),
-                    family = tw(link = "log"), data = LAI_earlyxbiomass_seasons, method = "REML")
+                    data = LAI_earlyxbiomass_seasons, method = "REML")
                     
 summary(gamm_model)
 k.check(gamm_model)
@@ -775,13 +766,14 @@ ggplot(gam_data, aes(x = mean_LAI, y = predicted, color = season)) +
   theme_minimal()
 
 ```
+
 **1.2.2b GAM) Changing Seasonal LAI**
 
 ```{r 1.2.1b GAM}
 ## same GAM as in part a but with seasonal LAI values to match the grass obs
 
 # Creating a GAM model
-gam_modelb <- gam(litter_mass ~ season + s(mean_LAI, by = season, k = 20),
+gam_modelb <- gam(litter_mass ~ season + s(mean_LAI, by = season),
                     data = LAIxbiomass_seasons, method = "REML")
                     
 summary(gam_modelb)
@@ -820,7 +812,7 @@ We will look at the total fine fuel loads (grass + litter) in the early and late
 ```{r 1.2.3 setup}
 #fine fuel mass----
 biomass_fine <- biomass %>% 
-  mutate(fine_mass = mass_grass/1000 + mass_litter/1000)
+  mutate(fine_mass = mass_grass + mass_litter)
 
 biomass_fine <- biomass_fine %>%
   group_by(plot_id, quad_id, season) %>% 
@@ -850,7 +842,7 @@ ggplot(LAI_earlyxbiomass_fine, aes(x = mean_LAI, y = fine_mass*4, color = season
   geom_point() +
   geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
   labs(title = "Seasonal Fine Fuel Loads Across Canopy Gradient (LAI Fixed)",
-       x = "LAI", y = "Fine Fuel Load (kg/m2)", color = "Season") +
+       x = "LAI", y = "Fine Fuel Load (g/m2)", color = "Season") +
   ylim(0, 1.3) +
   theme_minimal()   
 
@@ -874,6 +866,82 @@ ggplot(LAIxbiomass_fine, aes(x = mean_LAI, y = fine_mass*4, color = season))+
 ```
 The key here is that between the early and late season there is a dramatic shift from a grass dominated to litter dominated fine fuel loads in the open canopy. There is a large litter component in our system compared to savanna-forest mosaics elsewhere. In both the savanna and the forest, we see ~doubling of litter loads that, when paired with decreasing grass loads, result in similar fine fuel loads across the canopy gradient (in the late season) compared to the declining fine fuel loads in the early season where grasses are at annual maximums and most litter has yet to fall. The consequences on fire likelihood from this seasonal change in fine fuel composition will be discussed in the following modeling chapter. 
 
+#### 1.2.3) GAM: Fine fuel Load across the dry season
+```{r 1.2.3 setup}
+#fine fuel mass----
+biomass_fine <- biomass %>% 
+  mutate(fine_mass = mass_grass + mass_litter)
+
+biomass_fine <- biomass_fine %>%
+  group_by(plot_id, quad_id, season) %>% 
+  summarise( fine_mass = mean(fine_mass)*4)
+
+LAI_earlyxbiomass_fine <- right_join(LAI_early, biomass_fine, by = c("plot_id", "quad_id"))
+
+#drop the quadrants that did not have biomass records
+LAI_earlyxbiomass_fine <- LAI_earlyxbiomass_fine %>% drop_na(fine_mass)
+
+##setup for 1.2.3b
+
+LAIxbiomass_fine <- right_join(LAI_seasons, biomass_fine, by = c("plot_id", "quad_id", "season"))
+
+#drop the quadrants that did not have biomass records
+LAIxbiomass_fine <- LAIxbiomass_fine %>% drop_na(fine_mass)
+
+#make season a factor
+LAIxbiomass_fine$season <- factor(LAIxbiomass_fine$season)
+
+#make plot_id a factor
+LAIxbiomass_fine$plot_id <- factor(LAIxbiomass_fine$plot_id)
+```
+
+```{r 1.2.3 GAM}
+#remove huge bamboo outlier 
+z_scores <- scale(LAIxbiomass_fine$fine_mass)
+outliers <- abs(z_scores) > 3  # Adjust the threshold as needed
+
+# Create a subset without outliers
+data <- LAIxbiomass_fine[!outliers, ]
+
+
+gam_model <- gam(fine_mass ~ season + s(mean_LAI, by = season), 
+           data = data, method = "REML")
+
+summary(gam_model)
+k.check(gam_model)
+gam.check(gam_model)
+```
+
+
+```{r 1.2.3 GAMM}
+gamm_model <- gam(fine_mass ~ season + s(mean_LAI, by = season) + s(plot_id, bs = "re"),
+                   data = data, method = "REML")
+
+summary(gamm_model)
+k.check(gamm_model)
+gam.check(gamm_model)
+```
+
+```{r 1.2.3 plot}
+
+#PLOT
+gamm_data <- expand.grid(mean_LAI = seq(min(data$mean_LAI), max(data$mean_LAI), length = 100),
+                        season = unique(data$season), plot_id = unique(data$plot_id))
+
+
+# Make predictions using the GAM model
+gamm_data$predicted <- predict(gamm_model, newdata = gamm_data, type = "response")
+
+
+# Create a plot using ggplot2
+ggplot(gamm_data, aes(x = mean_LAI, y = predicted, color = season)) +
+  geom_line()+
+  geom_point(data = data, aes(x = mean_LAI, y = litter_mass, color = season), alpha = 0.5) +
+  labs(title = "Seasonal Difference in Litter and LAI (GAM)",
+       x = "LAI",
+       y = "Litter Load (g/m^2") +
+  theme_minimal()
+```
 
 #### 1.2.4) Changes in fine fuel bulk density across the dry season
 Before, in 1.1.3, we saw that fine fuel bulk density increases linearly from open to closed canopy. As the fuel component switches from being grass dominated to leaf litter dominated in the late season, I expect to see the fine fuel bulk density slope **decrease** 
@@ -1870,7 +1938,7 @@ behave_output3.2$plot_id <- factor(behave_output3.2$plot_id)
 # Create a plot using predicitons from GAM
 ggplot(gam_data, aes(x = mean_LAI, y = predicted, color = season)) +
   geom_line() +
-  geom_point(data = gam_data, aes(x = mean_LAI, y = predicted, color = season), alpha = 0.5) +
+  geom_point(data = behave_output3.2, aes(x = mean_LAI, y = ROS, color = season), alpha = 0.5) +
   labs(title = "Relationship between canopy cover and ROS by season",
        x = "LAI",
        y = "Rate of Spread (ROS)") +
@@ -1923,8 +1991,8 @@ gamm_data$predicted <- predict(gamm_model_tw, newdata = gamm_data, type = "respo
 
 # Create a plot using ggplot2
 ggplot(gamm_data, aes(x = mean_LAI, y = predicted, color = season)) +
-  geom_smooth()+
-  geom_point(data = gamm_data, aes(x = mean_LAI, y = predicted, color = season), alpha = 0.5) +
+  geom_line()+
+  geom_point(data = behave_output3.2, aes(x = mean_LAI, y = ROS, color = season), alpha = 0.5) +
   labs(title = "Seasonal Difference in ROS and LAI (GAMM)",
        x = "LAI",
        y = "ROS") +
