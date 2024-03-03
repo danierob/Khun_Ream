@@ -183,7 +183,7 @@ test_data$predicted <- predict(test_model, newdata = test_data, type = "response
 # Create a plot using ggplot2
 ggplot(test_data, aes(x = mean_LAI, y = predicted, color = season)) +
   geom_line() +
-  geom_point(data = test_data, aes(x = mean_LAI, y = predicted, color = season), alpha = 0.5) +
+  geom_point(data = behave_output3.2, aes(x = mean_LAI, y = PIG, color = season), alpha = 0.5) +
   labs(title = "Seasonal Difference in PIG and LAI (GAMM)",
        x = "LAI",
        y = "PIG") +
