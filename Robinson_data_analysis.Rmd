@@ -1,5 +1,5 @@
 ---
-title: "Fuel variability across a Cambodian fire season: Data Analysis"
+title: "Fuel variability across a Cambodian fire season: Preliminary Data Analysis"
 author: "Daniel"
 date: "2023-10-09"
 output: html_document
@@ -62,6 +62,12 @@ In this analysis, we consider the relationship between LAI and grass load at pea
 LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
     col_types = cols(date = col_date(format = "%m/%d/%Y"), 
         LAI = col_number()))
+
+LAI_early <- LAI %>%
+  group_by(plot_id, quad_id, plot_type, season) %>%
+  filter(obs_period == "1" | obs_period == "2") %>% 
+  summarise(mean_LAI = mean(LAI))
+
 
 #make season a factor
 LAI$season <- factor(LAI$season)
@@ -384,7 +390,7 @@ biomass$plot_id <- factor(biomass$plot_id)
 #we again must average the 3 biomass obs taken at each logger for one observation per logger per seasonal period for a total of 100 (50 x 2) minus 8 equals 92 records.
 biomass_seasons <- biomass %>%
   group_by(plot_id, quad_id, season) %>% 
-  summarise(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), wood_mass = mean(wood_mass), other_mass = mean(other_mass + seedlings*10), grass_height = mean(grass_height), litter_depth = mean(litter_depth), grass_per = mean(grass_per), litter_per = mean(litter_per))
+  summarise(grass_mass = mean(grass_mass*4), litter_mass = mean(litter_mass*4), wood_mass = mean(wood_mass*4), other_mass = mean(other_mass*4), grass_height = mean(grass_height), litter_depth = mean(litter_depth), grass_per = mean(grass_per), litter_per = mean(litter_per))
 
 #isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50)
 
