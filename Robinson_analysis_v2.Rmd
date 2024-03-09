@@ -1,8 +1,9 @@
 ---
-title: "Fuel variability across a Cambodian fire season: Data Analysis"
+title: 'Fuel variability across a Cambodian fire season: Data Analysis'
 author: "Daniel Robinson"
 date: "2024-03-07"
-output: html_document
+output:
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -19,6 +20,8 @@ library(nlme)
 library(ggeffects)
 library(vtable)
 library(DHARMa)
+library(segmented)
+library(emmeans)
 ```
 
 ## Introduction
@@ -132,7 +135,105 @@ As canopy density transitions from opened to closed, fuel composition shifts awa
 
 This analysis will expand on the idea from analysis 1.1.1, where we looked at fuel load across the canopy gradient, but we will add a factor to the model to evaluate how vegetation load/structure changes from early to late in the dry season.
 
-### 1. 3) Fine Fuel Load across the dry season
+``` {r litter setup, include = FALSE}
+#loading in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+                col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+                                 LAI = col_number()))
+
+#make season a factor
+LAI$season <- factor(LAI$season)
+
+#make plot_id a factor
+LAI$plot_id <- factor(LAI$plot_id)
+
+biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V4.csv", 
+                    col_types = cols(grass_height = col_number(), 
+                                     litter_depth = col_number(), grass_per = col_number(), 
+                                     wood_per = col_number(), bare_per = col_number(), 
+                                     litter_per = col_number(), grass_mass = col_number(), 
+                                     other_mass = col_number(), wood_mass = col_number(), 
+                                     litter_mass = col_number(), seedlings = col_integer()))
+
+#multiply fuel masses by 4 to get g/m2 (quads were .25m l and w)
+biomass <- biomass %>%
+  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, wood_mass = wood_mass*4, other_mass = other_mass *4)
+
+#make season a factor
+biomass$season <- factor(biomass$season)
+
+#make plot_id a factor
+biomass$plot_id <- factor(biomass$plot_id)
+
+
+#we again must average the 3 biomass obs taken at each logger for one observation per logger per seasonal period for a total of 100 (50 x 2) minus 8 equals 92 records.
+biomass_seasons <- biomass %>%
+  group_by(plot_id, quad_id, season) %>% 
+  summarise(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), 
+            wood_mass = mean(wood_mass), other_mass = mean(other_mass), 
+            grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
+            grass_per = mean(grass_per), litter_per = mean(litter_per))
+#isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50)
+
+LAI_early <- LAI %>%
+  group_by(plot_id, quad_id) %>%
+  filter(obs_period == "1" | obs_period == "2") %>% 
+  summarise(mean_LAI = mean(LAI))
+
+#merging LAI_early and biomass_seasons into LAIxbiomass_seasons
+LAI_earlyxbiomass_seasons <- right_join(LAI_early, biomass_seasons, by = c("plot_id", "quad_id"))
+
+#drop the quadrants that did not have biomass records
+LAI_earlyxbiomass_seasons <- LAI_earlyxbiomass_seasons %>% drop_na(grass_mass)
+```
+
+Currently, we are just evaluating the assumptions of m1, the random intercept model. Rendom slope + intercept seems to fit slightly better, but given that after the interaction with season, each random level of plot_id will only have 4-5 data points. I think that the extra df required for slpoe+intercept is not worth the slight increase in model fit by adding the random slope term. 
+
+```{r litter lmer random int analysis, echo = FALSE}
+#Checking out mixed effects models with interaction between mean_LAI and season
+#to allow for variable slopes between levels (early and late) of season 
+
+data <- LAI_earlyxbiomass_seasons
+
+#random intercepts model
+m1 <- lmer(litter_mass ~ mean_LAI*season + (1|plot_id), data = data, REML = TRUE)
+summary(m1)
+
+###Testing Assumptions
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m1)
+plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
+shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
+plotResiduals(sim_residuals) # For visual validation of (iii)
+random_effects <- lme4::ranef(m1) # For visual validation of (iv)
+plot(random_effects)
+
+
+### Interpreting coefficients with CIs using emmeans
+emtrends(m1, ~ season, var="mean_LAI")
+
+#SO, late season does not include 0 in the 95% CI but early season does, so
+#litter load is significant across the LAI gradient in the late but not the early season
+```
+
+```{r litter plot, echo = FALSE}
+#Now lets graphically represent this
+mylist <- list(mean_LAI=seq(0,7,by=1))
+
+#emmip
+lit_dat <- emmip(m1,season~mean_LAI, at=mylist , CIs=TRUE, plotit = FALSE)
+
+#make ggplot with emmip data
+p <- ggplot(data = lit_dat, aes(x = mean_LAI, y = yvar, color = season)) +
+  geom_line() + geom_ribbon(aes(ymax=UCL, ymin=LCL, fill=season), alpha=0.4) +
+  labs(x="LAI", y="Litter Load (g/m2)", color="Season", fill="Season")
+
+#add points from the original data
+p + geom_point(data = data, aes(x = mean_LAI, y = litter_mass, color = season), alpha = .5) 
+
+```
+
+
+### 1. 3) Fine Fuel Load (Litter + Grass) across the dry season
 
 Dry grass and dry leaf litter are the main components of fine dead fuel. However, in the field, grass and litter tend to have contrasting flammability. This contrast is largely due to variation in fuel arrangement, specifically bulk density (g/cm3). The compact arrangement \-- high bulk density \-- of litter reduces fire likelihood and spread compared to the light, aerated architecture \-- low bulk density \-- of grass. Curing grasses invite a passing fuel source to ignite and carry fire more readily. In savanna-forest mosaics of other continents, bulk density has been identified as the primary driver in establishing the functional dichotomy between forest and savanna (Hoffman 2012b, Newberry 2020). I anticipate fine fuel bulk densities to increase as grass biomass decreases and litter biomass increases. I predict peak bulk densities will correspond to peak canopy cover, where litter accumulation should be greatest and grass presence should be lowest.
 
