@@ -1,0 +1,141 @@
+---
+title: "Fuel variability across a Cambodian fire season: Data Analysis"
+author: "Daniel Robinson"
+date: "2024-03-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r packages, include=FALSE}
+library(mgcv)
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(lme4)
+library(nlme)
+library(ggeffects)
+library(vtable)
+library(DHARMa)
+```
+
+## Introduction
+
+The aim of this research is to explore the heterogeneity of fire recruitment function in the Dipterocarp mosaic: We conducted field observations across the dry season to assess the horizontal distribution of fuel structure and microclimate across a range of canopy cover, from open to closed, to better understand how Cambodia's mosaic is shaped by fire.
+
+This Chapter will be divided into two parts: **Part 1: field observations** and **Part 2: fire modelling**.
+
+**Part 1** will focus on describing the variability in fuel distribution and fuel microclimate across a canopy gradient and across the dry season. We will explore how the surface conditions of open and closed canopy states differ and how this relationship changes in the presence of prolonged seasonal drought. We will discuss our study system in the context of alternate stable states, and compare the mosaic dynamics of our system with that of mosaics in other studies throughout the tropics. We will direct our focus by approaching these questions:
+
+*Q1: 1) How does surface fuel composition and structure vary with canopy cover? 2) How does this relationship change throughout the dry season?*
+
+*Q2: 1) How does surface microclimate vary with canopy cover? 2) How does this relationship change throughout the dry season?*
+
+**Part 2** utilizes fire modelling to better understand the variable role of fire recruitment across the mosaic. Understanding fire likelihood and severity is complicated by interacting factors and nonlinear relationships among the various determinants of fire. In an effort to provide some additional clarity and to tease out the shifting relationships between composition and fuel moisture and microclimate across the dry season, we will be using the fire model Behaveplus6 to evaluate predicted fire effects in the absence of physical fire data by asking:
+
+*Q3: 1) How does probability of fire vary with canopy cover? 2) How does this change across the dry season?*
+
+*Q4: 1) Is fire likelihood more limited by fuel or microclimate? 2) Does this relative relationship change throughout the dry season?*
+
+## Analysis
+
+### The canopy gradient
+
+In mesic savannas, woody cover and the abundance, continuity, and composition of grass are correlated. Generally speaking, as tree cover increases, grass cover decreases. This relationship is the result of several above and below ground interactions, and at any given area, the presence or absence of grass is moderated by a number of factors, such as competition for rooting space and nutrients between woody and herbaceous species, water availability, etc. But within the forest-savanna mosaics of the tropics, it is well established that light availability at the ground level -- largely moderated by canopy cover -- is critical in determining the distribution of grasses.
+
+Talk a bit about C4 and why they require more light than their counterparts: Grasses and especially C4 love light
+
+This relationship between grasses and trees gives rise to the mosaics that exist throughout the seasonal tropics. Fires are common and frequent in savanna regions globally, and fire is critical (particularly in mesic savanna) to the maintenance of a grassy state, because fire reduces woody cover.
+
+The vertical and horizontal distributions of fuel amount and fuel type is important in determining fire regimes. The savanna fire regime is the most active fire system on Earth. Many savannas have yearly fire return intervals which is largely attributed to the abundant grassy communities that define savanna systems. Within savanna-forest mosaics, fires tend to be restricted to the fuels at the ground level (few canopy fires or torching - because the phenology and architecture of tropical canopies is not conducive to carrying fire). The surface fuel bed is composed of multiple classes of fuels, and while large fuels (100 and 1000 hr logs) may be an important consideration for fire intensity and fire holdover (longevity), almost all considerations of fire ignition and spread are dependent on the distribution of fine fuels (litter and grass). I mention all of this to explain why we will now 1) focus our attentions and efforts on surface fuels, primarily leaves and grasses, and 2) examine their distribution in relation to canopy cover.
+
+BUT WHY DOES THIS MATTER AT ALL??
+
+Because, in a system where fire is proposed to play a hefty role in moderating the distribution between grassy and treed communities, we need to understand how fuel dynamics are spatially (across the canopy gradient) and temporally (across the fire season) distributed to comprehend how *rigid* or stable these boundaries are.
+
+*Canopy cover* is the driver we focus on throughout this analysis. We will evaluate the responses of several fuel variables in relation to our predictor, canopy cover, to parse out the spatial and temporal changes in fuel availability in our system.
+
+Analyses that evaluate tree-grass interactions often focus on the whole tree or the composition/distribution of trees in relation to grass. In this study, our metric for tree cover instead focuses on the canopy as determined via LAI measurements from a LICOR 2200c canopy analyzer. Our aim was to assess how tree cover affects surface fuel as a result of light exclusion, therefore LAI rather than a stand density metric like basal area was more suited to our analysis. LAI allows for the indirect accounting of variation in leaf traits & species composition that is typically lost to error in a basal area analysis . \*with regards to light exclusion, basal area assumes uniformity between dbh and canopy architecture which is never the case as different species and different site conditions give rise to varying canopy architectures. Furthermore, as pointed out by several papers (Hoffman, Charles-Dominique) specific leaf area (SLAs) and branch mass architectures (BMAs) may be important functional traits that contrast between savanna-oriented vs forest-oriented species as adaptations for increased light penetration (savanna species) or increased light exclusion (forest species). Under this assertion, a stand of savanna trees at a given basal area would provide less shade than a stand of forest trees of the same basal area.
+
+Evaluating LAI also provides us with the opportunity to roughly assess phenological differences between plots and forest types, which is critical in determining seasonal dynamics of fuel distribution (namely through litter accumulation) and fuel microclimate (namely via temperature and moisture buffering).
+
+Past studies in this region (Very few but largely based on the work of Williams 2008 and more informally from Stott's various papers), suggest a high degree of variability in shedding and flushing, withdelay in the timing and a decrease in the magnitude of leaf fall among the evergreen:
+
+**How did LAI change by plot and by plot type across the season?**
+
+```{r LAI across the season}
+#loading in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+        LAI = col_number()))
+
+#make season a factor
+LAI$season <- factor(LAI$season)
+#make plot_id a factor
+LAI$plot_id <- factor(LAI$plot_id)
+#make plot_type a factor
+LAI$plot_type <- factor(LAI$plot_type)
+
+#average all quads for each plot and each observation period
+LAI_plots <- LAI %>% 
+  group_by(plot_id, obs_period, plot_type, date) %>% 
+  summarize(LAI_plot = mean(LAI, na.rm = TRUE))
+
+```
+
+**Canopy cover change by plot across the season**
+
+```{r LAI across the season PLOT}
+#we will filter out obs period 5 because records are clearly sketchy from that day due to several bad readings:
+LAI_plots <- LAI_plots %>%
+  filter(!obs_period == "5", !obs_period == "3")
+
+
+ggplot(data = LAI_plots, aes(x = date, y = LAI_plot, color = plot_type)) +
+  geom_point(alpha = .5, size = .3) + 
+  geom_line(aes(group = plot_id),size = .1) +
+  geom_smooth(aes(group = plot_type), fill = "NA", size = .8)+
+  scale_color_manual(values = c("ddf" = "orange", "evg" = "forestgreen"))+
+  theme_minimal() + 
+  labs(title = "Seasonal Variation in Canopy Cover by Plot Type",
+       x = "Time", y = "Canopy Cover (LAI)", color = "Plot Type")
+
+```
+
+This graph provides an idea of how canopy cover varies among our plots and how LAI varies throughout the dry season. We see evidence of variable phenology between the evergreen and deciduous dominated plot types, expressed by the **evergreen lag in annual minimum LAI** with the deciduous-dominated savanna shedding leaves earlier in the season, plateauing at annual LAI lows in mid-late Feb, while evergreen-dominated forest start shedding leaves later in the season and do not plateau at annual LAI lows until mid-late March. This difference in timing is likely do to phenological trait difference in the evergreen and savanna species. Past studies have shown high degrees of leaf-trait variation within and between deciduous and evergreen species (determining leaf-type can itself be difficult as many "evergreen" species have high magnitudes of deciduousness).
+
+## Part 1: Defining the mosaic throughout the dry season: An assessment of fuel availability across a canopy gradient
+
+Canopy cover influences surface fuel in two primary ways: Q1) canopy cover restricts shade-intolerant species, like C4 grasses, reducing the surface fuel load while simultaneously/contrastingly adding to the surface fuel load via leaf shedding, and Q2) canopy cover provides a buffer that moderates microclimate by decreasing daily highs in temp and daily lows in RH (and less significantly by buffering nighttime temp lows and RH highs). As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to a diversity of phenologies. Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist (particularly when compared to similar mosaicked ecosystems in Australia, Africa, and South America) that describe the relationship in the region.
+
+**Q1: 1) How does the distribution of surface fuel vary with canopy cover? 2) How does this relationship change throughout the dry season?**
+
+The amount and type of surface fuel is critical to the distribution of forest savanna mosaics (ref). Savannas can be difficult to delineate given the wide range of physiognomies in tree cover that they support, so we define savannas here as an area with continuous grassy understory and a significant tree component (Lehmann et al 2011, Ratnam 2011). This definition is intentionally unconcerned with an upper margin of canopy cover or tree cover or stand height or stand structure because the establishment of rigid physiognomic boundaries (say anything below 60% tree cover is savanna, and anything above is forest) might fail to account for regions that functionally operate as savanna. This may be particular deleterious in regions that do not fir into the current physiognomic description of savanna, but may host a broad lineage of savanna-adapted species and traits. Instead, our definition relies on the ubiquitous relationship between canopy shading and grass exclusion, where at a certain amount of canopy cover, grass is no longer able to grow densely enough to support fire. This is particularly true for the highly flammable C4 grasses, which generally have a lower capacity for establishment in low-light environments (ref).
+
+### 1.1) The LAI threshold for grass establishment
+
+Past studies suggest that surface fuel composition varies across a gradient of canopy cover, however the precise canopy cover/tree density thresholds for grass exclusion varies by system (Hoffman 2012a, Charles-Dominique 2018). Surface fuels transition from grass to litter as canopy cover increases. Research in forest-savanna mosaics often emphasize the sharpness of the boundaries between open and closed canopy ecosystems. At a given canopy density, grass growth is restricted to such an extent that it is no longer relevant as a fuel source (fire-threshold). In most tropical studies the value of this threshold is \~3.0 LAI (Hoffman 2012a, Cardosa 2018) but no study, to my knowledge, has quantified this relationship, between canopy cover and grass biomass in Southeast Asia (Khaing 2019 looked at the C4 layer and herb layer relationship with BAsal Area).
+
+In this analysis, we consider the relationship between LAI and grass load at peak biomass (early in the dry season). We will join the LAI observation 1+2 data with the both early and late season Biomass observations data to assess the relationship. We use observations 1 (Jan. 26) and 2 (Feb. 2) of the LAI data because LAI did not start to decline significantly until LAI ob. 3 (Feb. 8), so averaging obs. 1 and 2 will mitigate deviations in LAI records due to sky conditions at the time of observation without sacrificing data integrity
+
+### 1. 2) Litter distribution across the canopy gradient
+
+Grass burns readily due to its fine, aerated structure and continuity. As a result, grass is the major fuel type that delineates differences in fire recruitment between open and closed ecosystems. But litter is often a critical component of the fuel load depending on the fuel amount and arrangement. In savanna-forest systems, leaf litter tends to increase as tree density increases (Hoffman 2012b, Newberry 2020), and when grass is excluded by canopy density, litter is the primary source of ignition and the primary fuel carrier. I expect litter to increase across the tree density gradient in our system, as in similar studies. However, it is important to note that the savannas in Cambodia are particularly mesic, or more densely treed, than the savannas of similar study systems on other continents (ref), which may result in more litter in the savanna. While in the closed forest, even the most densely canopied tree stands of our research area have a high degree of deciduousness, which may result in more litter in the closed forest.
+
+### Seasonal Litter Loads
+
+So, we know that canopy cover restricts grass growth, which due to its low bulk density (aerated architecture), is critically important in determining fine scale fire regimes in savanna-forest systems. But, as we established above, grass is not the only relevant component in this fuel matrix. Leaf litter is also a fine, flashy fuel, that can ignite and sustain fire, though typically at much lower rates due to the higher bulk density (compacted architecture) of litter layers. Therefore, evaluating the relationship between woody cover and surface fuel load ought to consider the varying contributions of grass and litter across a gradient of tree cover. As grass load decreases with woody cover, litter loads should increase, replacing the grass proportion of the fine fuel load with litter. These proportions, however, are complicated by many factors from phenology, to composition, to stand age, but especially time of season. In the early dry season, grass biomass is expected to be at its annual maximum, while leaf litter will be close to its annual minimum as few trees have shed their leaves. Thus, the early season fine fuel load, should be particularly grass-heavy. Contrastingly, the late season fine fuel load, should be leaf-heavy after months of litter accumulation.
+
+As canopy density transitions from opened to closed, fuel composition shifts away from being grass dominated and toward being litter dominated. Over the course of a dry season the distinction between open and closed surface fuel loads [decreases]{.underline} as grasses senescence and all deciduous and most evergreen trees (to a lesser magnitude) drop their leaves (Williams 2008), adding to the litter component of the surface fuel composition. The timing of senescence is highly variable among species in seasonal tropical forests, but over the season the result is the ultimately the same: As the dry season progresses, more fuel is added to the surface in the form of litter, packing surface fuels more densely.
+
+This analysis will expand on the idea from analysis 1.1.1, where we looked at fuel load across the canopy gradient, but we will add a factor to the model to evaluate how vegetation load/structure changes from early to late in the dry season.
+
+### 1. 3) Fine Fuel Load across the dry season
+
+Dry grass and dry leaf litter are the main components of fine dead fuel. However, in the field, grass and litter tend to have contrasting flammability. This contrast is largely due to variation in fuel arrangement, specifically bulk density (g/cm3). The compact arrangement \-- high bulk density \-- of litter reduces fire likelihood and spread compared to the light, aerated architecture \-- low bulk density \-- of grass. Curing grasses invite a passing fuel source to ignite and carry fire more readily. In savanna-forest mosaics of other continents, bulk density has been identified as the primary driver in establishing the functional dichotomy between forest and savanna (Hoffman 2012b, Newberry 2020). I anticipate fine fuel bulk densities to increase as grass biomass decreases and litter biomass increases. I predict peak bulk densities will correspond to peak canopy cover, where litter accumulation should be greatest and grass presence should be lowest.
+
+The densely treed savannas of Northern Cambodia may require extra consideration of the litter component of their surface fuel makeup, when considering their potential fire effects. In less treed savannas, grass connectivity is sometimes considered in isolation - as then sole source of surface fuel. To ignore litter at Khun Ream would be to ignore half of the fine fuel makeup, and to ignore the seasonal dynamics of surface fuel.
+
+We will look at the total fine fuel loads (grass + litter) in the early and late season to better understand how the fuel load shifts from grass dominated to litter dominated.
