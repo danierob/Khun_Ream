@@ -41,7 +41,7 @@ LAI_early <- LAI %>%
   filter(obs_period == "1" | obs_period == "2") %>% 
   summarise(mean_LAI = mean(LAI))
 
-#merging LAI_early and biomass_seasons into LAIxbiomass_seasons
+#merging LAI_early and biomass_seasons into LAI_earlyxbiomass_seasons
 LAI_earlyxbiomass_seasons <- right_join(LAI_early, biomass_seasons, by = c("plot_id", "quad_id"))
 
 #drop the quadrants that did not have biomass records
@@ -54,7 +54,6 @@ LAI_earlyxbiomass_seasons <- LAI_earlyxbiomass_seasons %>% drop_na(grass_mass)
 
 #Grass mass Histogram
 #remove the massive bamboo outlier in DDF5 Q4
-#remove huge bamboo outlier 
 z_scores <- scale(LAI_earlyxbiomass_seasons$grass_mass)
 outliers <- abs(z_scores) > 3  # Adjust the threshold as needed
 
@@ -79,14 +78,14 @@ plot(model)
 data$grass_ln <- log(data$grass_mass + 1)  #have to add a 1 to the ln to avoid NANs
 model_ln <- lmer(grass_ln ~ mean_LAI*season + (1 | plot_id), data = data)
 
-plot(model_ln)
+plot(model)
 
 ###Testing Assumptions
-sim_residuals <- DHARMa::simulateResiduals(fittedModel = model_ln)
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = model)
 plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
 shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
 plotResiduals(sim_residuals) # For visual validation of (iii)
-random_effects <- lme4::ranef(model_ln) # For visual validation of (iv)
+random_effects <- lme4::ranef(model) # For visual validation of (iv)
 plot(random_effects)
 
 #plot grass_ln out
@@ -96,16 +95,62 @@ ggplot(data = data, aes(x = mean_LAI, y = grass_mass)) +
 
 #trying out piecewise model with the segmented function
 library(segmented)
-?segmented
-?rep
 
-model_ln <- lmer(grass_ln ~ mean_LAI*season + (1 | plot_id), data = data)
 
-seg_grass <- segmented(model_ln, ~mean_LAI, x.diff = ~season, z.psi= ~1, 
+
+#Earnest attempts
+seg_grass <- segmented(model, ~mean_LAI, x.diff = ~season, z.psi= 1, 
                  random = list(plot_id = pdDiag(~ 1 + mean_LAI + U + G0)))
 
+seg_grass <- segmented(model, seg.Z = ~mean_LAI, x.diff = ~season, psi.z= list(mean_LAI=c(1.5,2.5)))
+
 #trying just a plain old lm (no random effects), because I just want to identify breakpoints using segmented()
-model_ln <- lm(grass_mass ~ mean_LAI*season, data = data)
+model <- lmer(grass_mass ~ mean_LAI*season + (1|plot_id), data = data)
+
+#build 3 explanatory variables by dummy groups 
+attach(data)
+X<-model.matrix(~0+season)*mean_LAI
+mean_LAI.e<-X[,1]
+mean_LAI.l<-X[,2]
+
+olm <-lm(grass_mass ~ 0+season+ mean_LAI.e + mean_LAI.l)
+os<-segmented(olm, seg.Z= ~ mean_LAI.e + mean_LAI.l,
+              psi=list(mean_LAI.e=c(1,2),
+                      mean_LAI.l=c(1,2)))
+
+
+summary(os)
+plot(os, term = "mean_LAI.e")
+
+points(data$mean_LAI, data$grass_mass, col = "black", pch = 16)
+
+plot(os, term = "mean_LAI.l")
+
+plot(data$mean_LAI, data$grass_mass, col='steelblue')
+
+
+#experiment with plots
+ggplot(grass_load, aes(x = mean_LAI, y = grass_mass))+
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ x + I(x^2)) +
+  labs(title = "Seasonal Bulk Density Across the Tree Cover Gradient",
+       x = "LAI", y = "Fine Fuel Bulk Density (g/m3)", color = "Season") +
+  theme_minimal() 
+
+#### Going to try with no seasons, its too crazy and there is hardly any difference between seasons anyway
+grass_load <- data %>% 
+  group_by(plot_id, quad_id) %>% 
+  summarize(mean_LAI = mean(mean_LAI), grass_mass = mean(grass_mass))
+
+### lmer random intercepts model but with no seasons:
+model <- nlme(grass_mass ~ mean_LAI + (1|plot_id), data = grass_load)
+
+seg <- segmented(model, ~mean_LAI, npsi = list(x = 2))
+          
+
+
+
+
 
 
 
