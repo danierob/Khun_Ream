@@ -698,7 +698,7 @@ gamm_data$predicted <- predict(gam_model_twb, newdata = gamm_data, type = "respo
 ggplot(gamm_data, aes(x = mean_LAI, y = predicted, color = season)) +
   geom_line()+
   geom_point(data = data, aes(x = mean_LAI, y = grass_mass, color = season), alpha = 0.5) +
-  labs(title = "Seasonal Difference in ROS and LAI (GAMM)",
+  labs(title = "Seasonal Difference in Grass Load (GAMM)",
        x = "LAI",
        y = "grass") +
   geom_hline(yintercept = 180.4, linetype = "dashed") +
@@ -1005,7 +1005,7 @@ ggplot(gamm_data, aes(x = mean_LAI, y = predicted, color = season)) +
   theme_minimal()
 ```
 
-#### 1.2.4) Changes in fine fuel bulk density across the dry season
+#### 1.2.4) Changes in fuel bulk density across the dry season
 Before, in 1.1.3, we saw that fine fuel bulk density increases linearly from open to closed canopy. As the fuel component switches from being grass dominated to leaf litter dominated in the late season, I expect to see the fine fuel bulk density slope **decrease** 
 
 First we add volume for grass and litter given the areas of coverage (determined from percent cover) and the heights for each quadrat:
@@ -1298,7 +1298,7 @@ LAIxfm_avg <- left_join(LAI_avg, fm_avg, by = c("quad_id", "plot_id"))
 
 ```{r season average fm data analysis}
 
-model <- lmer(litter ~ mean_LAI + (1|plot_id), data = LAIxfm)
+model <- lmer(litter ~ mean_LAI + (1|plot_id), data = LAIxfm_avg)
 summary(model)
 
 ```
@@ -1313,13 +1313,12 @@ pred <- ggpredict(model, terms = c("mean_LAI"))  # this gives overall prediction
    geom_line(aes(x = x, y = predicted), color = "red") +          # slope
    geom_ribbon(aes(x = x, ymin = predicted - std.error, ymax = predicted + std.error), 
                fill = NA, alpha = 0.5) +  # error band
-   geom_point(data = LAIxfm,                # adding the raw data
-              aes(x = LAIxfm$mean_LAI, y = (LAIxfm$litter))) + 
+   geom_point(data = LAIxfm_avg,                # adding the raw data
+              aes(x = LAIxfm_avg$mean_LAI, y = (LAIxfm_avg$litter))) + 
    labs(x = "LAI", y = "Litter Fuel Mositure (%)", 
         title = "Litter Fuel Mositure Increases Linearly Across Canopy Gradient") + 
    theme_bw()
 )
-
 
 ```
 
@@ -1335,7 +1334,7 @@ I've got times for the collection of fuel moisture from the field for Feb 16 and
 ```{r 2.2.2 setup, include = FALSE}
 #fm_V5 comes from the work shown in Q3.1 plus additions described in FMC readme
 library(readr)
-fm_V5 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V5.csv", 
+fm <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V5.csv", 
     col_types = cols(date = col_date(format = "%m/%d/%Y"), 
         obs_period = col_factor(levels = c("0", 
         "1", "2", "3", "4", "5", "6", "7")), plot_type = col_character(), 
@@ -1368,7 +1367,10 @@ ggplot(litter2.2, aes(x = LAI, y = litter, color = obs_period)) +
         title = "Litter Fuel Mositure Slope Decreases in Late Season") + 
    theme_bw()
 
+```
 
+
+``` {r}
 #Just those show in behave plus
 litter2.2 <- LAIxfm_obs %>% 
   filter(obs_period %in% c("4", "7"))
@@ -1403,7 +1405,7 @@ In the woody leaf graph, you'll notice far poorer fit than in the other surface 
 
 ```{r 2.2.2 10 hr fm plot}
 
-ggplot(LAIxfm_obs, aes(x = LAI, y = ten_hr, color = obs_period)) +
+ggplot(LAIxfm_obs, aes(x = LAI, y = grass, color = obs_period)) +
   geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period))
 
 ```
@@ -1432,7 +1434,7 @@ LAI_avg <- LAI %>%
   summarise(mean_LAI = mean(LAI, na.rm = TRUE))
 ```
 
-For each quadrant (n = 46) we will average the fuel moisture contents from the 8 observations throughout the season. I believe this method of averaging all observations rather than using any single fuel moisture observation will provide the best representation of fuel moisture for a given quadrant across the season and will mitigate the effects of deviations in fuel moisture sampling time. Dead fuel moisture content is very sensitive to diurnal fluctuations in microclimate, and maximum daily fuel curing lags behind the sun's rising each day. By averaging fuel moisture across the season, we will reduce the variation attributed to differences in fuel moisture collection time (all measurements were taken after 10:00 am to account for this to some degree, but variation still exists). For BehavePlus input we will use fuel moisture from several fuel categories: live woody, live herbaceous, 100 hour, 10 hour, and 1 hour fuel (for 1 hr we will include litter fuel moistures which are structurally similar to 1 hr sticks).
+For each quadrant (n = 46) we will average the fuel moisture contents from the 8 observations throughout the season. I believe this method of averaging all observations rather than using any single fuel moisture observation will provide the best representation of fuel moisture for a given quadrant across the season and will mitigate the effects of deviations in fuel moisture sampling time. Dead fuel moisture content is very sensitive to diurnal fluctuations in microclimate, and maximum daily fuel curing lags behind the sun's rising each day. By averaging fuel moisture across the season, we will reduce the variation attributed to differences in fuel moisture collection time (all measurements were taken after 11:00 am to account for this to some degree, but variation still exists). For BehavePlus input we will use fuel moisture from several fuel categories: live woody, live herbaceous, 100 hour, 10 hour, and 1 hour fuel (for 1 hr we will include litter fuel moistures which are structurally similar to 1 hr sticks).
 
 ```{r fuel_moisture pivot_wider, include = FALSE}
 fm <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V3.csv", 
@@ -1539,6 +1541,7 @@ Additionally, we will determine an average windspeed for each plot across the se
 kestrel_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_V1.csv", 
     col_types = cols(temp = col_number(), 
         rh = col_number(), wind_speed = col_number()))
+
 
 kestrel_wind <- kestrel_V1 %>% 
   group_by(month, day, plot_id) %>% 
@@ -1902,7 +1905,7 @@ windxLAI_3.2[missing_rows, ] <- new_data
 
 ```
 
-Temperature taken from the same day as fuel moisture, as fuel moisture is the variable most linked microclimate (and the most mercurial/prone to daily flux).
+Temperature taken from the same day as fuel moisture, as fuel moisture is the variable most linked to microclimate (and the most mercurial/prone to daily flux).
 
 ```{r behave 3.2 TOMST temperature, include = FALSE}
 TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/TOMST/TOMST_V1.csv", 
@@ -1966,7 +1969,7 @@ behave_output3.2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/K
         PIG = col_integer()))
 ```
 
-For the Probability of Ignition and all behave output variables by season we will be using GAMs, the nitty gritty for why we chose which one and the logic are in the GAMMs.R file.
+
 ```{r 3.2 PIG analysis}
 #convert season to a factor
 behave_output3.2$season <- factor(behave_output3.2$season)
