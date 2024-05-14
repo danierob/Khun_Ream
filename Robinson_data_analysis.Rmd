@@ -121,10 +121,10 @@ LAIxbiomass_early <- LAIxbiomass_early %>% drop_na(grass_mass)
 ```{r 1.1.1 stat_smooth 3rd order polynomial plot, message=FALSE, warning=FALSE}
 # 3rd order polynomial
 # PLOT IT OUT
-ggplot(LAIxbiomass_early, aes(x = mean_LAI, y = grass_mass)) +
+ggplot(data, aes(x = mean_LAI, y = grass_mass)) +
   geom_point(alpha = .5) + stat_smooth(fill = NA, colour="brown")+
    labs(title = "Grass Load Decreases Across Canopy Cover") + ylab("Grass Load (g)")+ xlab("LAI")+
-  ylim(0,250)+
+  
   theme_minimal()
 
 ```
@@ -1057,7 +1057,7 @@ Using dry biomass for now but need to use wet mass = 100 later to make the grass
 ```{r 1.2.4 setup (Whole quad)}
 
 bulk <- LAI_earlyxbiomass_seasons %>%
-  mutate(bulk_density = ifelse(grass_mass > 20, (grass_mass+litter_mass)/ (grass_height/100), (grass_mass+litter_mass)/ (litter_depth/100)))
+  mutate(bulk_density = ifelse(grass_mass > 10, (grass_mass+litter_mass)/ (grass_height/100), (grass_mass+litter_mass)/ (litter_depth/100)))
 
 #remove huge bamboo outlier 
 z_scores <- scale(bulk$bulk_density)
@@ -1116,7 +1116,7 @@ Past research suggests that relationships between canopy cover and microclimate 
 #### 2.1.1) Average of peak weather hours across canopy cover over season
 
 In this analysis we will be looking at the relationship between microclimate and canopy cover across the two scales that are most important for understanding the role of microclimate in determining fuel availability: daily scales and seasonal scales. We will pair each LAI obs with an average of the daytime (1100 - 1700) and nighttime (0000-0600) surface temp, soil temp, and soil moisture, for a total of 46(quadrants) \* 8(LAI observations) = 368 rows.
-
+f
 ```{r 2.1.1 setup, include = FALSE}
 LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
      col_types = cols(date = col_date(format = "%m/%d/%Y"), 
@@ -1170,16 +1170,21 @@ LAIxTOMST2.1 <- TOMST_2.1 %>%
 
 ```{r 2.1.1 plot}
 
-facet_labels <- c("Jan 26", "Feb2", "Feb 8", "Feb 17", "Feb 28", "Mar 14", "Mar 29", "Apr 11")
+facet_labels <- c("Jan 26", "Feb 2", "Feb 8", "Feb 17", "Feb 28", "Mar 14", "Mar 29", "Apr 11")
 names(facet_labels) <- c("1", "2", "3", "4", "5", "6", "7", "8")
 
-ggplot(LAIxTOMST2.1, aes(x = LAI, y = max_air_temp, color = obs_period)) +
+dev.new(width=10, height=5)
+
+p <- ggplot(LAIxTOMST2.1, aes(x = LAI, y = max_air_temp)) +
   geom_point() +
   geom_smooth(fill = NA) +
    facet_wrap(~obs_period, labeller = labeller(obs_period = facet_labels))+
-  labs(x = "LAI", y = "Max Daily Air Temperature (Celsius)", color = "Observation",
-       title = "Surface Microclimate Temps Controlled by LAI Across Season") +
+  labs(x = "LAI", y = "Max Daily Temp (Celsius)",
+       title = "Surface Microclimate Temps Across LAI") +
   theme_bw()
+
+(p + facet_grid(cols = vars(obs_period),labeller = labeller(obs_period = facet_labels)))
+
 ```
 
 ```{r 2.1.1 data analysis, include=FALSE}
@@ -1216,6 +1221,7 @@ LAI_early <- LAI %>%
 LAIxTOMST2.1.2 <- TOMST_2.1 %>% 
   left_join(LAI_early, by = c("quad_id", "plot_id"))
 ```
+
 ```{r 2.1.2 observations plot}
 #Plot
 facet_labels <- c("Jan 26", "Feb2", "Feb 8", "Feb 17", "Feb 28", "Mar 14", "Mar 29", "Apr 11")
@@ -1357,17 +1363,19 @@ LAIxfm_obs <- left_join(fm, LAI, by = c("quad_id", "plot_id", "obs_period", "plo
 ```{r 2.2.2 litter fm plot}
 #For litter, restrict to obs 4-7, because we didn't get sufficient litter prior to obs 4
 litter2.2 <- LAIxfm_obs %>% 
-  filter(obs_period %in% c("4", "5", "6", "7"))
+  filter(obs_period %in% c("1", "2", "4", "5", "6", "7"))
 
 ggplot(litter2.2, aes(x = LAI, y = litter, color = obs_period)) +
   geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period)) +
-  scale_color_manual(values = c("4" = "red", "5" = "blue", "6" = "green", "7" = "purple"),
+  scale_color_manual(values = c("1" = "gold", "2" = "gold3", "4" = "red", "5" = "blue", "6" = "green", "7" = "purple"),
     labels = c("4" = "16 Feb", "5" = "1 Mar", "6" = "13 Mar", "7" = "30 Mar")) +
       labs(x = "LAI", y = "Litter Fuel Mositure (%)", color = "Date",
         title = "Litter Fuel Mositure Slope Decreases in Late Season") + 
    theme_bw()
 
 ```
+
+
 
 
 ``` {r}
@@ -1405,7 +1413,7 @@ In the woody leaf graph, you'll notice far poorer fit than in the other surface 
 
 ```{r 2.2.2 10 hr fm plot}
 
-ggplot(LAIxfm_obs, aes(x = LAI, y = grass, color = obs_period)) +
+ggplot(LAIxfm_obs, aes(x = LAI, y = ten_hr, color = obs_period)) +
   geom_point() + geom_smooth(fill = "NA", method = "lm", aes(color = obs_period))
 
 ```
@@ -2001,6 +2009,29 @@ ggplot(PIG_data, aes(x = mean_LAI, y = predicted, color = season)) +
        x = "LAI",
        y = "Probability of Ignition (PIG)") +
   theme_minimal()
+
+```
+
+```{r 3.2 ROS data analysis}
+
+gam_model <- gam(ROS ~ season + s(mean_LAI, by = season, k=5),
+                         data = behave_output3.2, method = "REML")
+
+
+summary(gam_model)
+k.check(gam_model)
+gam.check(gam_model)
+
+#Trying a different distribution
+
+gam_model_tw <- gam(ROS ~ season + s(mean_LAI, by = season, k=5),
+                    family = tw(link = "log"), data = behave_output3.2, method = "REML")
+  
+summary(gam_model_tw)
+k.check(gam_model_tw)
+gam.check(gam_model_tw)
+
+#They look much better with a tweedie dist
 
 ```
 
