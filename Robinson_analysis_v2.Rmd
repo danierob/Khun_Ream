@@ -440,11 +440,12 @@ The key here is that between the early and late season there is a dramatic shift
 
 
 ###1. 4) Fuel Bulk Density
+Dry grass and dry leaf litter are the main components of fine dead fuel. However, in the field, grass and litter tend to have contrasting flammability. This contrast is largely due to variation in fuel arrangement, specifically bulk density (g/cm3). The compact arrangement -- high bulk density -- of litter reduces fire likelihood and spread compared to the light, aerated architecture -- low bulk density -- of grass. Curing grasses invite a passing fuel source to ignite and carry fire more readily. In savanna-forest mosaics of other continents, bulk density has been identified as the primary driver in establishing the functional dichotomy between forest and savanna (Hoffman 2012b, Newberry 2020). I anticipate fine fuel bulk densities to increase as grass biomass decreases and litter biomass increases. I predict peak bulk densities will correspond to peak canopy cover, where litter accumulation should be greatest and grass presence should be lowest.
 
+In this analysis, we consider the relationship between LAI and fuel bulk density as an average of all biomass measurements (3 in early season + 3 in late season = 6 quadrats ) per plot, only considering biomass ob. 1 (as in 1.1.1), to evaluate the maximum extent of fine fuel load discrepancy.
 ```{r bulk density setup}
 
 #Bulk Density
-
 data_bulk <- data %>% 
     group_by(plot_id, quad_id, mean_LAI) %>% 
     summarize(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), wood_mass = mean(wood_mass),
@@ -461,11 +462,16 @@ data_bulk <- data_bulk %>%
   mutate(litter_ratio = litter_per/(litter_per+ grass_per))
 
 #Weighted means of litter and mass for all subplots with grass loads <240g/m2
+#Here we are determining fuel depth as grass height if there is more that 240g/m2 of grass, 
+#and as the weighted mean of grass height and litter depth otherwise.
 
 data_bulk <- data_bulk %>%
   mutate(bulk_density = ifelse(grass_mass > 240, (grass_mass+litter_mass+wood_mass+other_mass)/
-                                 (grass_height/100),((grass_mass+ litter_mass + wood_mass + other_mass)/
-                                 ((grass_height*grass_ratio+litter_depth*litter_ratio)/100))))
+                                 (grass_height/100),((grass_mass+ litter_mass + wood_mass + other_mass)/((grass_height*grass_ratio+litter_depth*litter_ratio)/100))))
+
+behave_tbl_3.2 <- behave_tbl_3.2  %>%
+  mutate(fuel_depth = ifelse(grass_mass > 240, 
+              (grass_height),(grass_height*grass_ratio+litter_depth*litter_ratio)))
   
 ```
 
@@ -531,6 +537,7 @@ bulk_seasons <- bulk_seasons %>%
                                  ((grass_height*grass_ratio+litter_depth*litter_ratio)/100))))
 
 ``` 
+
 ```{r bulk density model}
 
 #bulk density by season
@@ -915,9 +922,17 @@ grid.arrange(p1, p2, p3, p4, nrow=4)
 
 ### 3. 1) Behaveplus6 Fire Modelling Setup (Lengthy, Jump to next section, "Behave Output" for the modelled fire results)
 
-A major focus of this research is fuel availability, with particular attention placed on the variability of surface fuels between open and closed canopy ecosystems and the variability in surface fuels over the dry season. Fuel is available to fire when fuel moisture is sufficiently low and when fuel composition is distributed in a continuous arrangement conducive to fire spread. The interplay of these variables in determining fuel availability creates a heterogenous distribution of flammability throughout the horizontal and vertical composition of the environment. In Southeast Asia, fires occur every year, but the location, size, and intensity of fires is determined as a product of these concurrent factors.
+Understanding fire likelihood and severity is complicated by complex interacting factors and nonlinear relationships among the various determinants of fire. In an effort to tease out the shifting relationships between composition and fuel moisture and microclimate across the dry season, I will be using the fire model Behaveplus6 to evaluate predicted fire effects in the absence of physical fire data. We used BehavePlus to simulate fire at each subplot according to our fuel and microclimate measurements. Fire was simulated at each point in the early season and the late season to predict fire behavior across the canopy cover gradient (Input variables and model parameters simulations are presented in supplementary information and Rmd code). For each point, vegetation load and depth were calculated as the mean of the three observations per subplot. Fuel moisture content inputs were determined from the full-spectrum sampling values. Temperature was calculated as the average of the 11:00-19:00 TOMST 15cm surface air temperature values from the same days as the FMC observations. Wind speeds were determined from the Kestrels as seasonal average of the max daily wind speeds per plot. For the plots with no Kestrels, wind speeds were extrapolated from the fit of the linear relationship between canopy cover and wind speed of the plots with Kestrels. 
 
-**The plots are aligned with these models:**
+We did not have data on surface area to volume ratios, so these were estimated for each plot from the values defined by the various fuel models. Fuel models were determined for each plot according to the fuel loads and fuel compositions. Dead fuel moistures of extinction were kept constant at 30%.
+
+There are more specifics for each input variable in the following Rmd code:
+
+
+**Determining Fuel Models for each plot**
+We paired each plot with the fuel model that most closely represented the fuel distribution of the plot, following Scott and Burgan's fuel model selection guide (Scott and Burgan 2005).
+
+The plots are aligned with these models:
 
 -   TL6/186 - Moderate load, less compact. Spread rate moderate; flame length low. PRIMARY CARRIER OF THE FIRE IS DEAD AND DOWN WOODY FUEL (LITTER) BENEATH A FOREST CANOPY. Mositure of extinction is 25 percent: **DDF2, EVG1, EVG2, EVG3, EVG4, EVG5**
 
@@ -926,9 +941,9 @@ A major focus of this research is fuel availability, with particular attention p
 -   GR5/105 - Dense, coarse grass, average depth about 1 to 2 feet (0.3 to 0.6 meters). Spread rate very high; flame length high. Subhumid to humid climate (rainfall adequate in all seasons). Extinction moisture content 40 percent. Spread rate high; flame length moderate.PRIMARY CARRIER GRASS: **DDF4, DDF5, DDF6**
 
 
-Since I messed up the early season fuel moisture by not collecting litter, for the cross season analysis I will use the first viable fuel moisture observations, which are from observation 4 (Feb 16), which is 2-3 weeks after the January biomass sampling, but still before the big LAI and temperature dip. Its not perfect, but will still allow me to compare fuels that are 6 weeks apart.
+We will have two sets of behaveplus outputs in this cross-season analysis: one for the early season and one for the late season. Fuel moistures will come from the full-spectrum measurements on Feb 16 and Mar 31. These are slightly unaligned with biomass obs (late Jan and Early April), but TOMST and kestrels and supplementary FMC observations indicate little deviation in the 2 weeks between biomass sampling and FMC measurements.
 
-I'm still going to average LAI around the obs to account for any missing values or bad recordings. And since early season biomass is in late Jan and the fuel moisture is in mid Feb, including the LAI in the range of those two feels like a good move.
+I'm still going to average LAI around the observations (e.g. early season behaveplus outputs will relate to the3 average of LAI obs 2, 3, and 4) to account for any missing LAI values and temper out the differences in light angles, measurement errors, etc.
 
 ```{r behave3.2 LAI, include = FALSE}
 #loading in LAI data
@@ -974,21 +989,34 @@ fm_3.2 <- fm_3.2 %>%
 Biomass observations separated by early and late season.
 
 ```{r behave3.2 biomass, include = FALSE}
-biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V2.csv", 
-     col_types = cols(grass_height = col_number(), litter_depth = col_number(), grass_per = col_number(), wood_per = col_number(), bare_per = col_number(),  litter_per = col_number(), mass_grass = col_number(), mass_liana = col_number(), mass_wood = col_number(), mass_litter = col_number(), seedlings = col_number(), grass_vol = col_number(), grass_bulk = col_number(), litter_vol = col_number(), litter_bulk = col_number(), fine_vol = col_number(), fine_bulk = col_number()))
+ 
 
 #there were two biomass observation periods in early and late season and each quadrant consisted of 3 records for a total of n=150 records for each season and n=300 records in total
+
 #we will average across quadrants and keep season separate for n=100 records (8 of which are NA because no data for the missing sensors)
 
+biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V4.csv", 
+                    col_types = cols(grass_height = col_number(), 
+                                     litter_depth = col_number(), grass_per = col_number(), 
+                                     wood_per = col_number(), bare_per = col_number(), 
+                                     litter_per = col_number(), grass_mass = col_number(), 
+                                     other_mass = col_number(), wood_mass = col_number(), 
+                                     litter_mass = col_number(), seedlings = col_integer()))
+
+#multiply fuel masses by 4 to get g/m2 (quads were .25m l and w)
+biomass <- biomass %>%
+  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, wood_mass = wood_mass*4, other_mass = other_mass *4)
+
+
+#we again must average the 3 biomass obs taken at each logger for one observation per logger per seasonal period for a total of 100 (50 x 2) minus 8 equals 92 records.
 biomass_3.2 <- biomass %>%
-  group_by(plot_id, quad_id, season) %>%
-  summarise(grass_mass = mean(mass_grass), litter_mass = mean(mass_litter), wood_mass = mean(mass_wood), woody_mass = mean(mass_liana + seedlings*10), grass_height = mean(grass_height), litter_depth = mean(litter_depth))
+  group_by(plot_id, quad_id, season, plot_type) %>% 
+  summarise(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), 
+            wood_mass = mean(wood_mass), other_mass = mean(other_mass + seedlings*5), 
+            grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
+            grass_per = mean(grass_per), litter_per = mean(litter_per))
 
-#the biomass input in the model requires mass per unit area so we will determine kg/m^2 for each fuel type. The quadrat was .25m^2.
 
-biomass_3.2 <- biomass_3.2 %>% 
-  group_by(plot_id) %>% 
-  mutate_at(vars(4:7), ~ . * .004)
 ```
 
 Using the exact same shading from 3.1 (this is an average across the whole season, but honestly I'm afraid to change it because this measurement was too subjective and my early season measurements and Phem's late season measurements may not jive)
@@ -1135,6 +1163,31 @@ behave_tbl_3.2 <- left_join(join4, TOMST_3.2, by=c("plot_id", "quad_id", "season
 
 ```
 
+We will also create fuel depth using the same fuel depth protocol as in fuel bulk density: If grass load > 240g/m2 then we consider fuel height = grass height. If grass load < 240g/m2, then fuel depth is the weighted mean of the grass height and litter depth given litter:grass ratios:
+
+```{r behave3.2 fuel depth}
+### creating a grass ratio and litter ratio column so that litter percentage plus grass percentage add up to 1
+#GRASS RATIO
+behave_tbl_3.2 <- behave_tbl_3.2  %>% 
+  mutate(grass_ratio = grass_per/(litter_per+ grass_per))
+
+#LITTER RATIO
+behave_tbl_3.2 <- behave_tbl_3.2  %>% 
+  mutate(litter_ratio = litter_per/(litter_per+ grass_per))
+
+behave_tbl_3.2 <- behave_tbl_3.2  %>%
+  mutate(fuel_depth = ifelse(grass_mass > 240, 
+              (grass_height),(grass_height*grass_ratio+litter_depth*litter_ratio)))
+
+#drop grass_ratio and litter_ratio columns now that we have fuel depth
+behave_tbl_3.2 <- behave_tbl_3.2%>% 
+  dplyr::select(-c(grass_ratio, litter_ratio))
+
+
+write.csv(behave_tbl_3.2,"C:/Users/d/Downloads/behave_table_V3.csv")
+
+```
+
 **Breakdown of input values (SURFACE fire spread model and Probability of Ignition (PIG) model):**
 
 -   Fuel Model Number
@@ -1202,7 +1255,6 @@ behave_output3.2$season <- factor(behave_output3.2$season)
 
 #make plot_id a factor
 behave_output3.2$plot_id <- factor(behave_output3.2$plot_id)
-
 
 ```
 
