@@ -957,19 +957,9 @@ LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LA
         obs_period = col_integer(), LAI = col_double(), 
         month = col_integer()))
 
-#pulling LAI data from early ob: 2-4  and late ob: 6-8
-LAI_3.2_early <- LAI %>% 
-  filter(obs_period %in% c(2,3,4)) %>% 
-  group_by(plot_id, quad_id, season) %>% 
-  summarize(mean_LAI = mean(LAI, na.rm = TRUE))
-
-LAI_3.2_late <- LAI %>% 
-  filter(obs_period %in% c(6,7,8)) %>% 
-  group_by(plot_id, quad_id, season) %>% 
-  summarize(mean_LAI = mean(LAI, na.rm = TRUE))
-
-#stack the tables for early and late together
-LAI_3.2<- dplyr::union(LAI_3.2_early, LAI_3.2_late)
+LAI_3.2 <- LAI %>%
+  group_by(plot_id, quad_id) %>%
+  summarise(mean_LAI = mean(LAI, na.rm = TRUE))
 ```
 
 Fuel moisture is not averaged, but taken from the closest viable single obs to the biomass obs.
@@ -1248,33 +1238,9 @@ write.csv(behave_tbl_3.2,"C:/Users/d/Downloads/behave_table_V3.csv")
 
 #### Behave Output: Final Table of fuel variables and behave outputs
 
-EARLY BEHAVE ATTEMPT
-```{r behave3.2 output table, include = FALSE}
-behave_output3.2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_3.2_V2.csv", 
-    col_types = cols(mean_LAI = col_number(), 
-        fuel_model = col_integer(), litter_load = col_number(), 
-        hr10_load = col_number(), hr100_load = col_number(), 
-        herb_load = col_number(), woody_load = col_number(), 
-        grass_height = col_number(), litter_depth = col_number(), 
-        litter_fm = col_number(), hr10_fm = col_number(), 
-        hr100_fm = col_number(), grass_fm = col_number(), 
-        woody_fm = col_number(), wind_speed = col_number(), 
-        air_temp = col_number(), shade = col_number(), 
-        soil_moist = col_number(), ROS = col_number(), 
-        intensity = col_number(), flame_length = col_number(), 
-        PIG = col_integer()))
-
-#make season a factor
-behave_output3.2$season <- factor(behave_output3.2$season)
-
-#make plot_id a factor
-behave_output3.2$plot_id <- factor(behave_output3.2$plot_id)
-
-```
-
 BEHAVE UPDATE MAY 24
 ```{r behave update}
-behave <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_seasons_V3.csv", 
+behave <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_seasons_V4.csv", 
      col_types = cols(mean_LAI = col_number(), 
          ROS = col_number(), intensity = col_number(), 
          flame_length = col_number(), PIG = col_number()))
@@ -1285,6 +1251,7 @@ behave$season <- factor(behave$season)
 #make plot_id a factor
 behave$plot_id <- factor(behave$plot_id)
 ```
+
 ### 3. 1) Modelled fire effects across the canopy gradient at the early and late dry season.
 
 We're taking a look at the outputs of our behaveplus simulations which have taken all of our fuel variables together and spit out a number for each quadrant, per each season, to make understanding how all of these fuel variables work together to affect fire-feedbacks more interpretable.
