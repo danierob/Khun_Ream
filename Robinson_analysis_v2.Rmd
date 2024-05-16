@@ -273,7 +273,7 @@ biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Bi
 
 #multiply fuel masses by 4 to get g/m2 (quads were .25m l and w)
 biomass <- biomass %>%
-  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, wood_mass = wood_mass*4, other_mass = other_mass *4)
+  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, wood_mass = wood_mass*4, other_mass = (other_mass+seedlings*2) *4)
 
 #make season a factor
 biomass$season <- factor(biomass$season)
@@ -461,18 +461,21 @@ data_bulk <- data_bulk %>%
 data_bulk <- data_bulk %>% 
   mutate(litter_ratio = litter_per/(litter_per+ grass_per))
 
+
 #Weighted means of litter and mass for all subplots with grass loads <240g/m2
-#Here we are determining fuel depth as grass height if there is more that 240g/m2 of grass, 
-#and as the weighted mean of grass height and litter depth otherwise.
-
-data_bulk <- data_bulk %>%
-  mutate(bulk_density = ifelse(grass_mass > 240, (grass_mass+litter_mass+wood_mass+other_mass)/
-                                 (grass_height/100),((grass_mass+ litter_mass + wood_mass + other_mass)/((grass_height*grass_ratio+litter_depth*litter_ratio)/100))))
-
-behave_tbl_3.2 <- behave_tbl_3.2  %>%
+#Here we are determining fuel depth as grass height if there is more that 240g/m2 of grass, as litter depth if there is less than 30g/m2 of grass and as the weighted mean of grass height and litter depth otherwise.
+data_bulk <- data_bulk  %>%
   mutate(fuel_depth = ifelse(grass_mass > 240, 
               (grass_height),(grass_height*grass_ratio+litter_depth*litter_ratio)))
-  
+
+data_bulk <- data_bulk  %>% 
+  mutate(fuel_depth = ifelse(grass_mass < 30, 
+              (litter_depth),(fuel_depth)))
+
+data_bulk <- data_bulk %>%
+  mutate(bulk_density = (grass_mass+litter_mass+other_mass+wood_mass)/
+                                 (fuel_depth/100))
+
 ```
 
 ```{r bulk density model}
@@ -504,6 +507,8 @@ ggplot(data_bulk, aes(x = mean_LAI, y = bulk_density/1000))+
   theme_bw() +
   theme(text=element_text(size= 16), legend.position="none", 
                  plot.title = element_text(hjust = 0.5))
+
+
 ```
 
 
@@ -995,7 +1000,7 @@ Biomass observations separated by early and late season.
 
 #we will average across quadrants and keep season separate for n=100 records (8 of which are NA because no data for the missing sensors)
 
-biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V4.csv", 
+biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V5.csv", 
                     col_types = cols(grass_height = col_number(), 
                                      litter_depth = col_number(), grass_per = col_number(), 
                                      wood_per = col_number(), bare_per = col_number(), 
@@ -1004,8 +1009,9 @@ biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Bi
                                      litter_mass = col_number(), seedlings = col_integer()))
 
 #multiply fuel masses by 4 to get g/m2 (quads were .25m l and w)
+# and add 2g for each seedling, just to account for the increased presence in EVG
 biomass <- biomass %>%
-  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, wood_mass = wood_mass*4, other_mass = other_mass *4)
+  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, wood_mass = wood_mass*4, other_mass = (other_mass + seedlings*2) *4)
 
 
 #we again must average the 3 biomass obs taken at each logger for one observation per logger per seasonal period for a total of 100 (50 x 2) minus 8 equals 92 records.
@@ -1175,9 +1181,16 @@ behave_tbl_3.2 <- behave_tbl_3.2  %>%
 behave_tbl_3.2 <- behave_tbl_3.2  %>% 
   mutate(litter_ratio = litter_per/(litter_per+ grass_per))
 
+#We determine fuel depth as grass height if grass is greater than 240g/m2, as litter depth is grass mass is less than 30g/m2 and as the weighted mean of the two if grass mass is between 30 and 240.
 behave_tbl_3.2 <- behave_tbl_3.2  %>%
   mutate(fuel_depth = ifelse(grass_mass > 240, 
               (grass_height),(grass_height*grass_ratio+litter_depth*litter_ratio)))
+
+behave_tbl_3.2 <- behave_tbl_3.2  %>% 
+  mutate(fuel_depth = ifelse(grass_mass < 30, 
+              (litter_depth),(fuel_depth)))
+
+
 
 #drop grass_ratio and litter_ratio columns now that we have fuel depth
 behave_tbl_3.2 <- behave_tbl_3.2%>% 
@@ -1235,6 +1248,7 @@ write.csv(behave_tbl_3.2,"C:/Users/d/Downloads/behave_table_V3.csv")
 
 #### Behave Output: Final Table of fuel variables and behave outputs
 
+EARLY BEHAVE ATTEMPT
 ```{r behave3.2 output table, include = FALSE}
 behave_output3.2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_3.2_V2.csv", 
     col_types = cols(mean_LAI = col_number(), 
@@ -1258,7 +1272,19 @@ behave_output3.2$plot_id <- factor(behave_output3.2$plot_id)
 
 ```
 
+BEHAVE UPDATE MAY 24
+```{r behave update}
+behave <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_seasons_V3.csv", 
+     col_types = cols(mean_LAI = col_number(), 
+         ROS = col_number(), intensity = col_number(), 
+         flame_length = col_number(), PIG = col_number()))
 
+#make season a factor
+behave$season <- factor(behave$season)
+
+#make plot_id a factor
+behave$plot_id <- factor(behave$plot_id)
+```
 ### 3. 1) Modelled fire effects across the canopy gradient at the early and late dry season.
 
 We're taking a look at the outputs of our behaveplus simulations which have taken all of our fuel variables together and spit out a number for each quadrant, per each season, to make understanding how all of these fuel variables work together to affect fire-feedbacks more interpretable.
