@@ -3,7 +3,7 @@ title: 'Fuel variability across a Cambodian fire season: Data Analysis'
 author: "Daniel Robinson"
 date: "2024-03-07"
 output:
-  html_document: default
+html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -113,27 +113,12 @@ ggplot(data = LAI_plots, aes(x = date, y = LAI_plot, color = plot_type)) +
        x = "Date", y = "Canopy Cover (LAI)", color = "Plot Type")
 
 ```
-``` {r}
-ggplot(data = LAI_plots, aes(x = date, y = LAI_plot, color = plot_id)) +
-  geom_point(alpha = .5, size = .3) + 
-  geom_line(aes(group = plot_id),size = .1) +
-  geom_smooth(aes(group = plot_type), fill = "NA", size = .8)+
-  scale_color_manual(values = c("ddf" = "orange", "evg" = "forestgreen"))+
-  theme_minimal() + 
-  labs(title = "Seasonal Variation in Canopy Cover by Plot Type",
-       x = "Time", y = "Canopy Cover (LAI)", color = "Plot Type")
-
-LAI_mean <- LAI %>%
-  group_by(plot_id, quad_id) %>%
-  summarise(mean_LAI = mean(LAI, na.rm = TRUE))
-```
-
 
 This graph provides an idea of how canopy cover varies among our plots and how LAI varies throughout the dry season. We see evidence of variable phenology between the evergreen and deciduous dominated plot types, expressed by the **evergreen lag in annual minimum LAI** with the deciduous-dominated savanna shedding leaves earlier in the season, plateauing at annual LAI lows in mid-late Feb, while evergreen-dominated forest start shedding leaves later in the season and do not plateau at annual LAI lows until mid-late March. This difference in timing is likely do to phenological trait difference in the evergreen and savanna species. Past studies have shown high degrees of leaf-trait variation within and between deciduous and evergreen species (determining leaf-type can itself be difficult as many "evergreen" species have high magnitudes of deciduousness).
 
 ## Part 1: Evaluating the mosaic throughout a dry season: An assessment of fuel availability across a canopy gradient
 
-Canopy cover influences surface fuel in two primary ways: Q1) canopy cover restricts shade-intolerant species, like C4 grasses, reducing the surface fuel load while simultaneously/contrastingly adding to the surface fuel load via leaf shedding, and Q2) canopy cover provides a buffer that moderates microclimate by decreasing daily highs in temp and daily lows in RH (and less significantly by buffering nighttime temp lows and RH highs). As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to a diversity of phenologies. Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist (particularly when compared to similar mosaicked ecosystems in Australia, Africa, and South America) that describe the relationship in the region.
+Canopy cover influences surface fuel in two primary ways: Q1) canopy cover restricts shade-intolerant species, like C4 grasses, reducing the surface fuel load while simultaneously/contrastingly adding to the surface fuel load via leaf shedding, and Q2) canopy cover provides a buffer that moderates microclimate by decreasing daily highs in temp and daily lows in RH (and less significantly by buffering nighttime temp lows and RH highs). As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to diverse phenological traits . Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist (particularly when compared to similar mosaicked ecosystems in Australia, Africa, and South America) that describe the relationship in the region.
 
 **Q1: 1) How does the distribution of surface fuel vary with canopy cover? 2) How does this relationship change throughout the dry season?**
 
@@ -143,7 +128,7 @@ The amount and type of surface fuel is critical to the distribution of forest sa
 
 Past studies suggest that surface fuel composition varies across a gradient of canopy cover, however the precise canopy cover/tree density thresholds for grass exclusion varies by system (Hoffman 2012a, Charles-Dominique 2018, Newberry 2020, Cardosa 2018). Surface fuels transition from grass-dominated to litter-dominated as canopy cover increases. C4 grasses are highly sensitive to light, and at a given canopy density, grass growth is restricted to such an extent that it is no longer relevant as a fuel source (fire-threshold). In most tropical studies the value of this threshold is ~3.0 LAI (Hoffman 2012a, Cardosa 2018) but no study, to my knowledge, has quantified this relationship, between canopy cover and grass biomass in Southeast Asia (Khaing 2019 looked at the C4 layer and herb layer relationship with Basal Area).
 
-In this analysis, we consider the relationship between LAI and grass load using fixed, early season (because grasses do not grow/change much in the dry season, so their abundance is most influenced by growing/wet season canopy levels. We will join the LAI observation 1+2 data with the averaged early and late season Biomass observations data to assess the relationship. We use observations 1 (Jan. 26) and 2 (Feb. 2) of the LAI data because LAI did not start to decline significantly until LAI ob. 3 (Feb. 8), so averaging obs. 1 and 2 will mitigate deviations in LAI records due to sky conditions at the time of observation without sacrificing data integrity
+In this analysis, we consider the relationship between LAI and grass load using fixed, early season LAI (because grasses do not grow/change much in the dry season, so their abundance is most influenced by growing/wet season canopy levels). We will join the LAI observation 1+2 data with the averaged early and late season Biomass observations data to assess the relationship. We use observations 1 (Jan. 26) and 2 (Feb. 2) of the LAI data because LAI did not start to decline significantly until LAI ob. 3 (Feb. 8), so averaging obs. 1 and 2 will mitigate deviations in LAI records due to sky conditions at the time of observation without sacrificing data integrity
 
 ``` {r grass setup}
 #loading in LAI data
@@ -223,7 +208,7 @@ summary(ms2)
 confint.segmented(ms2)
 
 # Create a data frame for prediction
-pred_df <- data.frame(mean_LAI = seq(min(data$mean_LAI), max(data$mean_LAI), length.out = 100))
+pred_df <- data.frame(mean_LAI = seq(min(data_avg$mean_LAI), max(data_avg$mean_LAI), length.out = 100))
 
 # Predictions for segmented model
 pred_df$grass_mass_pred <- predict(ms2, newdata = pred_df)
@@ -237,6 +222,7 @@ ggplot(data_avg, aes(x = mean_LAI, y = grass_mass)) +
 
 
 ```
+
 
 
 ### 1. 2) Litter distribution across the canopy gradient
@@ -1062,7 +1048,11 @@ kestrel_wind %>%
   group_by(plot_id, season) %>% 
   summarize(wind_speed = mean(wind_speed))
 
-LAI_3.2 %>% 
+LAI_wind <- LAI %>%
+  group_by(plot_id, quad_id, season) %>%
+  summarise(mean_LAI = mean(LAI, na.rm = TRUE))
+
+LAI_wind%>% 
   group_by(plot_id, season) %>% 
   summarize(LAI = mean(mean_LAI))
 
@@ -1236,7 +1226,7 @@ write.csv(behave_tbl_3.2,"C:/Users/d/Downloads/behave_table_V3.csv")
 -   Probability of Ignition (PIG) (%):
 
 
-#### Behave Output: Final Table of fuel variables and behave outputs
+### 3. 1) Modelled fire effects across the canopy gradient at the early and late dry season.
 
 BEHAVE UPDATE MAY 24
 ```{r behave update}
@@ -1245,14 +1235,15 @@ behave <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Beh
          ROS = col_number(), intensity = col_number(), 
          flame_length = col_number(), PIG = col_number()))
 
+#drop NA rows for plots with no loggers
+behave <- behave %>% drop_na(fuel_depth)
+
 #make season a factor
 behave$season <- factor(behave$season)
 
 #make plot_id a factor
 behave$plot_id <- factor(behave$plot_id)
 ```
-
-### 3. 1) Modelled fire effects across the canopy gradient at the early and late dry season.
 
 We're taking a look at the outputs of our behaveplus simulations which have taken all of our fuel variables together and spit out a number for each quadrant, per each season, to make understanding how all of these fuel variables work together to affect fire-feedbacks more interpretable.
 
@@ -1267,44 +1258,40 @@ Since we are less concerned with precisely interpreting differences between fact
 We will be isolating either side of the threshold by only considering the plots of the same type. This will allow for more direct and interpretable linear comparisons of before and after and a more detailed assessment of how risk of fire relatively changes on either side of the boundary. For the open-canopy, fire danger should increase quite a lot in terms of total ROS and intensity, but I believe the relative change should be greater on the closed canopy side as the litter fm and litter loads start to permit late season fire in the closed system. 
 
 
+PRESENT AS A GAMM BUT RUN THE ACTUAL STATISTICAL ANALYSES ON THE SUBSETS OF OPEN VS CLOSED??
 #### a) How do modelled fire effects and PIG change across the canopy gradient?
 ```{r ROS data analysis}
 
-gam_model <- gam(ROS ~ season + s(mean_LAI, by = season, k=5),
-                         data = behave_output3.2, method = "REML")
+# Creating a GAM model with a random intercept for 'plot_id'
+gamm_model<- gam(ROS ~ season + s(mean_LAI, by = season) + s(plot_id, bs = "re"),
+                       data = behave, method = "REML")
 
 
-summary(gam_model)
-k.check(gam_model)
-gam.check(gam_model)
+summary(gamm_model)
+k.check(gamm_model)
+gam.check(gamm_model)
 
 #Trying a different distribution
+gamm_model_tw<- gam(ROS ~ season + s(mean_LAI, by = season) + s(plot_id, bs = "re"),
+                family = tw(link = "log"), data = behave, method = "REML")
 
-gam_model_tw <- gam(ROS ~ season + s(mean_LAI, by = season, k=5),
-                    family = tw(link = "log"), data = behave_output3.2, method = "REML")
-  
-summary(gam_model_tw)
-k.check(gam_model_tw)
-gam.check(gam_model_tw)
-
-#They look much better with a tweedie dist
+summary(gamm_model_tw)
+k.check(gamm_model_tw)
+gam.check(gamm_model_tw)
 
 ```
 
 ``` {r ROS plot}
 #PLOT
-gam_data <- expand.grid(mean_LAI = seq(min(behave_output3.2$mean_LAI), max(behave_output3.2$mean_LAI), length = 100),
-                        season = unique(behave_output3.2$season))
+gam_data <- expand.grid(mean_LAI = seq(min(behave$mean_LAI), max(behave$mean_LAI), length = 100),season = unique(behave$season), plot_id = unique(behave$plot_id))
 
 # Make predictions using the GAM model
-gam_data$predicted <- predict(gam_model_tw, newdata = gam_data, type = "response")
+gam_data$predicted <- predict(gamm_model_tw, newdata = gam_data, type = "response")
 
-
-behave_output3.2$plot_id <- factor(behave_output3.2$plot_id)
 # Create a plot using predicitons from GAM
 ggplot(gam_data, aes(x = mean_LAI, y = predicted, color = season)) +
   geom_line() +
-  geom_point(data = behave_output3.2, aes(x = mean_LAI, y = ROS, color = season), alpha = 0.5) +
+  geom_point(data = behave, aes(x = mean_LAI, y = ROS, color = season), alpha = 0.5) +
    labs(title = "Modelled Rate of Fire Spread (ROS) Across Canopy Cover",
        x = "Canopy Cover (LAI)", y = "Rate of Spread (m/min)", color = "Season") +
   scale_color_manual(labels = c("Early", "Late"), values = c("orange", "darkred"))+
@@ -1314,21 +1301,21 @@ ggplot(gam_data, aes(x = mean_LAI, y = predicted, color = season)) +
 
 ```{r PIG analysis}
 #convert season to a factor
-behave_output3.2$season <- factor(behave_output3.2$season)
+behave$season <- factor(behave$season)
 
 #drop NAs
-behave_output3.2 <- behave_output3.2 %>% drop_na(PIG)
+behave<- behave %>% drop_na(PIG)
 
 
 #GAM with interaction
 factor_interact <- gam(PIG ~ season + s(mean_LAI, by = season),
-                         data = behave_output3.2, method = "REML")
+                         data = behave, method = "REML")
 
 summary(factor_interact)
 
 #PLOT
-PIG_data <- expand.grid(mean_LAI = seq(min(behave_output3.2$mean_LAI), max(behave_output3.2$mean_LAI), length = 100),
-                        season = unique(behave_output3.2$season))
+PIG_data <- expand.grid(mean_LAI = seq(min(behave$mean_LAI), max(behave$mean_LAI), length = 100),
+                        season = unique(behave$season))
 
 # Make predictions using the GAM model
 PIG_data$predicted <- predict(factor_interact, newdata = PIG_data, type = "response")
@@ -1340,7 +1327,7 @@ PIG_data$predicted <- predict(factor_interact, newdata = PIG_data, type = "respo
 # Create a plot using predicitons from GAM
 ggplot(PIG_data, aes(x = mean_LAI, y = predicted, color = season)) +
   geom_line() +
-  geom_point(data = behave_output3.2, aes(x = mean_LAI, y = PIG, color = season), alpha = 0.5) +
+  geom_point(data = behave, aes(x = mean_LAI, y = PIG, color = season), alpha = 0.5) +
        labs(title = "Modelled Probability of Ignition Across Canopy Cover",
        x = "Canopy Cover (LAI)", y = "Probability of Ignition (%)", color = "Season") +
   scale_color_manual(labels = c("Early", "Late"), values = c("orange", "darkred"))+
@@ -1353,15 +1340,15 @@ ggplot(PIG_data, aes(x = mean_LAI, y = predicted, color = season)) +
 To compare early and late season fire effects we will isolate data by forest type 
 (open or closed) and then run linear mixed models for the relationships between LAI and fire effects for either season.
 
-```{r setup}
-open_data <- behave_output3.2 %>% 
+``` {r ROS subset}
+open_data <- behave %>% 
   filter(plot_type == "ddf")
 
 open_model <- lmer(ROS ~ mean_LAI*season + (1|plot_id), data = open_data)
 summary(open_model)
 
 
-closed_data <- behave_output3.2 %>% 
+closed_data <- behave %>% 
   filter(plot_type == "evg")
 
 closed_model <- lmer(ROS ~ mean_LAI*season + (1|plot_id), data = closed_data)
@@ -1369,13 +1356,22 @@ summary(closed_model)
 
 ggplot(closed_data, aes(x = mean_LAI, y = ROS, color = season))+
   geom_point(alpha = .5) + geom_smooth(method = "lm", fill = "NA")+
-  labs(title = "Closed Canopy Modelled PIG Across Canopy Cover",
-       x = "Canopy Cover (LAI)", y = "Probability of Ignition (%)", color = "Season") +
+  labs(title = "Closed Canopy ROS",
+       x = "Canopy Cover (LAI)", y = "ROS", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("orange", "darkred"))+
+  theme_minimal()
+
+ggplot(open_data, aes(x = mean_LAI, y = ROS, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm", fill = "NA")+
+  labs(title = "Open Canopy ROS",
+       x = "Canopy Cover (LAI)", y = "ROS", color = "Season") +
   scale_color_manual(labels = c("Early", "Late"), values = c("orange", "darkred"))+
   theme_minimal()
 
 ```
-##### Rate of Spread (ROS)
+
+
+
 
 ### 4.1) Sensitivity Analysis
 
