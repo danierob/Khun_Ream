@@ -1226,7 +1226,7 @@ write.csv(behave_tbl_3.2,"C:/Users/d/Downloads/behave_table_V3.csv")
 -   Probability of Ignition (PIG) (%):
 
 
-### 3. 1) Modelled fire effects across the canopy gradient at the early and late dry season.
+### Modelled fire effects across the canopy gradient at the early and late dry season.
 
 BEHAVE UPDATE MAY 24
 ```{r behave update}
@@ -1252,15 +1252,14 @@ There are 2 main questions we will be approaching:
 **a) How do modelled fire effects and PIG change across the canopy gradient?**
 Here we are particularly interested in the presence or absence of a threshold. A threshold indicates that there is a difference in fire recruitment on either side of some boundary determined by canopy cover. The steeper the threshold, the more stark the fire-recruitment on either side of the boundary. 
 
-Since we are less concerned with precisely interpreting differences between factors than we are with the fitting the precise relationship between our modeled data and canopy cover, we will use GAMMs so simply detect the presence or absence of a threshold.
+Since we are less concerned with precisely interpreting differences between factors than we are with the identification/visualization of a threshold, we will use the segmented function here (as we did to identify grass thresholds in 1.1).
 
 **b) How do fire effects vary by season in either forest type?**
-We will be isolating either side of the threshold by only considering the plots of the same type. This will allow for more direct and interpretable linear comparisons of before and after and a more detailed assessment of how risk of fire relatively changes on either side of the boundary. For the open-canopy, fire danger should increase quite a lot in terms of total ROS and intensity, but I believe the relative change should be greater on the closed canopy side as the litter fm and litter loads start to permit late season fire in the closed system. 
+We will be isolating either side of the threshold by subsetting plots of the same type (open canopy or closed canopy). This will allow for more direct and interpretable linear comparisons of early vs late season and a more detailed assessment of how risk of fire relatively changes on either side of the boundary. For the open-canopy, fire danger should increase quite a lot in terms of total ROS and intensity, but I believe the relative change should be greater on the closed canopy side as the litter fm and litter loads start to permit late season fire in the closed system. 
 
 
-PRESENT AS A GAMM BUT RUN THE ACTUAL STATISTICAL ANALYSES ON THE SUBSETS OF OPEN VS CLOSED??
 #### a) How do modelled fire effects and PIG change across the canopy gradient?
-```{r ROS data analysis}
+```{r ROS segmented data analysis}
 
 # Creating a GAM model with a random intercept for 'plot_id'
 gamm_model<- gam(ROS ~ season + s(mean_LAI, by = season) + s(plot_id, bs = "re"),
