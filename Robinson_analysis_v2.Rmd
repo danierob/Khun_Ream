@@ -1520,7 +1520,7 @@ pred_df$PIG_pred <- predict(segmented_model_early, newdata = pred_df)
 
 ggplot(behave_early, aes(x = mean_LAI, y = PIG)) +
   geom_point() +  # Add points for the original data
-  labs(title = "Early Dry Season", x = "Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)") +
+  labs(title = "Early Dry Season", x = "Canopy Cover (LAI)", y = "Probablity of Ignition (%)") +
   theme_minimal() +
   geom_line(data = pred_df, aes(x = mean_LAI, y = PIG_pred), color = "red")
 
@@ -1533,7 +1533,7 @@ pred_df1$PIG_pred <- predict(segmented_model_late, newdata = pred_df)
 
 ggplot(behave_late, aes(x = mean_LAI, y = PIG)) +
   geom_point() +  # Add points for the original data
-  labs(title = "Late Dry Season", x = "Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)") +
+  labs(title = "Late Dry Season", x = "Canopy Cover (LAI)", y = "Probablity of Ignition (%)") +
   theme_minimal() +
   geom_line(data = pred_df1, aes(x = mean_LAI, y = PIG_pred), color = "red") 
 ```
@@ -1543,7 +1543,7 @@ ggplot(behave_late, aes(x = mean_LAI, y = PIG)) +
 #Late + early season intensity segmented regressions
 ggplot(behave, aes(x = mean_LAI, y = PIG)) +
   geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
-  labs(x = "Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)") +
+  labs(x = "Canopy Cover (LAI)", y = "Probablity of Ignition (%)") +
   scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
   theme_minimal() +
   geom_line(data = pred_df1, aes(x = mean_LAI, y = PIG_pred), color = "darkred", size = .8) +
@@ -1553,8 +1553,7 @@ ggplot(behave, aes(x = mean_LAI, y = PIG)) +
 
 #### b) How do fire effects vary by season in either forest type?
 
-To compare early and late season fire effects we will isolate data by forest type 
-(open or closed) and then run linear mixed models for the relationships between LAI and fire effects for either season.
+With the fire effects variables (flame length, fireline intensity, and ROS) we see clear differences between early and late season flammability in the open canopy, but to compare flammability between the early and late season we will subset data by forest type (open canopy/closed canopy) and perform linear mixed regression incorporating the individual plots (plot_id) as random effects. After having assessed the flammability thresholds, this subsetting analysis will allow us to perform more thorough comparisons of seasonal effects on flammability by disregarding the nonlinearity associated with the differences in flammability across forest types.
 
 ``` {r ROS subset}
 open_data <- behave %>% 
@@ -1572,20 +1571,146 @@ summary(closed_model)
 
 ggplot(closed_data, aes(x = mean_LAI, y = ROS, color = season))+
   geom_point(alpha = .5) + geom_smooth(method = "lm")+
-  labs(title = "Closed Canopy ROS",
+  labs(title = "Closed Canopy Rate of Fire Spread in Surface Fuels",
        x = "Canopy Cover (LAI)", y = "ROS", color = "Season") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("orange", "darkred"))+
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
   theme_minimal()
 
 ggplot(open_data, aes(x = mean_LAI, y = ROS, color = season))+
   geom_point(alpha = .5) + geom_smooth(method = "lm")+
-  labs(title = "Open Canopy ROS",
+  labs(title = "Open Canopy Rate of Fire Spread in Surface Fuels",
        x = "Canopy Cover (LAI)", y = "ROS", color = "Season") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("orange", "darkred"))+
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
   theme_minimal()
 
 ```
 
+``` {r flame length subset}
+open_data <- behave %>% 
+  filter(plot_type == "ddf")
+
+open_model <- lmer(flame_length ~ mean_LAI*season + (1|plot_id), data = open_data)
+summary(open_model)
+
+
+closed_data <- behave %>% 
+  filter(plot_type == "evg")
+
+closed_model <- lmer(flame_length ~ mean_LAI*season + (1|plot_id), data = closed_data)
+summary(closed_model)
+
+ggplot(closed_data, aes(x = mean_LAI, y = flame_length, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm")+
+  labs(title = "Closed Canopy Surface Flame Length",
+       x = "Canopy Cover (LAI)", y = "Flame Length (m)", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal()
+
+ggplot(open_data, aes(x = mean_LAI, y = flame_length, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm")+
+  labs(title = "Open Canopy Surface Flame Length",
+       x = "Canopy Cover (LAI)", y = "Flame Length (m)", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal()
+
+```
+
+``` {r fireline intensity subset}
+open_data <- behave %>% 
+  filter(plot_type == "ddf")
+
+open_model <- lmer(intensity ~ mean_LAI*season + (1|plot_id), data = open_data)
+summary(open_model)
+
+
+closed_data <- behave %>% 
+  filter(plot_type == "evg")
+
+closed_model <- lmer(intensity ~ mean_LAI*season + (1|plot_id), data = closed_data)
+summary(closed_model)
+
+ggplot(closed_data, aes(x = mean_LAI, y = intensity, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm")+
+  labs(title = "Closed Canopy Surface Fireline Intensity",
+       x = "Canopy Cover (LAI)", y = "Fireline Intensity (kW/m)", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal()
+
+ggplot(open_data, aes(x = mean_LAI, y = intensity, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm")+
+  labs(title = "Open Canopy Surface Fireline Intensity",
+       x = "Canopy Cover (LAI)", y = "Fireline Intensity (kW/m)", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal()
+
+```
+
+
 ### 4.1) Sensitivity Analysis
+We will perform a sensitivity analysis to determine the relative contributions of the major flammability factors (fuel load, bulk density, fuel moisture, and weather) that separate the open and closed canopy areas. We will perform one sensitivity analysis for the early season and one for the late season, to see how the flammability factors vary across the dry season. Fuel loads, fuel bulk density, fuel moisture, and microclimate conditions are all important in establishing the flammability differences between open and closed states, but the contributions of each factor and how/if those contributions vary across the season has not been studied in dipterocarp mosaics. Understanding how the these factors contribute to flammability and how they may change over the course of the season helps us better understand 1)how fire feedbacks create mosaics and 2)how stable/sensitive these feedbacks are to changes in weather and fuel conditions.
+
+#### a) What are the relative contributions of flammability factors in seperating fire-feedbacks between open and closed systems?
+
+Similarly to Hoffman 2012, I will average each Behaveplus inputs across all 46 runs, per season (we will do this twice, 1 average per season), then change one set of parameters at a time to represent open canopy conditions (average of DDF3 - DDF6) or closed canopy conditions (average of EVG1-5). I am including DDF2 with the open canopy plots, because it has low LAI, but it is worth noting that DDF2 is more accurately classified as mixed deciduous (according to rangers and aligns with Tani 2007) which tends to be somewhere in between the broad designations of open and closed. The microclimate of DDF2 resembles the open canopy plots, but the surface fuel composition of DDF2 is more aligned with the SEF plots.
+
+```{r Across forest type sensitivty analysis setup}
+library(readxl)
+SA1 <- read_excel("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Sensitivity Analysis/SA_differences_V5.xlsx")
+
+SA_late <- SA1 %>% 
+filter(season == "late")
+
+SA_early <- SA1 %>% 
+  filter(season == "early")
 
 
+SA_early %>% 
+ggplot(aes(x = variable, y = ROS)) +
+  geom_col(fill = "blue4")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Rate of spread increase (m/min)", title = "Early Season")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))
+
+SA_late %>% 
+  ggplot(aes(x = variable, y = ROS)) +
+  geom_col(fill = "darkred")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Rate of spread increase (m/min)", title = "Late Season")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))
+
+```
+
+#### b) How do the contributions of flammability factors affect differences in flammability between early and late dry season within each forest type?
+
+Before we wanted to see how flammability factors differ between the two forest types. Now we are interested in how the flammability of each forest type changes from the early to the late season.
+
+```{r Across season sensitivty analysis setup}
+library(readxl)
+SA2 <- read_excel("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Sensitivity Analysis/forest_type_SA_differences.xlsx")
+ 
+SA_evg <- SA2 %>% 
+filter(plot_type == "ddf")
+
+SA_ddf <- SA2 %>% 
+  filter(plot_type == "evg")
+
+
+SA_ddf %>% 
+ggplot(aes(x = variable, y = ROS)) +
+  geom_col(fill = "blue4")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Rate of spread increase (m/min)", title = "DDF")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))
+
+SA_evg %>% 
+  ggplot(aes(x = variable, y = ROS)) +
+  geom_col(fill = "darkred")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Rate of spread increase (m/min)", title = "EVG")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))
+
+```
