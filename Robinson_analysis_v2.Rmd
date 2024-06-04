@@ -378,17 +378,30 @@ p <- ggplot(data = lit_dat, aes(x = mean_LAI, y = yvar, color = season)) +
 p + geom_point(data = data, aes(x = mean_LAI, y = litter_mass, color = season), alpha = .5) 
 
 ```
-Going to take a peak at Litter as a squared (2 order poly graph)
+Going to take a peak at Litter as a quadratic (2 order poly graph)
 ```{r litter squared}
 #random intercepts model
 m2 <- lmer(litter_mass ~ mean_LAI*season + I(mean_LAI^2) * season + (1|plot_id), data = data, REML = TRUE)
+
 summary(m2)
 
-
 ### Interpreting coefficients with CIs using emmeans
-emtrends(m1, ~ season, var="mean_LAI")
 emtrends(m2, ~ season, var="mean_LAI")
+
+#Compare m1 and m2 (squared model)
+# Calculate R² values
+r2_values1 <- r.squaredGLMM(m1)
+r2_values2 <- r.squaredGLMM(m2)
+
+# Display R² values
+print(r2_values1)
+print(r2_values2)
+
+#AIC
+AIC(m1,m2)
+
 ```
+Our squared model meets assumptions better, has lower AIC, better fit, and seems to generally represent the data more accurately. We will use 2nd order polynomial (squared) litter model.
 
 ```{r litter squared plot, echo = FALSE}
 #Now lets graphically represent this
@@ -406,7 +419,6 @@ p <- ggplot(data = lit_dat, aes(x = mean_LAI, y = yvar, color = season, fill = s
 
 #add points from the original data
 p <- p + geom_point(data = data, aes(x = mean_LAI, y = litter_mass, color = season), alpha = .7)
-
 
 p
 
