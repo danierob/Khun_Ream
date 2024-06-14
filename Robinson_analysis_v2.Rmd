@@ -1117,6 +1117,15 @@ anova(m_wind)
 # Post-hoc analysis for canopy cover differences by month
 emmeans(m_wind, pairwise ~ plot_type | season)
 ```
+```{r wind speed individual point plot}
+kestrel_wind <- kestrel %>% 
+  group_by(season, plot_id, plot_type) %>% 
+  summarise(wind_speed = mean(wind_speed))
+  
+ggplot(kestrel_wind, aes(x = plot_type, y = wind_speed, color = season)) +
+  geom_point()
+
+```
 **2m Temperatures (Celcius)**
 
 ```{r temp max}
