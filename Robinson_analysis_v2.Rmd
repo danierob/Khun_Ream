@@ -68,7 +68,7 @@ Because, in a system where fire is proposed to play a hefty role in moderating t
 
 *Canopy cover* is the driver we focus on throughout this analysis. We will evaluate the responses of several fuel variables in relation to our predictor, canopy cover, to parse out the spatial and temporal variability and changes in fuel availability in our system.
 
-Analyses that evaluate tree-grass interactions often focus on the whole tree or the composition/distribution of trees in relation to grass. In this study, our metric for tree cover instead focuses on the canopy as determined via LAI measurements from a LICOR 2200c canopy analyzer. Our aim was to assess how tree cover affects surface fuel as a result of light exclusion, therefore LAI rather than a stand density metric like basal area was more suited to our analysis. LAI allows for the indirect accounting of variation in leaf traits & species composition that is typically lost to error in a basal area analysis . *with regards to light exclusion, basal area assumes uniformity between dbh and canopy architecture which is never the case as different species and different site conditions give rise to varying canopy architectures. Furthermore, as pointed out by several papers (Hoffman, Charles-Dominique) specific leaf area (SLAs) and branch mass architectures (BMAs) may be important functional traits that contrast between savanna-oriented vs forest-oriented species as adaptations for increased light penetration (savanna species) or increased light exclusion (forest species). Under this assertion, a stand of savanna trees at a given basal area would provide less shade than a stand of forest trees of the same basal area.
+Analyses that evaluate tree-grass interactions often focus on the whole tree or the composition/distribution of trees in relation to grass. In this study, our metric for tree cover instead focuses on the canopy as determined via LAI measurements from a LICOR 2200c canopy analyzer. Our aim was to assess how tree cover affects surface fuel as a result of light exclusion, therefore LAI rather than a stand density metric like basal area was more suited to our analysis. LAI allows for the indirect accounting of variation in leaf traits & species composition that is typically lost to error in a basal area analysis . *with regards to light exclusion, basal area assumes uniformity between dbh and canopy architecture which is never the case as different species and different site conditions give rise to varying canopy architectures. Furthermore, as pointed out by several papers (Hoffman, Charles-Dominique) specific leaf area (SLAs) and branch mass architectures (BMAs) may be important functional traits that contrast between savanna-oriented vs forest-oriented species as adaptations for increased light penetration (savanna species) or increased light exclusion (forest species). So a  stand of savanna trees at a given basal area would provide less shade than a stand of forest trees of the same basal area.
 
 Evaluating LAI also provides us with the opportunity to roughly assess phenological differences between plots and forest types, which is critical in determining seasonal dynamics of fuel distribution (namely through litter accumulation) and fuel microclimate (namely via temperature and moisture buffering).
 
@@ -95,7 +95,15 @@ LAI_plots <- LAI %>%
   summarize(LAI_plot = mean(LAI, na.rm = TRUE))
 
 ```
+```{r LAI summaries}
+LAI_summaries <- LAI %>% 
+  group_by(plot_type, obs_period) %>% 
+  summarise(LAI = mean(LAI, na.rm = TRUE))
 
+LAI_differences <- LAI_summaries %>% 
+  group_by(obs_period) %>% 
+  summarise(LAI = diff(LAI))
+```
 **Canopy cover change by plot across the season**
 
 ```{r LAI across the season PLOT}
@@ -905,7 +913,7 @@ p + geom_point(data = LAI_avgxTOMST_seasons, aes(x = LAI, y = max_air_temp, colo
 ####b) TOMST Temp by observation
 **Average of peak weather hours across canopy cover over season**
 
-In this analysis we will be looking at the relationship between microclimate and canopy cover across the two scales that are most important for understanding the role of microclimate in determining fuel availability: daily scales and seasonal scales. We will pair each LAI obs with an average of the daytime (1100 - 1700) max temps.
+In this analysis we will be looking at the relationship between microclimate and canopy cover
 
 ```{r 2.1.1 setup, include = FALSE}
 LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
@@ -1117,6 +1125,8 @@ anova(m_wind)
 # Post-hoc analysis for canopy cover differences by month
 emmeans(m_wind, pairwise ~ plot_type | season)
 ```
+Output of emmeans tells us that early season contrast between ddf and evg not quite significant (p-val = .08), but as late season increases wind speed in both plot types, late season contrast between ddf and evg is significant at p-val = .03.
+
 ```{r wind speed individual point plot}
 kestrel_wind <- kestrel %>% 
   group_by(season, plot_id, plot_type) %>% 
