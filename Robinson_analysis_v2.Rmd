@@ -76,11 +76,9 @@ Past studies in this region (Very few but largely based on the work of Williams 
 
 **How did LAI change by plot and by plot type across the season?**
 
-```{r LAI across the season}
+```{r LAI across the season, include = FALSE}
 #loading in LAI data
-LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
-    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
-        LAI = col_number()))
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv",col_types = cols(date = col_date(format = "%m/%d/%Y"), LAI = col_number()))
 
 #make season a factor
 LAI$season <- factor(LAI$season)
@@ -89,12 +87,18 @@ LAI$plot_id <- factor(LAI$plot_id)
 #make plot_type a factor
 LAI$plot_type <- factor(LAI$plot_type)
 
+
+#we will filter out obs period 5 because bad sky conditions resulted in unreliable LAI readings:
+LAI <- LAI %>%
+  filter(!obs_period == "5")
+
 #average all quads for each plot and each observation period
 LAI_plots <- LAI %>% 
-  group_by(plot_id, obs_period, plot_type, date) %>% 
+  group_by(plot_id, obs_period, plot_type,date) %>% 
   summarize(LAI_plot = mean(LAI, na.rm = TRUE))
 
 ```
+
 ```{r LAI summaries}
 LAI_summaries <- LAI %>% 
   group_by(plot_type, obs_period) %>% 
@@ -103,13 +107,13 @@ LAI_summaries <- LAI %>%
 LAI_differences <- LAI_summaries %>% 
   group_by(obs_period) %>% 
   summarise(LAI = diff(LAI))
+
+LAI_differences
 ```
 **Canopy cover change by plot across the season**
 
 ```{r LAI across the season PLOT}
 #we will filter out obs period 5 because records are clearly sketchy from that day due to several bad readings:
-LAI_plots <- LAI_plots %>%
-  filter(!obs_period == "5", !obs_period == "3")
 
 
 ggplot(data = LAI_plots, aes(x = date, y = LAI_plot, color = plot_type)) +
@@ -151,6 +155,7 @@ LAI$season <- factor(LAI$season)
 #make plot_id a factor
 LAI$plot_id <- factor(LAI$plot_id)
 
+
 biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V4.csv", 
                     col_types = cols(grass_height = col_number(), 
                                      litter_depth = col_number(), grass_per = col_number(), 
@@ -177,8 +182,8 @@ biomass_seasons <- biomass %>%
             wood_mass = mean(wood_mass), other_mass = mean(other_mass), 
             grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
             grass_per = mean(grass_per), litter_per = mean(litter_per), seedlings = mean(seedlings))
-#isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50)
 
+#isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50) because peak LAI (growing season canopy cover) ultimately determines fuel loads.
 LAI_early <- LAI %>%
   group_by(plot_id, quad_id, plot_type) %>%
   filter(obs_period == "1" | obs_period == "2") %>% 
@@ -300,6 +305,7 @@ LAI$season <- factor(LAI$season)
 #make plot_id a factor
 LAI$plot_id <- factor(LAI$plot_id)
 
+
 biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V4.csv", 
                     col_types = cols(grass_height = col_number(), 
                                      litter_depth = col_number(), grass_per = col_number(), 
@@ -326,21 +332,22 @@ biomass_seasons <- biomass %>%
             wood_mass = mean(wood_mass), other_mass = mean(other_mass), 
             grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
             grass_per = mean(grass_per), litter_per = mean(litter_per), seedlings = mean(seedlings))
-#isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50)
 
+
+#isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50) because peak LAI (growing season canopy cover) ultimately determines fuel loads.
 LAI_early <- LAI %>%
-  group_by(plot_id, quad_id) %>%
+  group_by(plot_id, quad_id, plot_type) %>%
   filter(obs_period == "1" | obs_period == "2") %>% 
   summarise(mean_LAI = mean(LAI))
 
 #merging LAI_early and biomass_seasons into LAIxbiomass_seasons
-LAI_earlyxbiomass_seasons <- right_join(LAI_early, biomass_seasons, by = c("plot_id", "quad_id"))
+LAI_avgxbiomass_seasons <- right_join(LAI_avg, biomass_seasons, by = c("plot_id", "quad_id"))
 
 #drop the quadrants that did not have biomass records
 LAI_earlyxbiomass_seasons <- LAI_earlyxbiomass_seasons %>% drop_na(grass_mass)
 ```
 
-Currently, we are just evaluating the assumptions of m1, the random intercept model. Rendom slope + intercept seems to fit slightly better, but given that after the interaction with season, each random level of plot_id will only have 4-5 data points. I think that the extra df required for slpoe+intercept is not worth the slight increase in model fit by adding the random slope term. 
+Currently, we are just evaluating the assumptions of m1, the random intercept model. Random slope + intercept seems to fit slightly better, but given that after the interaction with season, each random level of plot_id will only have 4-5 data points. I think that the extra df required for slope+intercept is not worth the slight increase in model fit by adding the random slope term. 
 
 ```{r litter lmer random int analysis, echo = FALSE}
 #Checking out mixed effects models with interaction between mean_LAI and season
@@ -719,86 +726,7 @@ ggplot(data2, aes(x = mean_LAI, y = bulk_density/1000))+
   theme_minimal() 
 ```
 
-###1. 5) Fine Fuel Distribution by Fuel Type and by season
-Here we will look at the summaries of fuel and microclimate values averaged by forest type and by season. Previously, for fuel dist variables, we have only considered early season LAI (because wet season LAI determines grass growth adn keeping LAI constant from early to late dry season allows us to compare seasonal conditions at given locations.
 
-For the summary statistics, we will look average all values of interest by plot type and by season, including LAI. Where the cutoff between the early and late season will be observation 4, when most microclimate conditions started to change rapidly.
-
-```{r fine fuel composition setup, include = FALSE}
-LAI_seasons <- LAI %>% 
-  group_by(season, plot_id, quad_id, plot_type) %>% 
-  summarize(LAI = mean(LAI, na.rm = TRUE))
-
-#merging LAI_seasons and biomass_seasons into fuel_seasons
-fuel_seasons <- right_join(LAI_seasons, biomass_seasons, by = c("plot_id", "quad_id", "plot_type", "season"))
-
-#add fine load and total fuel load (taken from 1.3)
-fuel_seasons <- fuel_seasons %>% 
-  mutate(fine_load = grass_mass + litter_mass)
-
-fuel_seasons <- fuel_seasons %>% 
-  mutate(fuel_load = grass_mass + litter_mass + wood_mass + other_mass)
-
-#add bulk density and fuel depth (taken from 1.4)
-fuel_seasons <- fuel_seasons %>% 
-  mutate(grass_ratio = grass_per/(litter_per+ grass_per))
-
-#LITTER RATIO
-fuel_seasons <- fuel_seasons %>% 
-  mutate(litter_ratio = litter_per/(litter_per+ grass_per))
-
-
-#Weighted means of litter and mass for all subplots with grass loads <240g/m2
-#Here we are determining fuel depth as grass height if there is more that 240g/m2 of grass, as litter depth if there is less than 30g/m2 of grass and as the weighted mean of grass height and litter depth otherwise.
-fuel_seasons <- fuel_seasons  %>%
-  mutate(fuel_depth = ifelse(grass_mass > 240, 
-              (grass_height),(grass_height*grass_ratio+litter_depth*litter_ratio)))
-
-fuel_seasons <- fuel_seasons  %>% 
-  mutate(fuel_depth = ifelse(grass_mass < 30, 
-              (litter_depth),(fuel_depth)))
-
-fuel_seasons <- fuel_seasons %>%
-  mutate(bulk_density = (grass_mass+litter_mass+other_mass+wood_mass)/
-                                 (fuel_depth/100))
-
-fuel_seasons <- fuel_seasons %>%
-  mutate(bulk_density = (bulk_density/1000))
-
-
-#Fine Fuel Bulk Density
-fuel_seasons <- fuel_seasons %>%
-  mutate(fine_density = (grass_mass+litter_mass)/
-                                 (fuel_depth/100))
-
-fuel_seasons <- fuel_seasons %>%
-  mutate(fine_density = (fine_density/1000))
-
-
-#drop the quadrants that did not have biomass records
-fuel_seasons <- fuel_seasons %>% drop_na(grass_mass)
-
-```
-
-```{r fine fuel composition summaries}
-fuel_summaries <- fuel_seasons %>% 
-  group_by(plot_type, season) %>% 
-  summarize(LAI = mean(LAI), grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), wood_mass = mean(wood_mass), seedlings = mean(seedlings), fuel_load = mean(fuel_load), fine_load = mean(fine_load),
-            fuel_depth = mean(fuel_depth), bulk_density = mean(bulk_density))
-
-```
-
-```{r fuel change seasonal metrics}
-#fine fuel percentage
-fuel_summaries %>% 
-  mutate(grass_percentage = grass_mass/fine_load, litter_percentage = litter_mass/fine_load)
-
-#litter load increases by plot_type
-#(ddf late - ddf early) / ddf early = 125%
-#(evg late - evg early) / evg early = 129%
-
-  
-```
 
 **Q2: 1) How does surface microclimate vary with canopy cover? 2) How does this relationship change throughout the dry season?**
 
@@ -853,12 +781,13 @@ TOMST_seasons <- TOMST_filter %>%
 TOMST_seasons <- TOMST_seasons %>%
   group_by(season, plot_id, quad_id, plot_type) %>%
   summarize(max_air_temp = max(max_air_temp), min_air_temp = min(min_air_temp), avg_air_temp = mean(avg_air_temp))
-            
-LAI_seasons <- LAI %>%
-  group_by(plot_id, quad_id, plot_type, season) %>%
-  summarise(LAI = mean(LAI, na.rm = TRUE))
+ 
+#we will filter out obs period 5 because bad sky conditions resulted in unreliable LAI readings:
+LAI_no5 <- LAI %>%
+  filter(!obs_period == "5")           
 
-LAI_avg <- LAI %>%
+#average LAI across the dry season (unlike fuel distribution where we only looked at the peak LAI) because microclimate and fuel moisture are strongly influenced by changes in canopy cover, so we want to average the changing canopy cover across the season. 
+LAI_avg <- LAI_no5 %>%
   group_by(plot_id, quad_id, plot_type) %>%
   summarise(LAI = mean(LAI, na.rm = TRUE))
 
@@ -1220,14 +1149,32 @@ fm <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Mo
         litter = col_number(), hundred_hr = col_number(), 
         ten_hr = col_number(), one_hr = col_number()))
 
+#need to assign season to tomst dates: early = Jan 15 - Feb 22
+#late = Feb 23 - Apr 11
+
+fm_seasons <- fm %>% 
+    mutate(season = case_when(
+        date < "2023/02/23" ~ "early",
+        date >= "2023/02/23" ~  "late"
+    ))
+
 # Bring in LAI data
 LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
     col_types = cols(date = col_date(format = "%m/%d/%Y"), 
         LAI = col_number(),
         obs_period = col_factor(levels = c("0","1", "2", "3", "4", "5", "6", "7"))))
 
-#merge LAI_early and fm_avg for LAIxfm
-LAIxfm_obs <- left_join(fm, LAI, by = c("quad_id", "plot_id", "obs_period", "plot_type"))
+#we will filter out obs period 5 because bad sky conditions resulted in unreliable LAI readings:
+LAI_no5 <- LAI %>%
+  filter(!obs_period == "5")           
+
+#average LAI across the dry season (unlike fuel distribution where we only looked at the peak LAI) because microclimate and fuel moisture are strongly influenced by changes in canopy cover, so we want to average the changing canopy cover across the season. 
+LAI_avg <- LAI_no5 %>%
+  group_by(plot_id, quad_id, plot_type) %>%
+  summarise(LAI = mean(LAI, na.rm = TRUE))
+
+#merge LAI and fm_avg for LAIxfm
+LAIxfm_obs <- left_join(fm, LAI_avg, by = c("quad_id", "plot_id", "plot_type", "season"))
 
 ```
 **Litter Fuel Moisture Content**
@@ -1406,7 +1353,7 @@ The plots are aligned with these models:
 
 We will have two sets of behaveplus outputs in this cross-season analysis: one for the early season and one for the late season. Fuel moistures will come from the full-spectrum measurements on Feb 16 and Mar 31. These are slightly unaligned with biomass obs (late Jan and Early April), but TOMST and kestrels and supplementary FMC observations indicate little deviation in the 2 weeks between biomass sampling and FMC measurements.
 
-I'm still going to average LAI around the observations (e.g. early season behaveplus outputs will relate to the3 average of LAI obs 2, 3, and 4) to account for any missing LAI values and temper out the differences in light angles, measurement errors, etc.
+We are more concerned with how conditions at fixed positions on the surface relate to one another in the early vs late season rather than we are the direct relationship between canopy cover and microclimate, so we average all LAI values acorss the dry season and use the same LAI for early and late behaveplus analyses.
 
 ```{r behave3.2 LAI, include = FALSE}
 #loading in LAI data
