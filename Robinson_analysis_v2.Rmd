@@ -1174,7 +1174,7 @@ LAI_avg <- LAI_no5 %>%
   summarise(LAI = mean(LAI, na.rm = TRUE))
 
 #merge LAI and fm_avg for LAIxfm
-LAIxfm_obs <- left_join(fm, LAI_avg, by = c("quad_id", "plot_id", "plot_type", "season"))
+LAIxfm_obs <- left_join(fm_seasons, LAI_avg, by = c("quad_id", "plot_id", "plot_type"))
 
 ```
 **Litter Fuel Moisture Content**
@@ -1289,6 +1289,8 @@ p3<- ggplot(LAIxfm_obs, aes(x = LAI, y = woody_leaf, color = season)) +
    theme_bw()
 
 p3 <- p3 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
+
+p3
 
 ```
 
