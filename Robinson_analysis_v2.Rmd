@@ -1227,23 +1227,47 @@ litter <- litter[!outliers, ]
 
 m1 <- lmer(log(litter) ~ LAI*season + (1|plot_id), data = litter, REML = TRUE)
 
+mnolog <- lmer(litter ~ LAI*season + (1|plot_id), data = litter, REML = TRUE)
+
 plot(resid(m1))
+plot(resid(mnolog))
 
 qqnorm(residuals(m1))
 
-summary(m1)
+summary(mnolog)
 
 ```
 
 
 ```{r litter fmc plot, include = FALSE}
+pred_data <- data.frame(
+  LAI = seq(min(litter$LAI), max(litter$LAI), length.out = 100),
+  season = rep(c("early", "late"), each = 100))
+
+pred_data$pred_log_litter <- predict(m1, newdata = pred_data, re.form = NA)
+
+# Reverse transform the predicted values
+pred_data$pred_litter <- exp(pred_data$pred_log_litter)
+
+# Scatter plot with fitted lines on the original scale
+p1 <- ggplot(litter, aes(x = LAI, y = litter, color = season)) +
+  geom_point(alpha = .7, size = 1) +
+  geom_line(data = pred_data, aes(x = LAI, y = pred_litter, color = season)) +
+  labs(y = "Litter Mass", x = "LAI", title = "Litter Mass vs. LAI by Season") +
+scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
+      labs(title = "Litter", x = "Canopy Cover(LAI)", y = "Litter Fuel Mositure Content (%)", color = element_blank())+ 
+   theme_bw()
+
+p1 <- p1 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
+
+p1
 
 #no litter or one_hr obs for period 3
 litter <- LAIxfm_obs %>% 
   filter(obs_period %in% c("1", "2", "4", "5", "6", "7"))
 
-p1 <- ggplot(litter, aes(x = LAI, y = litter, color = season)) +
-  geom_point(alpha = .5, size = .5) +
+p1 <- ggplot(litter, aes(x = LAI, y = log(litter), color = season)) +
+  geom_point(alpha = .8, size = .8) +
   geom_smooth(aes(group = obs_period), fill = "NA", method = "lm", size = .1) +
   geom_smooth(aes(group = season), fill = "NA", method = "lm", size = .8)+
   scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
