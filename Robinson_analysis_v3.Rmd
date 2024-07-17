@@ -1,0 +1,2139 @@
+---
+title: 'Fuel variability across a Cambodian fire season: Data Analysis'
+author: "Daniel Robinson"
+date: "2024-06-21"
+output:
+html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r packages, include=FALSE}
+library(MuMIn)
+library(mgcv)
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(lme4)
+library(nlme)
+library(gridExtra)
+library(ggeffects)
+library(vtable)
+library(DHARMa)
+library(quantreg)
+library(emmeans)
+library(segmented)
+library(car)
+library(gt)
+```
+
+## Introduction
+
+The aim of this research is to explore the heterogeneity of fire recruitment function in the Dipterocarp mosaic: We conducted field observations across the dry season to assess the horizontal distribution of fuel structure and microclimate across a range of canopy cover, from open to closed, to better understand how Cambodia's mosaic is shaped by fire.
+
+This Chapter will be divided into two parts: **Part 1: field observations** and **Part 2: fire modelling**.
+
+**Part 1** will focus on describing the variability in fuel distribution and fuel microclimate across a canopy gradient and across the dry season. We will explore how the surface conditions of open and closed canopy states differ and how this relationship changes in the presence of prolonged seasonal drought, changing fuel loads, increased temperatures that accompany the transition from early to late dry season. We will discuss our study system in the context of alternate stable states, and compare the mosaic dynamics of our system with that of mosaics in other studies throughout the tropics. We will direct our focus by approaching these questions:
+
+*Q1: 1) How does surface fuel composition and structure vary with canopy cover? And how does this relationship change throughout the dry season?*
+
+In approaching this question we will pay particularly close attention to the presence/absence of a sharp canopy cover threshold for grass load (which in past studies has been cited as the primary fuel variable in driving mosaic fire feedback) and seasonal difference in litter load, which will likely play the largest role in altering early to late season fuel structure via bulk density and total fuel load (grass does not change much over the course of a dry season, but litter will accumulate throughout).
+
+*Q2: 1) How does surface microclimate vary with canopy cover? And how does this relationship change throughout the dry season?*
+
+**Part 2** utilizes fire modelling to better understand the variable role of fire recruitment across the mosaic. Understanding fire likelihood and severity is complicated by interacting factors and nonlinear relationships among the various determinants of fire. In an effort to provide some additional clarity and to tease out the shifting relationships between composition and fuel moisture and microclimate across the dry season, we will be using the fire model Behaveplus6 to evaluate predicted fire effects in the absence of physical fire data by asking:
+
+*Q3: 1) How does probability of fire vary with canopy cover? 2) How does this change across the dry season?*
+
+*Q4: 1) Is fire likelihood more limited by fuel or microclimate? 2) Does this relative relationship change throughout the dry season?*
+
+## Analysis
+
+### The canopy gradient
+
+In mesic savannas, woody cover and the abundance, continuity, and composition of grass are correlated. Generally speaking, as tree cover increases, grass cover decreases. This relationship is the result of several above and below ground interactions, and at any given area, the presence or absence of grass may be moderated by a number of factors, such as competition for rooting space and nutrients between woody and herbaceous species, water availability, etc. But within the forest-savanna mosaics of the tropics, it is established that light availability at the ground level -- largely moderated by canopy cover -- is critical in determining the distribution of grasses.
+
+Talk a bit about C4 and why they require more light than their counterparts: Grasses and especially C4 love light
+
+This antogonistic relationship between grasses and trees gives rise to the mosaics that exist throughout the seasonal tropics. Fires are common and frequent in savanna regions globally, and fire is critical (particularly in mesic savanna) to the maintenance of a grassy state, because fire reduces woody cover and ultimately selects for "savanna" tree species via demographic bottlenecks (Nguyen 2019). 
+
+The vertical and horizontal distributions of fuel amount and fuel type is important in determining fire regimes. The savanna fire regime is the most active fire system on Earth. Many savannas have fire return intervals as frequent as once per year, which is largely attributed to the abundant grassy communities that define savanna systems. Within savanna-forest mosaics, fires tend to be restricted to the fuels at the ground level (few canopy fires or torching - because the phenology and architecture of tropical canopies is not conducive to carrying fire). The surface fuel bed is composed of multiple classes of fuels, and while large fuels (100 and 1000 hr logs) may be an important consideration for fire intensity and fire holdover (longevity), almost all considerations of fire ignition and spread are dependent on the distribution of fine fuels (litter and grass). I mention all of this to explain why we will now, 1) focus our attentions and efforts on surface fuels, and primarily on fine fuels (grass and litter), and 2) examine the distribution of these fuels in relation to canopy cover.
+
+BUT WHY DOES THIS MATTER AT ALL??
+
+Because, in a system where fire is proposed to play a hefty role in moderating the distribution between grassy and treed communities, we need to understand how fuel dynamics are spatially (across the canopy gradient) and temporally (across the fire season) distributed to comprehend how *rigid* or stable these boundaries are.
+
+### Leaf Area Index (LAI)
+
+*Canopy cover* is the driver we focus on throughout this analysis. We will evaluate the responses of several fuel variables in relation to our predictor, canopy cover, to parse out the spatial and temporal variability and changes in fuel availability in our system.
+
+Analyses that evaluate tree-grass interactions often focus on the whole tree or the composition/distribution of trees in relation to grass. In this study, our metric for tree cover instead focuses on the canopy as determined via LAI measurements from a LICOR 2200c canopy analyzer. Our aim was to assess how tree cover affects surface fuel as a result of light exclusion, therefore LAI rather than a stand density metric like basal area was more suited to our analysis. LAI allows for the indirect accounting of variation in leaf traits & species composition that is typically lost to error in a basal area analysis . *with regards to light exclusion, basal area assumes uniformity between dbh and canopy architecture which is never the case as different species and different site conditions give rise to varying canopy architectures. Furthermore, as pointed out by several papers (Hoffman, Charles-Dominique) specific leaf area (SLAs) and branch mass architectures (BMAs) may be important functional traits that contrast between savanna-oriented vs forest-oriented species as adaptations for increased light penetration (savanna species) or increased light exclusion (forest species). So a  stand of savanna trees at a given basal area would provide less shade than a stand of forest trees of the same basal area.
+
+Evaluating LAI also provides us with the opportunity to roughly assess phenological differences between plots and forest types, which is critical in determining seasonal dynamics of fuel distribution (namely through litter accumulation) and fuel microclimate (namely via temperature and moisture buffering).
+
+Past studies in this region (Very few but largely based on the work of Williams 2008 and more informally from Stott's various papers), suggest a high degree of variability in shedding and flushing, with delay in the timing and a decrease in the magnitude of leaf fall among the evergreen:
+
+**How did LAI change by plot and by plot type across the season?**
+
+```{r LAI across the season, include = FALSE}
+#loading in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv",col_types = cols(date = col_date(format = "%m/%d/%Y"), LAI = col_number()))
+
+#make season a factor
+LAI$season <- factor(LAI$season)
+#make plot_id a factor
+LAI$plot_id <- factor(LAI$plot_id)
+#make plot_type a factor
+LAI$plot_type <- factor(LAI$plot_type)
+
+
+#we will filter out obs period 5 because bad sky conditions resulted in unreliable LAI readings:
+LAI <- LAI %>%
+  filter(!obs_period == "5")
+
+#average all quads for each plot and each observation period
+LAI_plots <- LAI %>% 
+  group_by(plot_id, obs_period, plot_type, date) %>% 
+  summarize(LAI_plot = mean(LAI, na.rm = TRUE))
+
+```
+
+```{r LAI summaries}
+# Summarize and reshape data
+LAI_summaries <- LAI %>% 
+  group_by(plot_type, obs_period) %>% 
+  summarise(LAI = mean(LAI, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_wider(
+    names_from = plot_type, 
+    values_from = LAI
+  )
+
+LAI_summaries <- LAI_summaries %>% 
+  mutate(LAI_difference = evg-ddf)
+
+```
+
+```{r LAI table}
+LAI_table <- LAI_summaries %>% 
+gt() %>% 
+  tab_header(
+    title = md("**LAI Differences**"),
+    subtitle = md("Between open and closed canopy plots, <br>from January 26 to April 11")
+  ) %>% 
+  cols_label(
+    obs_period = ("Observation"),
+    LAI_difference = ("LAI Difference"),
+    ddf = ("Open LAI"),
+    evg = ("Closed LAI")
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = everything() 
+  ) %>% 
+   fmt_number(
+    columns = c("LAI_difference", "ddf","evg"), # Specify the columns to format
+    decimals = 2 # Number of decimal places
+  )
+
+```
+**Canopy cover change by plot across the season**
+
+```{r LAI across the season PLOT}
+#we will filter out obs period 5 because records are clearly sketchy from that day due to several bad readings:
+
+
+ggplot(data = LAI_plots, aes(x = date, y = LAI_plot, color = plot_type)) +
+  geom_point(alpha = .5, size = .5) + 
+  geom_line(aes(group = plot_id),size = .1) +
+  geom_smooth(aes(group = plot_type), fill = "NA", size = .8)+
+  scale_color_manual(values = c("ddf" = "brown4", "evg" = "blue4"))+
+  scale_color_manual(labels = c("open", "closed"), values = c("red4", "blue4")) +
+  theme_minimal() + 
+  labs(title = "Seasonal Variation in Canopy Cover by Plot Type",
+       x = "Date", y = "Canopy Cover (LAI)", color = "Canopy Cover")
+
+```
+
+This graph provides an idea of how canopy cover varies among our plots and how LAI varies throughout the dry season. We see evidence of variable phenology between the evergreen and deciduous dominated plot types, expressed by the **evergreen lag in annual minimum LAI** with the deciduous-dominated savanna shedding leaves earlier in the season, plateauing at annual LAI lows in mid-late Feb, while evergreen-dominated forest start shedding leaves later in the season and do not plateau at annual LAI lows until mid-late March. This difference in timing is likely do to phenological trait difference in the evergreen and savanna species. Past studies have shown high degrees of leaf-trait variation within and between deciduous and evergreen species (determining leaf-type can itself be difficult as many "evergreen" species have high magnitudes of deciduousness).
+
+## Part 1: Evaluating the mosaic throughout a dry season: An assessment of fuel availability across a canopy gradient
+
+Canopy cover influences surface fuel in two primary ways: Q1) canopy cover restricts shade-intolerant species, like C4 grasses, reducing the surface fuel load while simultaneously/contrastingly adding to the surface fuel load via leaf shedding, and Q2) canopy cover provides a buffer that moderates microclimate by decreasing daily highs in temp and daily lows in RH (and less significantly by buffering nighttime temp lows and RH highs). As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to diverse phenological traits . Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist (particularly when compared to similar mosaicked ecosystems in Australia, Africa, and South America) that describe the relationship in the region.
+
+First we will create a "data" df to use for all fuel distribution analyses:
+
+``` {r fuel distribution data setup, include = FALSE}
+#loading in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+                col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+                                 LAI = col_number()))
+
+#make season a factor
+LAI$season <- factor(LAI$season)
+
+#make plot_id a factor
+LAI$plot_id <- factor(LAI$plot_id)
+
+
+biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V6.csv", 
+                    col_types = cols(grass_height = col_number(), 
+                                     litter_depth = col_number(), grass_per = col_number(), 
+                                     wood_per = col_number(), bare_per = col_number(), 
+                                     litter_per = col_number(), grass_mass = col_number(), 
+                                     other_mass = col_number(), one_hr_mass = col_number(), ten_hr_mass = col_number(), hundred_hr_mass = col_number(),
+                                     litter_mass = col_number(), seedlings = col_integer()))
+
+#multiply fuel masses by 4 to get g/m2 (quads were .25m l and w)
+biomass <- biomass %>%
+  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, one_hr_mass = one_hr_mass*4, ten_hr_mass = ten_hr_mass*4, hundred_hr_mass = hundred_hr_mass*4, other_mass = other_mass *4)
+
+#make season a factor
+biomass$season <- factor(biomass$season)
+
+#make plot_id a factor
+biomass$plot_id <- factor(biomass$plot_id)
+
+
+#we again must average the 3 biomass obs taken at each logger for one observation per logger per seasonal period for a total of 100 (50 x 2) minus 8 equals 92 records.
+biomass_seasons <- biomass %>%
+  group_by(plot_id, quad_id, season, plot_type) %>% 
+  summarise(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), 
+            one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass), other_mass = mean(other_mass), 
+            grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
+            grass_per = mean(grass_per), litter_per = mean(litter_per), seedlings = mean(seedlings))
+
+#isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50) because peak LAI (growing season canopy cover) ultimately determines fuel loads.
+LAI_early <- LAI %>%
+  group_by(plot_id, quad_id, plot_type) %>%
+  filter(obs_period == "1" | obs_period == "2") %>% 
+  summarise(mean_LAI = mean(LAI))
+
+#merging LAI_early and biomass_seasons into LAI_earlyxbiomass_seasons
+LAI_earlyxbiomass_seasons <- right_join(LAI_early, biomass_seasons, by = c("plot_id", "quad_id", "plot_type"))
+
+#drop the quadrants that did not have biomass records
+LAI_earlyxbiomass_seasons <- LAI_earlyxbiomass_seasons %>% drop_na(grass_mass)
+
+data <- LAI_earlyxbiomass_seasons
+```
+
+**Q1: 1) How does the distribution of surface fuel vary with canopy cover? 2) How does this relationship change throughout the dry season?**
+
+The amount and type of surface fuel is critical to the distribution of forest savanna mosaics (ref). Savannas can be difficult to delineate given the wide range of physiognomies in tree cover that they support, so we define savannas here as an area with continuous grassy understory and a significant tree component (Lehmann et al 2011, Ratnam 2011). This definition is intentionally unconcerned with an upper margin of canopy cover or tree cover or stand height or stand structure because the establishment of rigid physiognomic boundaries (say anything below 60% tree cover is savanna, and anything above is forest) may fail to account for the range of savanna-conforming functional adaptations across different regions with varying climates and evolutionary histories. This may be particular deleterious in regions that do not fit into the current physiognomic expectations of savanna, but may host a broad lineage of savanna-adapted species and traits. Instead, our definition relies on the ubiquitous relationship between canopy shading and grass exclusion, where at a certain amount of canopy cover, grass is no longer able to grow densely enough to support fire. This is particularly true for the highly flammable C4 grasses, which generally have a lower capacity for establishment in low-light environments (ref).
+
+### 1. 1) The LAI threshold for grass establishment
+
+Past studies suggest that surface fuel composition varies across a gradient of canopy cover, however the precise canopy cover/tree density thresholds for grass exclusion varies by system (Hoffman 2012a, Charles-Dominique 2018, Newberry 2020, Cardosa 2018). Surface fuels transition from grass-dominated to litter-dominated as canopy cover increases. C4 grasses are highly sensitive to light, and at a given canopy density, grass growth is restricted to such an extent that it is no longer relevant as a fuel source (fire-threshold). In most tropical studies the value of this threshold is ~3.0 LAI (Hoffman 2012a, Cardosa 2018) but no study, to my knowledge, has quantified this relationship, between canopy cover and grass biomass in Southeast Asia (Khaing 2019 looked at the C4 layer and herb layer relationship with Basal Area).
+
+In this analysis, we consider the relationship between LAI and grass load using fixed, early season LAI (because grasses do not grow/change much in the dry season, so their abundance is most influenced by growing/wet season canopy levels). We will join the LAI observation 1+2 data with the averaged early and late season Biomass observations data to assess the relationship. We use observations 1 (Jan. 26) and 2 (Feb. 2) of the LAI data because LAI did not start to decline significantly until LAI ob. 3 (Feb. 8), so averaging obs. 1 and 2 will mitigate deviations in LAI records due to sky conditions at the time of observation without sacrificing data integrity.
+
+``` {r grass data setup, include = FALSE}
+
+#remove the massive bamboo outlier in DDF5 Q4
+z_scores <- scale(LAI_earlyxbiomass_seasons$grass_mass)
+outliers <- abs(z_scores) > 3  # Adjust the threshold as needed
+
+# Create a subset without outliers
+data_outliers <- data[!outliers, ]
+
+```
+
+We use the segmented() function to determine the breakpoints at which grass mass begins its decline and when it reaches ~0. 
+
+``` {r grass segmented}
+#avg grass mass data between early and late
+data_grass <- data_outliers %>% 
+  group_by(plot_id, quad_id, mean_LAI) %>% 
+  summarize(grass_mass = mean(grass_mass))
+
+# Fit a 2 segmented regression model (2 segments!)
+
+m1 <- lm(grass_mass ~ mean_LAI, data=data_grass) 
+
+ms1 <- segmented(m1, npsi = 2)
+plot(ms1)
+summary(ms1)
+confint.segmented(ms1)
+
+# Create a data frame for prediction
+pred_df <- data.frame(mean_LAI = seq(min(data_grass$mean_LAI), max(data_grass$mean_LAI), length.out = 100))
+
+# Predictions for segmented model
+pred_df$grass_mass_pred <- predict(ms1, newdata = pred_df)
+
+ggplot(data_grass, aes(x = mean_LAI, y = grass_mass)) +
+  geom_point(size = 2) +  # Add points for the original data
+  labs(x = "Canopy Cover (LAI)", y = "Grass Mass (g/m2)") +
+  theme_minimal() +
+  geom_line(data = pred_df, aes(x = mean_LAI, y = grass_mass_pred), color = "red", size = .8
+  ) 
+
+
+```
+And we will also use a 3rd order polynomial linear regression to evaluate the overall relationship between LAI and grass mass with random intercepts for plot_id.
+
+``` {r grass lmm}
+#add grass + 1 column to log grass (several grass values of 0 cant be logged)
+data_grass_log <- data_grass %>% 
+group_by(grass_mass, plot_id, mean_LAI, quad_id) %>%
+mutate(grass1 = grass_mass + 1)
+
+#random intercepts model
+m1 <- lmer(log(grass1) ~log(mean_LAI) + (1|plot_id), data = data_grass, REML = TRUE)
+
+plot(m1)
+
+
+summary(m1)
+
+# Calculate R² values
+r2_values <- r.squaredGLMM(m1)
+
+# Display R² values
+print(r2_values)
+
+```
+
+```{r grass lmer plot, echo = FALSE}
+pred <- ggpredict(m1, terms = "mean_LAI")
+
+(ggplot(pred) + 
+   geom_line(aes(x = x, y = predicted), fill = NA, color = "red") +          # slope
+   geom_ribbon(aes(x = x, ymin = predicted - std.error, ymax = predicted + std.error), 
+               fill = NA, alpha = 0.5) +  # error band
+   geom_point(data = data_grass,                # adding the raw data
+              aes(x = data_grass$mean_LAI, y = data_grass$grass_mass)) + 
+   labs(x = "LAI", y = "Grass Mass (g)", 
+        title = "Grass Load Decreases Across Canopy Gradient") + 
+   theme_bw()
+)
+
+```
+
+### 1. 2) Litter distribution across the canopy gradient
+
+Grass burns readily due to its fine, aerated structure and continuity. As a result, grass is the major fuel type that delineates differences in fire recruitment between open and closed ecosystems. But litter is often a critical component of the fuel load depending on the fuel amount and arrangement. In savanna-forest systems, leaf litter tends to increase as tree density increases (Hoffman 2012b, Newberry 2020), and when grass is excluded by canopy density, litter is the primary source of ignition and the primary fuel carrier. I expect litter to increase across the tree density gradient in our system, as in similar studies. However, it is important to note that the savannas in Cambodia are particularly mesic, or more densely treed, than the savannas of similar study systems on other continents (ref), which may result in more litter in the savanna. While in the closed forest, even the most densely canopied tree stands of our research area have a high degree of deciduousness, which may result in more litter in the closed forest.
+
+**Seasonal Litter Loads**
+
+So, we know that canopy cover restricts grass growth, which due to its low bulk density (aerated architecture), is critically important in determining fine scale fire regimes in savanna-forest systems. But, as we established above, grass is not the only relevant component in this fuel matrix. Leaf litter is also a fine, flashy fuel, that can ignite and sustain fire, though typically at much lower rates due to the higher bulk density (compacted architecture) of litter layers. Therefore, evaluating the relationship between woody cover and surface fuel load ought to consider the varying contributions of grass and litter across a gradient of tree cover. As grass load decreases with woody cover, litter loads should increase, replacing the grass proportion of the fine fuel load with litter. These proportions, however, are complicated by many factors from phenology, to composition, to stand age, but especially time of season. In the early dry season, grass biomass is expected to be at its annual maximum, while leaf litter will be close to its annual minimum as few trees have shed their leaves. Thus, the early season fine fuel load, should be particularly grass-heavy. Contrastingly, the late season fine fuel load, should be leaf-heavy after months of litter accumulation.
+
+As canopy density transitions from opened to closed, fuel composition shifts away from being grass dominated and toward being litter dominated. Over the course of a dry season the distinction between open and closed surface fuel loads [decreases]{.underline} as grasses senescence and all deciduous and most evergreen trees (to a lesser magnitude) drop their leaves (Williams 2008), adding to the litter component of the surface fuel composition. The timing of senescence is highly variable among species in seasonal tropical forests, but over the season the result is the ultimately the same: As the dry season progresses, more fuel is added to the surface in the form of litter, packing surface fuels more densely.
+
+This analysis will expand on the idea from analysis 1.1.1, where we looked at fuel load across the canopy gradient, but we will add a factor to the model to evaluate how vegetation load/structure changes from early to late in the dry season.
+
+``` {r litter setup, include = FALSE}
+#loading in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+                col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+                                 LAI = col_number()))
+
+#make season a factor
+LAI$season <- factor(LAI$season)
+
+#make plot_id a factor
+LAI$plot_id <- factor(LAI$plot_id)
+
+
+biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V6.csv", 
+                    col_types = cols(grass_height = col_number(), 
+                                     litter_depth = col_number(), grass_per = col_number(), 
+                                     wood_per = col_number(), bare_per = col_number(), 
+                                     litter_per = col_number(), grass_mass = col_number(), 
+                                     other_mass = col_number(), one_hr_mass = col_number(), ten_hr_mass = col_number(), hundred_hr_mass = col_number(),
+                                     litter_mass = col_number(), seedlings = col_integer()))
+
+#multiply fuel masses by 4 to get g/m2 (quads were .25m l and w)
+biomass <- biomass %>%
+  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, one_hr_mass = one_hr_mass*4, ten_hr_mass = ten_hr_mass*4, hundred_hr_mass = hundred_hr_mass*4, other_mass = other_mass *4)
+
+#make season a factor
+biomass$season <- factor(biomass$season)
+
+#make plot_id a factor
+biomass$plot_id <- factor(biomass$plot_id)
+
+
+#we again must average the 3 biomass obs taken at each logger for one observation per logger per seasonal period for a total of 100 (50 x 2) minus 8 equals 92 records.
+biomass_seasons <- biomass %>%
+  group_by(plot_id, quad_id, season, plot_type) %>% 
+  summarise(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), 
+            one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass), other_mass = mean(other_mass), 
+            grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
+            grass_per = mean(grass_per), litter_per = mean(litter_per), seedlings = mean(seedlings))
+
+#isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50) because peak LAI (growing season canopy cover) ultimately determines fuel loads.
+LAI_early <- LAI %>%
+  group_by(plot_id, quad_id, plot_type) %>%
+  filter(obs_period == "1" | obs_period == "2") %>% 
+  summarise(mean_LAI = mean(LAI))
+
+#merging LAI_early and biomass_seasons into LAIxbiomass_seasons
+LAI_earlyxbiomass_seasons <- right_join(LAI_early, biomass_seasons, by = c("plot_id", "quad_id"))
+
+#drop the quadrants that did not have biomass records
+LAI_earlyxbiomass_seasons <- LAI_earlyxbiomass_seasons %>% drop_na(grass_mass)
+```
+
+Currently, we are just evaluating the assumptions of m1, the random intercept model. Random slope + intercept seems to fit slightly better, but given that after the interaction with season, each random level of plot_id will only have 4-5 data points. I think that the extra df required for slope+intercept is not worth the slight increase in model fit by adding the random slope term. 
+
+```{r litter lmer random int analysis, include=FALSE}
+#Checking out mixed effects models with interaction between mean_LAI and season
+#to allow for variable slopes between levels (early and late) of season 
+
+data <- LAI_earlyxbiomass_seasons 
+
+#random intercepts model
+m1 <- lmer(litter_mass ~ mean_LAI*season + (1|plot_id), data = data, REML = TRUE)
+summary(m1)
+
+###Testing Assumptions
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m1)
+plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
+shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
+plotResiduals(sim_residuals) # For visual validation of (iii)
+random_effects <- lme4::ranef(m1) # For visual validation of (iv)
+plot(random_effects)
+
+
+### Interpreting coefficients with CIs using emmeans
+emtrends(m1, ~ season, var="mean_LAI")
+
+#SO, late season does not include 0 in the 95% CI but early season does, so
+#litter load is significant across the LAI gradient in the late but not the early season
+```
+
+```{r litter plot, echo = FALSE}
+#Now lets graphically represent this
+mylist <- list(mean_LAI=seq(0,7,by=1))
+
+#emmip
+lit_dat <- emmip(m1, season ~ mean_LAI, at=mylist , CIs=TRUE, plotit = FALSE)
+
+#make ggplot with emmip data
+p <- ggplot(data = lit_dat, aes(x = mean_LAI, y = yvar, color = season)) +
+  geom_line() + geom_ribbon(aes(ymax=UCL, ymin=LCL, fill=season), alpha=0.4) +
+  labs(title = "Seasonal Variation in Relationship Between Litter Load and Canopy Cover",
+       x="LAI", y="Litter Load (g/m2)", color = "Season", fill = "Season")+
+  theme_bw()
+
+#add points from the original data
+p + geom_point(data = data, aes(x = mean_LAI, y = litter_mass, color = season), alpha = .5) 
+
+```
+Going to take a peak at Litter as a quadratic (2 order poly graph)
+```{r litter squared}
+#random intercepts model
+m2 <- lmer(litter_mass ~ mean_LAI*season + I(mean_LAI^2) * season + (1|plot_id), data = data, REML = TRUE)
+
+summary(m2)
+
+
+### Interpreting coefficients with CIs using emmeans
+emtrends(m2, ~ season, var="mean_LAI")
+
+#Compare m1 and m2 (squared model)
+# Calculate R² values
+r2_values1 <- r.squaredGLMM(m1)
+r2_values2 <- r.squaredGLMM(m2)
+
+# Display R² values
+print(r2_values1)
+print(r2_values2)
+
+#AIC
+AIC(m1,m2)
+
+```
+Our squared model meets assumptions better, has lower AIC, better fit, and seems to generally represent the data more accurately. We will use 2nd order polynomial (squared) litter model.
+
+```{r litter squared plot, echo = FALSE}
+#Now lets graphically represent this
+mylist <- list(mean_LAI=seq(0,7,by=0.1))
+
+#emmip
+lit_dat <- emmip(m2, season ~ mean_LAI + I(mean_LAI^2), at=mylist , CIs=TRUE, plotit = FALSE)
+
+
+#make ggplot with emmip data
+p <- ggplot(data = lit_dat, aes(x = mean_LAI, y = yvar, color = season, fill = season)) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .3, size = .3) +
+  labs(x="Canopy Cover (LAI)", y="Litter Load (g/m2)", color = "Season", fill = "Season")+
+  theme_bw()
+
+#add points from the original data
+p <- p + geom_point(data = data, aes(x = mean_LAI, y = litter_mass, color = season), alpha = .7)
+
+p
+
+```
+
+
+
+### 1. 3) Fine Fuel Load (Litter + Grass) across the dry season
+
+"Along with litter, grasses represent the most important combustible material in most tropical ecosystems, especially in the savannas and the tropical grasslands (Stott 2000)"
+
+Dry grass and dry leaf litter are the main components of fine dead fuel. However, in the field, grass and litter tend to have contrasting flammability, largely due to variation in fuel arrangement, specifically bulk density (g/m). The compact arrangement - high bulk density - of litter reduces fire likelihood and spread compared to the light, aerated architecture - low bulk density - of grass. Curing grasses invite a passing fuel source to ignite and carry fire more readily. In savanna-forest mosaics of other continents, bulk density has been identified as the primary driver in establishing the functional dichotomy between forest and savanna (Hoffman 2012b, Newberry 2020). I anticipate fine fuel bulk densities to increase as grass biomass decreases and litter biomass increases. I predict peak bulk densities will correspond to peak canopy cover, where litter accumulation should be greatest and grass presence should be lowest.
+
+The densely treed savannas of Northern Cambodia may require extra consideration of the litter component of their surface fuel makeup, when considering their potential fire effects. In less treed savannas, grass connectivity is sometimes considered in isolation - as then sole source of surface fuel. To ignore litter at Khun Ream would be to ignore half of the fine fuel makeup, and to ignore the seasonal dynamics of surface fuel.
+
+We will look at the total fine fuel loads (grass + litter) in the early and late season to better understand how the fuel load shifts from grass dominated to litter dominated.
+
+```{r fine fuel setup}
+
+LAI_earlyxbiomass_seasons <- LAI_earlyxbiomass_seasons %>% 
+  mutate(fine_mass = grass_mass + litter_mass)
+
+LAI_earlyxbiomass_seasons <- LAI_earlyxbiomass_seasons %>% 
+  mutate(fuel_load = grass_mass + litter_mass + one_hr_mass + ten_hr_mass + hundred_hr_mass + other_mass)
+
+#remove huge bamboo outlier 
+data <- LAI_earlyxbiomass_seasons
+
+z_scores <- scale(data$grass_mass)
+outliers <- abs(z_scores) > 3  # Adjust the threshold as needed
+
+# Create a subset without outliers
+data <- data[!outliers, ]
+
+```
+
+``` {r fine fuel model}
+m1 <- lmer(fine_mass ~ mean_LAI*season + (mean_LAI^2) *season + (1|plot_id), data = data, REML = TRUE)
+summary(m1)
+
+plot(m1)
+
+# Calculate R² values
+r2_values <- r.squaredGLMM(m1)
+
+# Display R² values
+print(r2_values)
+
+###Testing Assumptions
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m1)
+plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
+shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
+plotResiduals(sim_residuals) # For visual validation of (iii)
+random_effects <- lme4::ranef(m1) # For visual validation of (iv)
+plot(random_effects)
+
+```
+
+``` {r fine fuel plot}
+ggplot(data = data, aes(x=mean_LAI, y = fine_mass, color = season)) +
+  geom_point() + stat_smooth(method = "lm", formula = y ~ poly(x, 2)) +
+  theme_bw()
+
+```
+The key here is that between the early and late season there is a dramatic shift from a grass dominated to litter dominated fine fuel loads in the open canopy. There is a large litter component in our system compared to savanna-forest mosaics elsewhere. In both the savanna and the forest, we see ~doubling of litter loads that, when paired with decreasing grass loads, result in similar fine fuel loads across the canopy gradient (in the late season) compared to the declining fine fuel loads in the early season where grasses are at annual maximums and most litter has yet to fall. The consequences on fire likelihood from this seasonal change in fine fuel composition will be discussed in the following modeling chapter.
+
+
+**Fine Fuel Distribution by Fuel Type and by season**
+
+
+```{r fine fuel dist setup, include = FALSE}
+fine_plot_id <- data %>% 
+  group_by(season, plot_id) %>% 
+  summarize(fine_load = mean(fine_mass), LAI = mean(mean_LAI))
+
+
+#early season
+fine_plot_early <- fine_plot_id %>% 
+  filter(season == "early")
+
+ggplot(fine_plot_early, aes(x = LAI, y = fine_load)) +
+  geom_point() +
+  geom_line() + 
+  ylim(0,500)
+
+#late season
+fine_plot_late <- fine_plot_id %>% 
+  filter(season == "late")
+
+ggplot(fine_plot_late, aes(x = LAI, y = fine_load)) +
+  geom_point() +
+  geom_line() + 
+  ylim(0, 1000)
+
+
+data_early <- data %>% 
+  filter(season == "early")
+ 
+  
+data_late <- data %>% 
+  filter(season == "late")
+
+```
+
+```{r Fine fuel dist. plots}
+
+ggplot(data_late, aes(x = mean_LAI)) +
+  stat_smooth(aes(y = fine_mass, linetype = "Fine Mass"), method = "loess", span = .5, fill = NA, color = "black", size = .4) +
+  stat_smooth(aes(y = litter_mass, fill = "Litter Mass", color = "Litter Mass"), span = .5, geom = "area", alpha = 0.7) +
+  stat_smooth(aes(y = grass_mass, fill = "Grass Mass", color = "Grass Mass"), span = .5, geom = "area", alpha = 0.6) +
+  theme_minimal() + 
+  labs(title = "Early Dry Season Fine Fuel Distribution", x = "Fuel Load (g/m2)", y = "Canopy Cover (LAI)") +
+  theme(text = element_text(size = 10), legend.position = "right", plot.title = element_text(hjust = 0.5)) + 
+  ylim(0, 1000) +
+  scale_linetype_manual(values = c("Fine Mass" = "twodash")) +
+  scale_color_manual(values = c("Litter Mass" = "brown", "Grass Mass" = "green3")) +
+  scale_fill_manual(values = c("Litter Mass" = "orange4", "Grass Mass" = "darkgreen")) +
+  guides(
+    linetype = guide_legend(title = NULL),
+    fill = guide_legend(title = NULL),
+    color = guide_legend(title = NULL)
+  )
+
+ggplot(data_early, aes(x = mean_LAI)) +
+  stat_smooth(aes(y = fine_mass, linetype = "Fine Mass"), method = "loess", span = .5, fill = NA, color = "black", size = .4) +
+  stat_smooth(aes(y = litter_mass, fill = "Litter Mass", color = "Litter Mass"), span = .5, geom = "area", alpha = 0.7) +
+  stat_smooth(aes(y = grass_mass, fill = "Grass Mass", color = "Grass Mass"), span = .5, geom = "area", alpha = 0.6) +
+  theme_minimal() + 
+  labs(title = "Late Dry Season Fine Fuel Distribution", x = "Fuel Load (g/m2)", y = "Canopy Cover (LAI)") +
+  theme(text = element_text(size = 10), legend.position = "right", plot.title = element_text(hjust = 0.5)) + 
+  ylim(0, 1000) +
+  scale_linetype_manual(values = c("Fine Mass" = "twodash")) +
+  scale_color_manual(values = c("Litter Mass" = "brown", "Grass Mass" = "green3")) +
+  scale_fill_manual(values = c("Litter Mass" = "orange4", "Grass Mass" = "darkgreen")) +
+  guides(
+    linetype = guide_legend(title = NULL),
+    fill = guide_legend(title = NULL),
+    color = guide_legend(title = NULL)
+  )
+```
+
+Grass Accounted for most of the fine fuel load in the open canopy in the early season. In the late season, litter increased across the canopy gradient, and replaced grass as the dominant fuel type even in the most open canopy plots. There are high degrees of deciduousness in the mesic savannas of Cambodia and even old SEF stands have a lot of leaf shed in the dry season. Litter loads in the late season ~double compared to the early season. 
+
+
+###1. 4) Fuel Bulk Density
+Dry grass and dry leaf litter are the main components of fine dead fuel. However, in the field, grass and litter tend to have contrasting flammability. This contrast is largely due to variation in fuel arrangement, specifically bulk density (g/cm3). The compact arrangement -- high bulk density -- of litter reduces fire likelihood and spread compared to the light, aerated architecture -- low bulk density -- of grass. Curing grasses invite a passing fuel source to ignite and carry fire more readily. In savanna-forest mosaics of other continents, bulk density has been identified as the primary driver in establishing the functional dichotomy between forest and savanna (Hoffman 2012b, Newberry 2020). I anticipate fine fuel bulk densities to increase as grass biomass decreases and litter biomass increases. I predict peak bulk densities will correspond to peak canopy cover, where litter accumulation should be greatest and grass presence should be lowest.
+
+```{r bulk density setup}
+
+#Bulk 
+bulk_seasons <- data %>% 
+    group_by(plot_id, quad_id, mean_LAI, season) %>% 
+    summarize(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass),
+              other_mass = mean(other_mass), grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
+              grass_per = mean(grass_per), litter_per = mean(litter_per))
+
+
+### creating a grass ratio and litter ratio column so that litter percentage plus grass percentage add up to 1
+#GRASS RATIO
+bulk_seasons <- bulk_seasons %>% 
+  mutate(grass_ratio = grass_per/(litter_per+ grass_per))
+
+#LITTER RATIO
+bulk_seasons <- bulk_seasons %>% 
+  mutate(litter_ratio = litter_per/(litter_per+ grass_per))
+
+#Weighted means of litter and mass for all subplots with grass loads <240g/m2
+
+bulk_seasons <- bulk_seasons %>%
+  mutate(bulk_density = ifelse(grass_mass > 240, (grass_mass+litter_mass+one_hr_mass)/
+                                 (grass_height/100),((grass_mass+ litter_mass+ one_hr_mass)/
+                                 ((grass_height*grass_ratio+litter_depth*litter_ratio)/100))))
+
+
+```
+
+```{r bulk density model seasonal}
+
+#bulk density by season
+m2 <- lmer((bulk_density) ~ (mean_LAI)*season + (mean_LAI*season)^2 + (1|plot_id) , data = bulk_seasons)
+summary(m2)
+
+plot(m2)
+
+###Testing Assumptions
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m2)
+plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
+shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
+plotResiduals(sim_residuals) # For visual validation of (iii)
+random_effects <- lme4::ranef(m2) # For visual validation of (iv)
+plot(random_effects)
+```
+
+```{r bulk seasonal effect plot}
+ggplot(bulk_seasons, aes(x = mean_LAI, y = bulk_density/1000, color = season))+
+  geom_point(aes(color = season), alpha = .7, size = 1) +
+  stat_smooth(method = "lm", fill = "NA", size = 1, formula = y ~ poly(x, 2), aes(color= season)) +
+  scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
+  labs(x = "Canopy Cover (LAI)", y = "Fuel Bed Bulk Density (g/m3)", color = "Time of Season")+
+  theme_bw() +
+  theme(text=element_text(size= 16), 
+                 plot.title = element_text(hjust = 0.5))
+
+```
+
+Now, check it out with ddf2 removed. 
+
+```{r bulk density no ddf}
+data2 <- bulk_seasons %>%
+  filter(!(plot_id %in% "ddf2")) %>% 
+  mutate(plot_id = droplevels(plot_id))
+
+ggplot(data2, aes(x = mean_LAI, y = bulk_density/1000))+
+  geom_point(aes(color = plot_id)) +
+  stat_smooth(method = "lm", fill = "NA",  formula = y ~ poly(x, 2), aes(color = season)) +
+  labs(title = "Bulk Density Across the Tree Cover Gradient",
+       x = "LAI", y = "Fine Fuel Bulk Density (g/m3)", color = "Season") +
+  theme_minimal() 
+```
+
+
+
+**Q2: 1) How does surface microclimate vary with canopy cover? 2) How does this relationship change throughout the dry season?**
+
+In Q1 we looked at how fuel is distributed along the canopy gradient, in that question we were essentially looking at fuel availability in terms of the physical presence of flammable vegetation. At the coarsest scale, fuel presence is determined by climate (Meyn 2007). In our system, the precipitation is sufficient to support continuous vegetation and the presence of fuel is largely moderated through site-specific edaphic conditions and fire-feedbacks (Pausas, ref..) ( see outline). Once present or absent, fuel amount tends to change due to relatively slow process (growth and decay), unless it is removed by a consumer (fire, grazer, or otherwise). In the absence of cow or fire, surface fuels will accumulate gradually with leaf fall (dry season) or new herbaceous growth (wet season) or decrease gradually through dessication.
+
+Contrastingly, weather can affect surface fuel on a finer temporal scale (ref) (i.e. across the dry season). Weather affects fuel availability through daily fluctuations in temperature and RH, so that fuel that is not available to burn at 0900, may be quite flammable at 1700. However, weather also acts on coarser scales, and it may take weeks or months of drought to dry fuels sufficiently to sustain fire, particularly in moist (high RH) and mesic-dense canopied systems. Atmospheric moisture is absorbed by fuels, particularly dead fuels, and tree canopies buffer surface fuel conditions by moderating microclimates under the canopy. Wet fuel is not available to fire, no matter how much fuel there is. So after they are saturated, fuels must dry sufficiently before they can be available to fire. The threshold fuel moisture at which combustion can be sustained is referred to as the **moisture of extinction.** The moisture of extinction is dependent on fuel composition, fuel amount, and fuel structure (ref), therefore, it is variable throughout the season as the orientation of fuels changes (as described in Q1) (ref. I know this is explicitly stated but i cant find it). The time it takes for a fuel parcel to cross the moisture of extinction and become dry enough for combustion is dependent on several interacting factors ( need to elaborate on this, perhaps, see the fuel moisture section in annotated bib ), most relevant of which is **microclimate buffering** (ref). Fuels that are under a dense canopy take longer to dry (longer to cross the moisture of extinction) than fuels that are in the open exposed to direct sunlight. Therefore, if we take two identical fuels, one shaded and one unshaded, the unshaded fuel will be able to ignite, or "available" to fire quicker than the shaded fuel. This is really fundamental stuff, but I find that breaking the fire process down to its most basic principals helps in understanding the different roles of fuel structure and fuel microclimate. In Q2, we are concerned with this more mercurial side of fuel availability: the components of fuel availability that are determined by **microclimate.**
+
+Tree canopies moderate microclimate by acting as a thermal insulator, buffering surface fuels from atmospheric extremes (Frenne 2019). In a Dipterocarp fire regime, a closed canopy will restrict light availability at the forest floor resulting in wetter midday fuels and lower relative fuel availability. In contrast, the microclimates of open systems promote flammability at the surface as radiation passes through gaps in the canopy, drying surface fuels with the rising of the sun each day.
+
+### 2. 1) Microclimate TOMST (surface temp) varies across canopy cover
+
+Past research suggests that relationships between canopy cover and microclimate buffering tend to be linear in tropical forest systems (Hardwick 2015). But the extent of buffering, or the slope of microclimate buffering across the canopy gradient should increase as open-air (macroclimate) temperatures increase. Basically, as macroclimate heat or open-air heat temperatures get more extreme, open canopies should be relatively worse bufferers and closed canopies should be relatively better bufferers, exaggerating the differences in microclimate between open and closed systems (Davis 2018, De Frenne 2019).
+
+In this analysis we will be looking at the relationship between surface microclimate and canopy cover across the season to better understand the role of microclimate trends in determining fuel availability from the Jan to April. 
+
+Tree canopies moderate microclimate by acting as a thermal insulator, buffering surface fuels from atmospheric extremes (Frenne 2019). In a Dipterocarp fire regime, a closed canopy will restrict light availability at the forest floor resulting in wetter midday fuels and lower relative fuel availability. In contrast, the microclimates of open systems promote flammability at the surface as radiation passes through gaps in the canopy, drying surface fuels with the rising of the sun each day.
+
+Past research suggests that relationships between canopy cover and microclimate buffering tend to be linear in tropical forest systems (Hardwick 2015). But extent of buffering, or the slope of microclimate buffering across the canopy gradient should increase as free-air (open-canopy) temperatures increase. Basically, as macroclimate heat or open-air heat temperatures get more extreme, open canopies should be relatively worse bufferers and closed canopies should be relatively better bufferers, exaggerating the differences in microclimate between open and closed systems (Davis 2018, De Frenne 2019).
+
+```{r tomst temp setup}
+TOMST_filter <- subset(TOMST_V1, date > "2023/02/10")
+
+
+#need to assign season to tomst dates: early = Feb 11 - Mar 1
+#late = Mar 1 - Apr 11
+
+TOMST_seasons <- TOMST_filter %>% 
+  mutate(season = case_when(
+    date < "2023/03/1" ~ "early",
+    date >= "2023/03/1" ~  "late"
+  ))
+
+#establish daytime range to find daytime temp avg during the time period where we sampled(rather than max temp for each day which was crazy hot (like 50C sometimes) in the late season)
+TOMST_seasons <- TOMST_seasons %>% 
+  filter(hour(date_time) > 11, hour(date_time) < 19) 
+
+
+#now average by variable for midday range across season
+TOMST_seasons <- TOMST_seasons %>%
+  group_by(season, plot_id, quad_id, plot_type) %>%
+  summarize(mean_air_temp = mean(air_temp), mean_surface_temp = mean(surface_temp), mean_soil_temp = mean(soil_temp), mean_soil_moisture = mean(soil_moisture))
+
+#we will filter out obs period 5 because bad sky conditions resulted in unreliable LAI readings:
+LAI_no5 <- LAI %>%
+  filter(!obs_period == "5")           
+
+#average LAI across the dry season (unlike fuel distribution where we only looked at the peak LAI) because microclimate and fuel moisture are strongly influenced by changes in canopy cover, so we want to average the changing canopy cover across the season. 
+LAI_avg <- LAI_no5 %>%
+  group_by(plot_id, quad_id, plot_type) %>%
+  summarise(LAI = mean(LAI, na.rm = TRUE))
+
+LAI_avgxTOMST_seasons <- TOMST_seasons %>% 
+  left_join(LAI_avg, by = c("quad_id", "plot_id", "plot_type"))
+```
+
+```{r tomst temp model}
+m1 <- lmer(mean_air_temp ~ LAI*season + (1|plot_id), data = LAI_avgxTOMST_seasons, REML=TRUE)
+
+summary(m1)
+
+plot(m1)
+
+
+### Interpreting coefficients with CIs using emmeans
+emtrends(m1, ~ season, var="LAI")
+
+# Calculate R² values
+r2_values <- r.squaredGLMM(m1)
+
+# Display R² values
+print(r2_values)
+```
+
+```{r tomst temp plot}
+#plot with predicted values from model
+# Create a new data frame for prediction
+new_data <- expand.grid(
+  LAI = seq(min(LAI_avgxTOMST_seasons$LAI), max(LAI_avgxTOMST_seasons$LAI), length.out = 100),
+  season = unique(LAI_avgxTOMST_seasons$season))
+
+new_data$predicted <- predict(m1, newdata = new_data, re.form = NA)
+
+ggplot(LAI_avgxTOMST_seasons, aes(x = LAI, y = mean_air_temp, color = season)) +
+  geom_point() +  # Add points
+  geom_line(data = new_data, aes(x = LAI, y = predicted, color = season), size = 1) +  # Add regression lines
+  labs(title = "Regression Lines for LAI by Season",
+       x = "Leaf Area Index (LAI)",
+       y = "Mean Air Temperature",
+       color = "Season") +  # Add labels
+  theme_minimal()  # Use a minimal theme
+
+```
+
+
+### 2. 2) Microclimate Kestrel (RH, Wind, Temp) varies by LAI across the season
+
+**Wind Speed**
+This is just for illustrative purposes to go with the behaveplus plots to visual explain the difference in wind speed.
+``` {r wind setup, include = FALSE}
+#daily max windspeed
+kestrel_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_V1.csv", 
+        col_types = cols(date_time = col_datetime(format = "%m/%d/%Y %H:%M"),
+         month = col_integer(), 
+         day = col_integer(), temp = col_number(), 
+         rh = col_number(), wind_speed = col_number()))
+
+kestrel <- kestrel_V1 %>% 
+  group_by(month, day, plot_id, plot_type) %>% 
+  summarize(wind_speed = max(wind_speed), max_rh = max(rh), min_rh = min(rh), avg_rh = mean(rh), max_temp = max(temp), min_temp = min(temp), avg_temp = mean(temp))
+
+
+#create manageable date column
+library(lubridate)
+
+kestrel <- kestrel %>% 
+  mutate(year = "2023")
+
+kestrel <- kestrel %>% 
+  mutate(date = dmy(paste(day, month, year, sep = "/")))
+
+#make month a factor
+kestrel$month <- factor(kestrel$month)
+
+#make season column
+kestrel <- kestrel %>% 
+    mutate(season = case_when(
+        date < "2023/02/23" ~ "early",
+        date >= "2023/02/23" ~  "late"
+    ))
+```
+
+```{r wind plot)}
+ 
+p1 <- ggplot(kestrel, aes(x = date, y = wind_speed, color = plot_type)) +
+  geom_line(aes(group = plot_id), size = .4, alpha = .4) +
+  geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
+  labs(x = element_blank(), y = "Wind Speed (m/s)", color = "Canopy Cover") +
+  scale_color_manual(labels = c("open", "closed"), values = c("red4", "blue4")) + 
+  theme(text=element_text(size= 15), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
+
+```
+
+```{r wind model}
+
+m_wind <- lmer(wind_speed ~ plot_type * season + (1 | plot_id), data = kestrel)
+
+# Summary of the model
+summary(m_wind)
+
+# Anova to test the fixed effects
+anova(m_wind)
+
+# Post-hoc analysis for canopy cover differences by month
+emmeans(m_wind, pairwise ~ plot_type | season)
+```
+Output of emmeans tells us that early season contrast between ddf and evg not quite significant (p-val = .08), but as late season increases wind speed in both plot types, late season contrast between ddf and evg is significant at p-val = .03.
+
+```{r wind speed individual point plot}
+kestrel_wind <- kestrel %>% 
+  group_by(season, plot_id, plot_type) %>% 
+  summarise(wind_speed = mean(wind_speed))
+  
+ggplot(kestrel_wind, aes(x = plot_type, y = wind_speed, color = season)) +
+  geom_point()
+
+```
+**2m Temperatures (Celcius)**
+
+```{r temp max}
+p2 <- ggplot(kestrel, aes(x = date, y = avg_temp, color = plot_type)) +
+  geom_line(aes(group = plot_id), size = .4, alpha = .4) +
+  geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
+  labs(x = element_blank(), y = "Average temperature (C)", color = "Canopy Cover") +
+  scale_color_manual(labels = c("open", "closed"), values = c("red4", "blue4")) + 
+  theme(text=element_text(size= 15), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
+```
+
+**Relative Humidity (RH%)**
+```{r RH setup}
+kestrel_midday <- kestrel_V1 %>% 
+  filter(hour(date_time) > 11, hour(date_time) < 19) 
+
+kestrel_midday <- kestrel_midday %>% 
+  mutate(year = "2023")
+
+kestrel_midday <- kestrel_midday %>% 
+  mutate(date = dmy(paste(day, month, year, sep = "/")))
+
+#make month a factor
+kestrel_midday$month <- factor(kestrel_midday$month)
+
+#make season column
+kestrel_midday <- kestrel_midday %>% 
+    mutate(season = case_when(
+        date < "2023/02/23" ~ "early",
+        date >= "2023/02/23" ~  "late"
+    ))
+#make season column
+kestrel_midday <- kestrel_midday %>% 
+    mutate(season = case_when(
+        date < "2023/02/23" ~ "early",
+        date >= "2023/02/23" ~  "late"
+    ))
+
+#filter out dd4 because the rh readings are definitely impacted. I think that the rh sensor was obstructed.
+kestrel_midday <- kestrel_midday %>% 
+  filter(plot_id != "ddf4")
+
+kestrel_midday <- kestrel_midday %>%
+  group_by(season, plot_id, plot_type, date, month) %>%
+  summarize(mean_temp = mean(temp), mean_rh = mean(rh))
+
+
+```
+
+```{r RH plot}
+ggplot(kestrel_midday, aes(x = date, y = mean_rh, color = plot_id)) +
+  geom_point(size = .7, alpha = .7) + geom_line(alpha = .8) +
+  labs(title = "Daily RH at Different Canopy Levels Across Dry Season",
+       x = element_blank(), y = "Relative Humidity (%)", color = "LAI") +
+  scale_color_manual(labels = c("0.7", "1.7", "4.7", "5.4", "6.0"), values = c("red", "red4", "darkorange", "blue", "purple", "purple4")) + 
+  theme(text=element_text(size= 16), legend.position="none", 
+             plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
+
+```
+
+```{r rh min}
+p3 <- ggplot(kestrel, aes(x = date, y = min_rh, color = plot_type)) +
+  geom_line(aes(group = plot_id), size = .4, alpha = .4) +
+  geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
+  labs(x = element_blank(), y = "Average relative humidity (%)", color = "Canopy Cover") +
+  scale_color_manual(labels = c("open", "closed"), values = c("red4", "blue4")) + 
+  theme(text=element_text(size= 15), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
+```
+
+```{r rh model, include = FALSE}
+m_rh <- lmer(mean_rh ~ plot_type * month + (1 | plot_id), data = kestrel_midday)
+
+# Summary of the model
+summary(m_rh)
+
+# Anova to test the fixed effects
+anova(m_rh)
+
+# Post-hoc analysis for canopy cover differences by month
+emmeans(m_rh, pairwise ~ plot_type | month)
+```
+
+```{r arrange mc plots}
+grid.arrange(p1, p2, p3, nrow=3)
+```
+
+### 2. 3) Fuel Moisture Content
+We are going to look at fuel moisture content for each fuel type across LAI separated between early and late season, to match the biomass data. Even though we collected fmc data across 6-7 observations, there is little week to week variation, but clear midseason jump between ob 4-5, so we will show all data points, across changing LAI, but only show the relationships (slopes) for early vs late measurments, same as biomass.
+
+
+```{r fmc setup}
+library(readr)
+fm <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V5.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+        obs_period = col_factor(levels = c("0", 
+        "1", "2", "3", "4", "5", "6", "7")), plot_type = col_character(), 
+        grass = col_number(), woody_leaf = col_number(), 
+        litter = col_number(), hundred_hr = col_number(), 
+        ten_hr = col_number(), one_hr = col_number()))
+
+#need to assign season to tomst dates: early = Jan 15 - Feb 22
+#late = Feb 23 - Apr 11
+
+fm <- fm %>% 
+    mutate(season = case_when(
+        date < "2023/02/23" ~ "early",
+        date >= "2023/02/23" ~  "late"
+    ))
+
+# Bring in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+        LAI = col_number(),
+        obs_period = col_factor(levels = c("0","1", "2", "3", "4", "5", "6", "7"))))
+
+#we will filter out obs period 5 because bad sky conditions resulted in unreliable LAI readings:
+LAI_no5 <- LAI %>%
+  filter(!obs_period == "5")           
+
+#average LAI across the dry season (unlike fuel distribution where we only looked at the peak LAI) because microclimate and fuel moisture are strongly influenced by changes in canopy cover, so we want to average the changing canopy cover across the season. 
+LAI_avg <- LAI_no5 %>%
+  group_by(plot_id, quad_id, plot_type) %>%
+  summarise(LAI = mean(LAI, na.rm = TRUE))
+
+#merge LAI and fm_avg for LAIxfm
+LAIxfm_obs <- left_join(fm, LAI_avg, by = c("quad_id", "plot_id", "plot_type"))
+
+#make season a factor
+LAIxfm_obs$season <- factor(LAIxfm_obs$season)
+
+#make plot_id a factor
+LAIxfm_obs$plot_id <- factor(LAIxfm_obs$plot_id)
+
+#average all measurments by season
+fmc_seasons <- LAIxfm_obs %>% 
+  group_by(season, plot_id, quad_id, plot_type) %>% 
+  summarise(grass = mean(grass, na.rm = TRUE), litter = mean(litter,na.rm = TRUE), woody_leaf = mean(woody_leaf,na.rm = TRUE), ten_hr = mean(ten_hr,na.rm = TRUE), LAI = mean(LAI))
+  
+
+
+```
+**Litter Fuel Moisture Content**
+
+Litter is the weirdest fuel type, since we didn't start systematically collecting litter until observation 4, though we have several litter values for the first few observations, so given the consistency between the other fuel types between observations 1-4, I believe the total averages for "early season" are sufficient.
+
+We view litter and one-hr synonomously throughout this project, because that is how we view them in behvave plus, so we will combine 1hr and litter data for this analysis. There was little discernable difference between 1hr and litter fmc trends throughout the season.
+
+```{r litter fmc analysis, include = FALSE}
+
+m1<- lmer(litter ~ LAI*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
+
+m2 <- lmer(log(litter) ~ LAI*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
+
+m3 <- lmer(litter ~ LAI*season + I(LAI^2) * season + (1|plot_id), data = fmc_seasons, REML = TRUE)
+
+
+###Testing Assumptions
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m1)
+plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
+shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
+plotResiduals(sim_residuals) # For visual validation of (iii)
+random_effects <- lme4::ranef(m1) # For visual validation of (iv)
+plot(random_effects)
+
+
+plot(resid(m1))
+
+qqnorm(residuals(m1))
+
+summary(m1)
+
+
+```
+
+
+
+```{r litter fmc plot, include = FALSE}
+
+pred_data <- data.frame(
+  LAI = seq(min(fmc_seasons$LAI), max(fmc_seasons$LAI), length.out = 100),
+  season = rep(c("early", "late"), each = 100))
+
+pred_data$pred_litter <- predict(m1, newdata = pred_data, re.form = NA)
+
+
+# Scatter plot with fitted lines on the original scale
+p1 <- ggplot(fmc_seasons, aes(x = LAI, y = litter, color = season)) +
+  geom_point(alpha = .7, size = 1) +
+  geom_line(data = pred_data, aes(x = LAI, y = pred_litter, color = season)) +
+  labs(y = "Litter Mass", x = "LAI", title = "Litter Mass vs. LAI by Season") +
+scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
+      labs(title = "Litter", x = "Canopy Cover(LAI)", y = "Litter Fuel Mositure Content (%)", color = "Season")+ 
+   theme_bw()
+
+p1 <- p1 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
+
+p1
+```
+**Grass Fuel Moisture Content**
+
+```{r grass fmc analysis, include = FALSE}
+
+m2 <- lmer(grass ~ LAI*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
+
+plot(resid(m2))
+
+qqnorm(residuals(m2))
+
+summary(m2)
+
+```
+
+```{r grass fmc, include = FALSE}
+
+pred_data <- data.frame(
+  LAI = seq(min(fmc_seasons$LAI), max(fmc_seasons$LAI), length.out = 100),
+  season = rep(c("early", "late"), each = 100))
+
+pred_data$pred_grass <- predict(m2, newdata = pred_data, re.form = NA)
+
+
+# Scatter plot with fitted lines on the original scale
+p2 <- ggplot(fmc_seasons, aes(x = LAI, y = grass, color = season)) +
+  geom_point(alpha = .7, size = 1) +
+  geom_line(data = pred_data, aes(x = LAI, y = pred_grass, color = season)) +
+  labs(y = "Litter Mass", x = "LAI", title = "Litter Mass vs. LAI by Season") +
+scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
+      labs(title = "Grass", x = "Canopy Cover(LAI)", y = "Grass Fuel Mositure Content (%)", color = "Season")+ 
+   theme_bw()
+
+p2 <- p2 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
+
+p2
+
+```
+
+**woody Leaf FMC**
+
+```{r woody_leaf fmc analysis, include = FALSE}
+
+m3 <- lmer(woody_leaf ~ LAI*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
+
+
+plot(resid(m3))
+
+
+qqnorm(residuals(m3))
+
+summary(m3)
+
+```
+
+
+```{r woody leaf fmc, include = FALSE}
+
+pred_data <- data.frame(
+  LAI = seq(min(fmc_seasons$LAI), max(fmc_seasons$LAI), length.out = 100),
+  season = rep(c("early", "late"), each = 100))
+
+pred_data$pred_woody <- predict(m3, newdata = pred_data, re.form = NA)
+
+
+# Scatter plot with fitted lines on the original scale
+p3 <- ggplot(fmc_seasons, aes(x = LAI, y = woody_leaf, color = season)) +
+  geom_point(alpha = .7, size = 1) +
+  geom_line(data = pred_data, aes(x = LAI, y = pred_woody, color = season)) +
+  labs(y = "Litter Mass", x = "LAI", title = "Litter Mass vs. LAI by Season") +
+scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
+      labs(title = "Live Dicot Leaves", x = "Canopy Cover(LAI)", y = "Live Dicot Fuel Mositure Content (%)", color = "Season")+ 
+   theme_bw()
+
+p3 <- p3 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
+
+p3
+
+```
+
+**10-hr FMC**
+
+
+```{r 10-hr fmc analysis, include=FALSE}
+
+m4 <- lm(ten_hr ~ LAI*season, data = fmc_seasons)
+
+plot(resid(m4))
+
+qqnorm(residuals(m4))
+
+summary(m4)
+
+```
+
+
+```{r 10-hr fmc, include = FALSE}
+
+pred_data <- data.frame(
+  LAI = seq(min(fmc_seasons$LAI), max(fmc_seasons$LAI), length.out = 100),
+  season = rep(c("early", "late"), each = 100))
+
+pred_data$pred_ten <- predict(m4, newdata = pred_data, re.form = NA)
+
+
+# Scatter plot with fitted lines on the original scale
+p4 <- ggplot(fmc_seasons, aes(x = LAI, y = ten_hr, color = season)) +
+  geom_point(alpha = .7, size = 1) +
+  geom_line(data = pred_data, aes(x = LAI, y = pred_ten, color = season)) +
+  labs(y = "Litter Mass", x = "LAI", title = "Litter Mass vs. LAI by Season") +
+scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
+      labs(title = "10 Hour Fuel", x = "Canopy Cover(LAI)", y = "Ten Hour Fuel Mositure Content (%)", color = "Season")+ 
+   theme_bw()
+
+p4 <- p4 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
+
+p4
+```
+
+```{r arrange fmc plots}
+grid.arrange(p1, p2, p3, p4, nrow=4)
+```
+
+
+## Part 2: Modelling fire effects across the canopy gradient and across the dry season
+
+### 3. 1) Behaveplus6 Fire Modelling Setup (Lengthy, Jump to next section, "Behave Output" for the modelled fire results)
+
+Understanding fire likelihood and severity is complicated by complex interacting factors and nonlinear relationships among the various determinants of fire. In an effort to tease out the shifting relationships between composition and fuel moisture and microclimate across the dry season, I will be using the fire model Behaveplus6 to evaluate predicted fire effects in the absence of physical fire data. We used BehavePlus to simulate fire at each subplot according to our fuel and microclimate measurements. Fire was simulated at each point in the early season and the late season to predict fire behavior across the canopy cover gradient (Input variables and model parameters simulations are presented in supplementary information and Rmd code). For each point, vegetation load and depth were calculated as the mean of the three observations per subplot. Fuel moisture content inputs were determined from the full-spectrum sampling values. Temperature was calculated as the average of the 11:00-19:00 TOMST 15cm surface air temperature values from the same days as the FMC observations. Wind speeds were determined from the Kestrels as seasonal average of the max daily wind speeds per plot. For the plots with no Kestrels, wind speeds were extrapolated from the fit of the linear relationship between canopy cover and wind speed of the plots with Kestrels. 
+
+We did not have data on surface area to volume ratios, so these were estimated for each plot from the values defined by the various fuel models. Fuel models were determined for each plot according to the fuel loads and fuel compositions. Dead fuel moistures of extinction were kept constant at 30%.
+
+There are more specifics for each input variable in the following Rmd code:
+
+
+**Determining Fuel Models for each plot**
+We paired each plot with the fuel model that most closely represented the fuel distribution of the plot, following Scott and Burgan's fuel model selection guide (Scott and Burgan 2005).
+
+The plots are aligned with these models:
+
+-   TL6/186 - Moderate load, less compact. Spread rate moderate; flame length low. PRIMARY CARRIER OF THE FIRE IS DEAD AND DOWN WOODY FUEL (LITTER) BENEATH A FOREST CANOPY. Mositure of extinction is 25 percent: **DDF2, EVG1, EVG2, EVG3, EVG4, EVG5**
+
+-   TU3/163 - Fuel bed is moderate litter load with grass and shrub components. Humid climate. Spread rate high; flame length moderate. PRIMARY CARRIER OF THE FIRE IS GRASS OR SHRUBS MIXED WITH LITTER FROM FOREST CANOPY (TIMBER-UNDERSTORY). Extinction moisture is 30 percent: **DDF3**
+
+-   GR5/105 - Dense, coarse grass, average depth about 1 to 2 feet (0.3 to 0.6 meters). Spread rate very high; flame length high. Subhumid to humid climate (rainfall adequate in all seasons). Extinction moisture content 40 percent. Spread rate high; flame length moderate.PRIMARY CARRIER GRASS: **DDF4, DDF5, DDF6**
+
+
+We will have two sets of behaveplus outputs in this cross-season analysis: one for the early season and one for the late season. Fuel moistures will come from the full-spectrum measurements on Feb 16 and Mar 31. These are slightly unaligned with biomass obs (late Jan and Early April), but TOMST and kestrels and supplementary FMC observations indicate little deviation in the 2 weeks between biomass sampling and FMC measurements.
+
+We are more concerned with how conditions at fixed positions on the surface relate to one another in the early vs late season rather than we are the direct relationship between canopy cover and microclimate, so we average all LAI values acorss the dry season and use the same LAI for early and late behaveplus analyses.
+
+```{r behave3.2 LAI, eval=FALSE}
+#loading in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+        obs_period = col_integer(), LAI = col_double(), 
+        month = col_integer()))
+
+LAI_3.2 <- LAI %>%
+  group_by(plot_id, quad_id) %>%
+  summarise(mean_LAI = mean(LAI, na.rm = TRUE))
+```
+
+Fuel moisture is not averaged, but taken from the closest viable single obs to the biomass obs.
+
+```{r behave3.2 fuel_mositure, eval=FALSE}
+fm_V5 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Moisture/fm_V5.csv", 
+    col_types = cols(date = col_date(format = "%m/%d/%Y"), grass = col_number(), woody_leaf = col_number(),litter = col_number(), hundred_hr = col_number(), ten_hr = col_number(), one_hr = col_number()))
+
+#Averaging fm for each fuel class for obs period 4 and 7
+fm_3.2 <- fm_V5 %>% 
+  filter(obs_period %in% c(4,7)) %>% 
+ group_by(plot_id, quad_id, obs_period) %>%
+  summarise(woody_leaf = mean(woody_leaf, na.rm = TRUE), grass = mean(grass, na.rm = TRUE), litter = mean(litter, na.rm = TRUE), ten_hr = mean(ten_hr, na.rm = TRUE), hundred_hr = mean(hundred_hr, na.rm = TRUE))
+
+fm_3.2 <- fm_3.2 %>% 
+  mutate(season = case_when(
+    obs_period == 4 ~ "early",
+    obs_period == 7 ~ "late"
+  ))
+```
+
+Biomass observations separated by early and late season.
+
+```{r behave3.2 biomass, eval=FALSE}
+ 
+
+#there were two biomass observation periods in early and late season and each quadrant consisted of 3 records for a total of n=150 records for each season and n=300 records in total
+
+#we will average across quadrants and keep season separate for n=100 records (8 of which are NA because no data for the missing sensors)
+
+biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V5.csv", 
+                    col_types = cols(grass_height = col_number(), 
+                                     litter_depth = col_number(), grass_per = col_number(), 
+                                     wood_per = col_number(), bare_per = col_number(), 
+                                     litter_per = col_number(), grass_mass = col_number(), 
+                                     other_mass = col_number(), wood_mass = col_number(), 
+                                     litter_mass = col_number(), seedlings = col_integer()))
+
+#multiply fuel masses by 4 to get g/m2 (quads were .25m l and w)
+# and add 2g for each seedling, just to account for the increased presence in EVG
+biomass <- biomass %>%
+  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, wood_mass = wood_mass*4, other_mass = (other_mass + seedlings*2) *4)
+
+
+#we again must average the 3 biomass obs taken at each logger for one observation per logger per seasonal period for a total of 100 (50 x 2) minus 8 equals 92 records.
+biomass_3.2 <- biomass %>%
+  group_by(plot_id, quad_id, season, plot_type) %>% 
+  summarise(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), 
+            wood_mass = mean(wood_mass), other_mass = mean(other_mass + seedlings*5), 
+            grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
+            grass_per = mean(grass_per), litter_per = mean(litter_per))
+
+
+```
+
+Using the exact same shading from 3.1 (this is an average across the whole season, but honestly I'm afraid to change it because this measurement was too subjective and my early season measurements and Phem's late season measurements may not jive)
+
+```{r behave 3.2 shading, eval=FALSE}
+shaded <- biomass %>% 
+  group_by(quad_id, plot_id) %>% 
+  filter(shading == 'Y') %>%
+  count()
+
+unshaded <- biomass %>% 
+  group_by(quad_id, plot_id) %>% 
+  filter(shading == 'N') %>% 
+  count()
+
+shade_join <- left_join(shaded, unshaded, by=c("plot_id", "quad_id"))
+
+shade_pct <- shade_join %>% 
+  transmute(shade = n.x/(n.x + n.y)) 
+
+shade_pct$shade <- shade_pct$shade %>% 
+  replace_na(1)
+
+shade_pct <- shade_pct %>% 
+  summarise(shade = shade*100)
+```
+
+Wind extrapolated using SLR for each plot from the 6 kestrels for early and late season, notes detailed in the code.
+
+```{r behave 3.2 wind, message=FALSE, warning=FALSE, eval=FALSE}
+kestrel_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_V1.csv", 
+    col_types = cols(temp = col_number(), 
+        rh = col_number(), wind_speed = col_number()))
+
+kestrel_wind <- kestrel_V1 %>% 
+  group_by(month, day, plot_id) %>% 
+  summarize(wind_speed = max(wind_speed))
+
+kestrel_wind <- kestrel_wind %>% 
+  mutate(season = case_when(
+    month %in% c("1","2") ~ 'early',
+    month %in% c("3","4") ~ 'late'
+  ))
+
+#summary table for wind speed by plot (n=6)
+kestrel_wind %>% 
+  group_by(plot_id, season) %>% 
+  summarize(wind_speed = mean(wind_speed))
+
+LAI_wind <- LAI %>%
+  group_by(plot_id, quad_id, season) %>%
+  summarise(mean_LAI = mean(LAI, na.rm = TRUE))
+
+LAI_wind%>% 
+  group_by(plot_id, season) %>% 
+  summarize(LAI = mean(mean_LAI))
+
+#creating model for wind speed from relationship with LAI to fill in values for 4 missing plots
+#made quick table relating LAI and wind_speed values from above
+windxLAI_3.2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/windxLAI_3.2.csv", 
+    col_types = cols(LAI = col_number(), 
+   wind_speed = col_number()))
+
+
+lm <- lm(wind_speed ~ LAI, data = windxLAI_3.2)
+summary(lm)
+
+ggplot(windxLAI_3.2, aes(x = LAI, y = wind_speed)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "LAI", y = "Wind Speed") +
+  ggtitle("Wind Speed vs LAI regression")
+
+#using lm to predict windspeeds for 4 no-kestrel plots
+missing_rows <- is.na(windxLAI_3.2$wind_speed)
+new_data <- windxLAI_3.2[missing_rows, ]
+new_data$wind_speed <- predict(lm,newdata= new_data)
+windxLAI_3.2[missing_rows, ] <- new_data
+
+```
+
+Temperature taken from the same day as fuel moisture, as fuel moisture is closely linked to microclimate (and the most mercurial/prone to daily flux).
+
+```{r behave 3.2 TOMST temperature, eval=FALSE}
+TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/TOMST/TOMST_V1.csv", 
+    col_types = cols(date = col_date(format = "%Y.%m.%d"), 
+        date_time = col_datetime(format = "%Y.%m.%d %H:%M"), 
+        air_temp = col_number(), soil_moisture = col_number()))
+
+#average air_temp values for each quadrant for the days that match the fuel moisture
+#first filter data between midday times
+TOMST_filter <- TOMST_V1 %>% 
+filter(hour(date_time) > 10, hour(date_time) < 18) 
+
+TOMST_3.2 <- TOMST_filter %>% 
+  filter(date %in% c("2023-02-16", "2023-03-29", "2023-03-30"))
+
+TOMST_3.2 <- TOMST_3.2 %>%
+  mutate(season = case_when(
+    date %in% c('2023-02-16') ~ 'early',
+    date %in% c('2023-03-29', '2023-03-30') ~ 'late'
+  ))
+
+TOMST_3.2 <- TOMST_3.2 %>% 
+group_by(plot_id, quad_id, season) %>% 
+  summarize(air_temp = mean(air_temp), soil_moist = mean(soil_moisture))
+  
+```
+
+Lastly, we will populate the input for surface area to volume ratio (SA:V) and moisture of extinction for each plot by identifying which of the 40 standard fuel models (Scott and Burgan 2005) best fit our field observations.
+
+```{r fuel models, eval=FALSE, include=FALSE}
+#we will find the average fuel load and fuel depth per plot and convert to tonnes/acre (1 to 10) to help gauge which of Scott and Burgan's 40 models is the best fuel model to pair each plot with.
+
+biomass_load %>%
+  group_by(plot_id) %>%
+  summarise(across(everything(), mean, na.rm = TRUE)) %>% 
+  mutate_at(vars(3:6), ~ . * 10)
+
+```
+
+
+**The plots are aligned with these models:**
+
+-   TL6/186 - Moderate load, less compact. Spread rate moderate; flame length low. PRIMARY CARRIER OF THE FIRE IS DEAD AND DOWN WOODY FUEL (LITTER) BENEATH A FOREST CANOPY. Mositure of extinction is 25 percent: **DDF2, EVG1, EVG2, EVG3, EVG4, EVG5**
+
+-   TU3/163 - Fuel bed is moderate litter load with grass and shrub components. Humid climate. Spread rate high; flame length moderate. PRIMARY CARRIER OF THE FIRE IS GRASS OR SHRUBS MIXED WITH LITTER FROM FOREST CANOPY (TIMBER-UNDERSTORY). Extinction moisture is 30 percent: **DDF3**
+
+-   GR5/105 - Dense, coarse grass, average depth about 1 to 2 feet (0.3 to 0.6 meters). Spread rate very high; flame length high. Subhumid to humid climate (rainfall adequate in all seasons). Extinction moisture content 40 percent. Spread rate high; flame length moderate.PRIMARY CARRIER GRASS: **DDF4, DDF5, DDF6**
+
+
+**Making the Behave table**
+
+Merging all of the above data into one table for behave plus input
+Setup same as 3.1. Table written to data folder.
+
+```{r behave3.2 table setup, eval=FALSE}
+#merging all of the relevant input variables, detailed below:
+join1 <- left_join(LAI_3.2, biomass_3.2, by=c("plot_id", "quad_id", "season"))
+
+join2 <- left_join(join1, fm_3.2, by=c("plot_id", "quad_id", "season"))
+
+join3 <- left_join(join2, windxLAI_3.2, by= c("plot_id", "season"))
+
+join4 <- left_join(join3, shade_pct, by=c("plot_id", "quad_id"))
+
+behave_tbl_3.2 <- left_join(join4, TOMST_3.2, by=c("plot_id", "quad_id", "season"))
+
+```
+
+We will also create fuel depth using the same fuel depth protocol as in fuel bulk density: If grass load > 240g/m2 then we consider fuel height = grass height. If grass load < 240g/m2, then fuel depth is the weighted mean of the grass height and litter depth given litter:grass ratios:
+
+```{r behave3.2 fuel depth, eval=FALSE}
+### creating a grass ratio and litter ratio column so that litter percentage plus grass percentage add up to 1
+#GRASS RATIO
+behave_tbl_3.2 <- behave_tbl_3.2  %>% 
+  mutate(grass_ratio = grass_per/(litter_per+ grass_per))
+
+#LITTER RATIO
+behave_tbl_3.2 <- behave_tbl_3.2  %>% 
+  mutate(litter_ratio = litter_per/(litter_per+ grass_per))
+
+#We determine fuel depth as grass height if grass is greater than 240g/m2, as litter depth is grass mass is less than 30g/m2 and as the weighted mean of the two if grass mass is between 30 and 240.
+behave_tbl_3.2 <- behave_tbl_3.2  %>%
+  mutate(fuel_depth = ifelse(grass_mass > 240, 
+              (grass_height),(grass_height*grass_ratio+litter_depth*litter_ratio)))
+
+behave_tbl_3.2 <- behave_tbl_3.2  %>% 
+  mutate(fuel_depth = ifelse(grass_mass < 30, 
+              (litter_depth),(fuel_depth)))
+
+
+
+#drop grass_ratio and litter_ratio columns now that we have fuel depth
+behave_tbl_3.2 <- behave_tbl_3.2%>% 
+  dplyr::select(-c(grass_ratio, litter_ratio))
+
+```
+
+**Breakdown of input values (SURFACE fire spread model and Probability of Ignition (PIG) model):**
+
+-   Fuel Model Number
+
+-   Fuel Model Code: Plot fuel characteristics compared with Burgan's 40 fuel models to determine best fit.
+
+-   1-hr fuel load (kg/m2): Input from litter load
+
+-   10-hr fuel load (kg/m2): Input from half of wood load
+
+-   100-hr fuel load (kg/m2): Input from half of wood load
+
+-   Live Herbaceous Fuel Load (kg/m2): Input from grass load
+
+-   Live Woody Fuel Load (kg/m2): Input from woody load
+
+-   1-h, Live Herbaceous, and Live Woody SA/V (m2/m3): Input from model constants for each plot (see above step)
+
+-   Fuel Bed Depth (m): Input from grass height when grass is relatively continuous enough to sustain fire (>0.1kg/m2), otherwise determined from litter depth
+
+-   Dead fuel moisture of extinction (%): Similar to SA/V, auto-populated by fuel code
+
+-   Dead Fuel and Live Fuel Heat Content (kJ/kg): Held constant = 18622
+
+-   Fuel Moisture (%): All fuel moisture input come from fuel moisture averages described above
+
+-   Midflame Windspeed: Max daily kestrel values averaged over season
+
+-   Slope Steepness (%): Held constant at 0, very little slope involved in area
+
+-   Temperature (C): Input from TOMST values averaged between 10:00 and 18:00 for all quadrants
+
+-   Fuel Shading From Sun (%): Values determined from biomass data of visual estimations of canopy cover as Bernoulli distributed (they just yes or no), and then averaged for each quadrant
+
+**Output**
+
+-   Surface Fire Rate of Spread (ROS) (m/min):
+
+-   Surface Fireline Intensity (kW/m):
+
+-   Surface Fire Flame Length (m):
+
+-   Probability of Ignition (PIG) (%):
+
+
+### Modelled fire effects across the canopy gradient at the early and late dry season.
+
+BEHAVE UPDATE MAY 24
+```{r behave update}
+behave <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_seasons_V4.csv", 
+     col_types = cols(mean_LAI = col_number(), 
+         ROS = col_number(), intensity = col_number(), 
+         flame_length = col_number(), PIG = col_number()))
+
+#drop NA rows for plots with no loggers
+behave <- behave %>% drop_na(fuel_depth)
+
+#make season a factor
+behave$season <- factor(behave$season)
+
+#make plot_id a factor
+behave$plot_id <- factor(behave$plot_id)
+```
+
+We're taking a look at the outputs of our behaveplus simulations which have taken all of our fuel variables together and spit out a number for each quadrant, per each season, to make understanding how all of these fuel variables work together to affect fire-feedbacks more interpretable.
+
+There are 2 main questions we will be approaching:
+
+**a) How do modelled fire effects and PIG change across the canopy gradient?**
+Here we are particularly interested in the presence or absence of a threshold. A threshold indicates that there is a difference in fire recruitment on either side of some boundary determined by canopy cover. The steeper the threshold, the more stark the fire-recruitment on either side of the boundary. 
+
+Since we are less concerned with precisely interpreting differences between factors than we are with the identification/visualization of a threshold, we will use the segmented function here (as we did to identify grass thresholds in 1.1).
+
+**b) How do fire effects vary by season in either forest type?**
+We will be isolating either side of the threshold by subsetting plots of the same type (open canopy or closed canopy). This will allow for more direct and interpretable linear comparisons of early vs late season and a more detailed assessment of how risk of fire relatively changes on either side of the boundary. For the open-canopy, fire danger should increase quite a lot in terms of total ROS and intensity, but I believe the relative change should be greater on the closed canopy side as the litter fm and litter loads start to permit late season fire in the closed system. 
+
+
+#### a) How do modelled fire effects and PIG change across the canopy gradient?
+```{r ROS segmented data analysis, include=FALSE}
+#subset by season
+behave_early <- behave %>% 
+  filter(season == "early")
+
+behave_late <- behave %>% 
+  filter(season == "late")
+
+#Model behave output with segmented to id breakpoints
+# Fit a mixed effects model
+model_early <- lm(ROS ~ mean_LAI, data=behave_early)
+
+model_late <- lm(ROS ~ mean_LAI, data=behave_late)
+
+
+# Apply segmented to find a breakpoint
+segmented_model_early <- segmented(model_early, seg.Z = ~mean_LAI, data = behave_early)
+segmented_model_late <- segmented(model_late, seg.Z = ~mean_LAI, data = behave_late)
+
+
+summary(segmented_model_early)
+summary(segmented_model_late)
+
+```
+
+``` {r ROS segmented plots by season, include = FALSE}
+pred_df <- data.frame(mean_LAI = seq(min(behave_early$mean_LAI), max(behave_early$mean_LAI), length.out = 100))
+
+# Predictions for segmented model
+pred_df$ROS_pred <- predict(segmented_model_early, newdata = pred_df)
+
+ggplot(behave_early, aes(x = mean_LAI, y = ROS)) +
+  geom_point() +  # Add points for the original data
+  labs(title = "Early Dry Season", x = "Canopy Cover (LAI)", y = "Rate of Spread (m/min)") +
+  theme_minimal() +
+  geom_line(data = pred_df, aes(x = mean_LAI, y = ROS_pred), color = "red")+
+  ylim(-0.1,30)
+
+
+# Create a data frame for prediction
+pred_df1 <- data.frame(mean_LAI = seq(min(behave_late$mean_LAI), max(behave_late$mean_LAI), length.out = 100))
+
+# Predictions for segmented model
+pred_df1$ROS_pred <- predict(segmented_model_late, newdata = pred_df)
+
+ggplot(behave_late, aes(x = mean_LAI, y = ROS)) +
+  geom_point() +  # Add points for the original data
+  labs(title = "Late Dry Season", x = "Canopy Cover (LAI)", y = "Rate of Spread (m/min)") +
+  theme_minimal() +
+  geom_line(data = pred_df1, aes(x = mean_LAI, y = ROS_pred), color = "red") +
+  ylim(0,30)
+```
+
+
+```{r ROS segmented plot combined}
+
+#Late + early season ROS segmented regressions
+p1 <- ggplot(behave, aes(x = mean_LAI, y = ROS)) +
+  geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
+  labs(x = "Canopy Cover (LAI)", y = "Rate of Spread (m/min)") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal() +
+  geom_line(data = pred_df1, aes(x = mean_LAI, y = ROS_pred), color = "darkred", size = .6) +
+  geom_line(data = pred_df, aes(x = mean_LAI, y = ROS_pred), color = "blue4", size = .6) +
+  ylim(-0.1,30)
+
+p1
+
+```
+
+The segmented regressions for early and late season identified a flammability cutoff of 1.87 LAI and 1.94 LAI respectively. These are very similar thresholds, suggesting that when viewed across the gradient, seasonality does not have much affect on the differences in flammability. It is important to note that since we averaged across the season, and use the same LAI values for early and late season ROS, what we are seeing here is how flammability changes at given locations across the season, rather than how ROS directly relates to canopy cover. 
+We can see here a clear difference between early and late season flammability in the open canopy, but to compare flammability between the early and late season we will subset data by forest type (open canopy/closed canopy) and perform linear mixed regression incorporating the individual plots (plot_id) as random effects. After having established a flammability threshold, this subsetting analysis will allow us to perform more thorough comparisons of seasonal effects on flammability by disregarding the nonlinearity associated with the differences in flammability across forest types.
+
+```{r Flame Length segmented data analysis, include=FALSE}
+#subset by season
+behave_early <- behave %>% 
+  filter(season == "early")
+
+behave_late <- behave %>% 
+  filter(season == "late")
+
+#Model behave output with segmented to id breakpoints
+# Fit a mixed effects model
+model_early <- lm(flame_length ~ mean_LAI, data=behave_early)
+
+model_late <- lm(flame_length ~ mean_LAI, data=behave_late)
+
+
+# Apply segmented to find a breakpoint
+segmented_model_early <- segmented(model_early, seg.Z = ~mean_LAI, data = behave_early)
+segmented_model_late <- segmented(model_late, seg.Z = ~mean_LAI, data = behave_late)
+
+summary(segmented_model_early)
+summary(segmented_model_late)
+
+```
+
+
+
+``` {r Flame length segmented plots by season, include = FALSE}
+pred_df <- data.frame(mean_LAI = seq(min(behave_early$mean_LAI), max(behave_early$mean_LAI), length.out = 100))
+
+# Predictions for segmented model
+pred_df$flame_length_pred <- predict(segmented_model_early, newdata = pred_df)
+
+ggplot(behave_early, aes(x = mean_LAI, y = flame_length)) +
+  geom_point() +  # Add points for the original data
+  labs(title = "Early Dry Season", x = "Canopy Cover (LAI)", y = "Flame Length (m)") +
+  theme_minimal() +
+  geom_line(data = pred_df, aes(x = mean_LAI, y = flame_length_pred), color = "red")
+
+
+# Create a data frame for prediction
+pred_df1 <- data.frame(mean_LAI = seq(min(behave_late$mean_LAI), max(behave_late$mean_LAI), length.out = 100))
+
+# Predictions for segmented model
+pred_df1$flame_length_pred <- predict(segmented_model_late, newdata = pred_df)
+
+ggplot(behave_late, aes(x = mean_LAI, y = flame_length)) +
+  geom_point() +  # Add points for the original data
+  labs(title = "Late Dry Season", x = "Canopy Cover (LAI)", y = "Flame Length (m)") +
+  theme_minimal() +
+  geom_line(data = pred_df1, aes(x = mean_LAI, y = flame_length_pred), color = "red") 
+
+```
+
+```{r flame length combined plot }
+
+#Late + early season flame length segmented regressions
+p2 <- ggplot(behave, aes(x = mean_LAI, y = flame_length)) +
+  geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
+  labs(x = "Canopy Cover (LAI)", y = "Flame Length (m)") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal() +
+  geom_line(data = pred_df1, aes(x = mean_LAI, y = flame_length_pred), color = "darkred", size = .8) +
+  geom_line(data = pred_df, aes(x = mean_LAI, y = flame_length_pred), color = "blue4", size = .8) 
+
+```
+
+```{r Fireline intensity segmented data analysis, include = FALSE}
+#subset by season
+behave_early <- behave %>% 
+  filter(season == "early")
+
+behave_late <- behave %>% 
+  filter(season == "late")
+
+#Model behave output with segmented to id breakpoints
+# Fit a mixed effects model
+model_early <- lm(intensity ~ mean_LAI, data=behave_early)
+
+model_late <- lm(intensity ~ mean_LAI, data=behave_late)
+
+
+# Apply segmented to find a breakpoint
+segmented_model_early <- segmented(model_early, seg.Z = ~mean_LAI, data = behave_early)
+segmented_model_late <- segmented(model_late, seg.Z = ~mean_LAI, data = behave_late)
+
+summary(segmented_model_early)
+summary(segmented_model_late)
+
+```
+
+``` {r Intensity segmented plots by season, include = FALSE}
+pred_df <- data.frame(mean_LAI = seq(min(behave_early$mean_LAI), max(behave_early$mean_LAI), length.out = 100))
+
+# Predictions for segmented model
+pred_df$intensity_pred <- predict(segmented_model_early, newdata = pred_df)
+
+ggplot(behave_early, aes(x = mean_LAI, y = intensity)) +
+  geom_point() +  # Add points for the original data
+  labs(title = "Early Dry Season", x = "Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)") +
+  theme_minimal() +
+  geom_line(data = pred_df, aes(x = mean_LAI, y = intensity_pred), color = "red")
+
+
+# Create a data frame for prediction
+pred_df1 <- data.frame(mean_LAI = seq(min(behave_late$mean_LAI), max(behave_late$mean_LAI), length.out = 100))
+
+# Predictions for segmented model
+pred_df1$intensity_pred <- predict(segmented_model_late, newdata = pred_df)
+
+ggplot(behave_late, aes(x = mean_LAI, y = intensity)) +
+  geom_point() +  # Add points for the original data
+  labs(title = "Late Dry Season", x = "Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)") +
+  theme_minimal() +
+  geom_line(data = pred_df1, aes(x = mean_LAI, y = intensity_pred), color = "red") 
+```
+
+```{r fireline intensity combined plot}
+
+#Late + early season intensity segmented regressions
+p3 <- ggplot(behave, aes(x = mean_LAI, y = intensity)) +
+  geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
+  labs(x = "Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal() +
+  geom_line(data = pred_df1, aes(x = mean_LAI, y = intensity_pred), color = "darkred", size = .8) +
+  geom_line(data = pred_df, aes(x = mean_LAI, y = intensity_pred), color = "blue4", size = .8) 
+
+```
+
+
+
+```{r PIG intensity segmented data analysis, include = FALSE}
+#subset by season
+behave_early <- behave %>% 
+  filter(season == "early")
+
+behave_late <- behave %>% 
+  filter(season == "late")
+
+#Model behave output with segmented to id breakpoints
+# Fit a mixed effects model
+model_early <- lm(PIG ~ mean_LAI, data=behave_early)
+
+model_late <- lm(PIG ~ mean_LAI, data=behave_late)
+
+
+# Apply segmented to find a breakpoint
+segmented_model_early <- segmented(model_early, seg.Z = ~mean_LAI, npsi = 2, data = behave_early)
+segmented_model_late <- segmented(model_late, seg.Z = ~mean_LAI, data = behave_late)
+
+
+summary(segmented_model_early)
+summary(segmented_model_late)
+
+```
+
+```{r arrange fmc plots}
+grid.arrange(p1, p2, p3, nrow=3)
+```
+
+``` {r PIG segmented plots by season, include = FALSE}
+pred_df <- data.frame(mean_LAI = seq(min(behave_early$mean_LAI), max(behave_early$mean_LAI), length.out = 100))
+
+# Predictions for segmented model
+pred_df$PIG_pred <- predict(segmented_model_early, newdata = pred_df)
+
+ggplot(behave_early, aes(x = mean_LAI, y = PIG)) +
+  geom_point() +  # Add points for the original data
+  labs(title = "Early Dry Season", x = "Canopy Cover (LAI)", y = "Probablity of Ignition (%)") +
+  theme_minimal() +
+  geom_line(data = pred_df, aes(x = mean_LAI, y = PIG_pred), color = "red")
+
+
+# Create a data frame for prediction
+pred_df1 <- data.frame(mean_LAI = seq(min(behave_late$mean_LAI), max(behave_late$mean_LAI), length.out = 100))
+
+# Predictions for segmented model
+pred_df1$PIG_pred <- predict(segmented_model_late, newdata = pred_df)
+
+ggplot(behave_late, aes(x = mean_LAI, y = PIG)) +
+  geom_point() +  # Add points for the original data
+  labs(title = "Late Dry Season", x = "Canopy Cover (LAI)", y = "Probablity of Ignition (%)") +
+  theme_minimal() +
+  geom_line(data = pred_df1, aes(x = mean_LAI, y = PIG_pred), color = "red") 
+```
+
+```{r PIG combined plot}
+
+#Late + early season intensity segmented regressions
+ggplot(behave, aes(x = mean_LAI, y = PIG)) +
+  geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
+  labs(x = "Canopy Cover (LAI)", y = "Probablity of Ignition (%)") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal() +
+  geom_line(data = pred_df1, aes(x = mean_LAI, y = PIG_pred), color = "darkred", size = .8) +
+  geom_line(data = pred_df, aes(x = mean_LAI, y = PIG_pred), color = "blue4", size = .8) 
+
+```
+
+#### b) How do fire effects vary by season in either forest type?
+
+With the fire effects variables (flame length, fireline intensity, and ROS) we see clear differences between early and late season flammability in the open canopy, but to compare flammability between the early and late season we will subset data by forest type (open canopy/closed canopy) and perform linear mixed regression incorporating the individual plots (plot_id) as random effects. After having assessed the flammability thresholds, this subsetting analysis will allow us to perform more thorough comparisons of seasonal effects on flammability by disregarding the nonlinearity associated with the differences in flammability across forest types.
+
+``` {r ROS subset model, include = FALSE}
+open_data <- behave %>% 
+  filter(plot_type == "ddf")
+
+open_model <- lmer(ROS ~ mean_LAI*season + (1|plot_id), data = open_data)
+summary(open_model)
+
+
+closed_data <- behave %>% 
+  filter(plot_type == "evg")
+
+closed_model <- lmer(ROS ~ mean_LAI*season + (1|plot_id), data = closed_data)
+summary(closed_model)
+```
+
+``` {r ROS subset plot}
+p1 <- ggplot(closed_data, aes(x = mean_LAI, y = ROS, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm")+
+  labs(title = "Closed Canopy Rate of Fire Spread in Surface Fuels",
+       x = "Canopy Cover (LAI)", y = "ROS", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal()
+
+p2 <- ggplot(open_data, aes(x = mean_LAI, y = ROS, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm")+ 
+  labs(title = "Open Canopy Rate of Fire Spread in Surface Fuels",
+       x = "Canopy Cover (LAI)", y = "ROS", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal()
+
+```
+
+``` {r flame length subset model}
+open_data <- behave %>% 
+  filter(plot_type == "ddf")
+
+open_model <- lmer(flame_length ~ mean_LAI*season + (1|plot_id), data = open_data)
+summary(open_model)
+
+
+closed_data <- behave %>% 
+  filter(plot_type == "evg")
+
+closed_model <- lmer(flame_length ~ mean_LAI*season + (1|plot_id), data = closed_data)
+summary(closed_model)
+```
+
+```{r flame length subset plot}
+
+p3 <- ggplot(closed_data, aes(x = mean_LAI, y = flame_length, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm")+
+  labs(title = "Closed Canopy Surface Flame Length",
+       x = "Canopy Cover (LAI)", y = "Flame Length (m)", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal()
+
+p4 <- ggplot(open_data, aes(x = mean_LAI, y = flame_length, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm")+
+  labs(title = "Open Canopy Surface Flame Length",
+       x = "Canopy Cover (LAI)", y = "Flame Length (m)", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal()
+
+```
+
+``` {r fireline intensity subset models}
+open_data <- behave %>% 
+  filter(plot_type == "ddf")
+
+open_model <- lmer(intensity ~ mean_LAI*season + (1|plot_id), data = open_data)
+summary(open_model)
+
+
+closed_data <- behave %>% 
+  filter(plot_type == "evg")
+
+closed_model <- lmer(intensity ~ mean_LAI*season + (1|plot_id), data = closed_data)
+summary(closed_model)
+
+```
+
+```{r fireline intensity subset plots}
+
+p5 <- ggplot(closed_data, aes(x = mean_LAI, y = intensity, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm")+
+  labs(title = "Closed Canopy Surface Fireline Intensity",
+       x = "Canopy Cover (LAI)", y = "Fireline Intensity (kW/m)", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal()
+
+p6 <- ggplot(open_data, aes(x = mean_LAI, y = intensity, color = season))+
+  geom_point(alpha = .5) + geom_smooth(method = "lm")+
+  labs(title = "Open Canopy Surface Fireline Intensity",
+       x = "Canopy Cover (LAI)", y = "Fireline Intensity (kW/m)", color = "Season") +
+  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
+  theme_minimal()
+
+```
+
+```{r arrange behave subset plots}
+grid.arrange(p1, p2, nrow=2)
+```
+
+####c) Summaries by Plot Type
+Here we will look at the summaries of fuel and microclimate values averaged by forest type and by season. Previously, for fuel dist variables, we have only considered early season LAI (because wet season LAI determines grass growth adn keeping LAI constant from early to late dry season allows us to compare seasonal conditions at given locations.
+
+For the summary statistics, we will look average all values of interest by plot type and by season, including LAI. Where the cutoff between the early and late season will be observation 4, when most microclimate conditions started to change rapidly.
+
+```{r fine fuel composition setup, include = FALSE}
+LAI_seasons <- LAI %>% 
+  group_by(season, plot_id, quad_id, plot_type) %>% 
+  summarize(LAI = mean(LAI, na.rm = TRUE))
+
+#merging LAI_seasons and biomass_seasons into fuel_seasons
+fuel_seasons <- right_join(LAI_seasons, biomass_seasons, by = c("plot_id", "quad_id", "plot_type", "season"))
+
+#add fine load and total fuel load (taken from 1.3)
+fuel_seasons <- fuel_seasons %>% 
+  mutate(fine_load = grass_mass + litter_mass)
+
+fuel_seasons <- fuel_seasons %>% 
+  mutate(fuel_load = grass_mass + litter_mass + one_hr_mass + ten_hr_mass + hundred_hr_mass + other_mass)
+
+#add bulk density and fuel depth (taken from 1.4)
+fuel_seasons <- fuel_seasons %>% 
+  mutate(grass_ratio = grass_per/(litter_per+ grass_per))
+
+#LITTER RATIO
+fuel_seasons <- fuel_seasons %>% 
+  mutate(litter_ratio = litter_per/(litter_per+ grass_per))
+
+
+#Weighted means of litter and mass for all subplots with grass loads <240g/m2
+#Here we are determining fuel depth as grass height if there is more that 240g/m2 of grass, as litter depth if there is less than 30g/m2 of grass and as the weighted mean of grass height and litter depth otherwise.
+fuel_seasons <- fuel_seasons  %>%
+  mutate(fuel_depth = ifelse(grass_mass > 240, 
+              (grass_height),(grass_height*grass_ratio+litter_depth*litter_ratio)))
+
+fuel_seasons <- fuel_seasons  %>% 
+  mutate(fuel_depth = ifelse(grass_mass < 30, 
+              (litter_depth),(fuel_depth)))
+
+#fine fuel bulk density
+fuel_seasons <- fuel_seasons %>%
+  mutate(bulk_density = (grass_mass+litter_mass+one_hr_mass)/
+                                 (fuel_depth/100))
+
+fuel_seasons <- fuel_seasons %>%
+  mutate(bulk_density = (bulk_density/1000))
+
+
+
+#drop the quadrants that did not have biomass records
+fuel_seasons <- fuel_seasons %>% drop_na(grass_mass)
+
+```
+
+We will just add the summaries of the modeled fire behaviour outputs to the fuel summary tables from above
+
+``` {r forest type seasonal summaries, include = FALSE}
+
+behave_fire <- behave %>% 
+  dplyr::select(plot_type, plot_id, season, quad_id,litter_fm, ten_fm, grass_fm, woody_fm, wind_speed, air_temp, ROS, intensity, flame_length, PIG)
+
+fuel_seasons_fire <- fuel_seasons %>% 
+  left_join(behave_fire)
+
+fuel_summaries <- fuel_seasons_fire %>% 
+  group_by(plot_type, season) %>% 
+  summarize(LAI = mean(LAI), grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass), seedlings = mean(seedlings), fuel_load = mean(fuel_load), fine_load = mean(fine_load),fuel_depth = mean(fuel_depth), bulk_density = mean(bulk_density), ROS = mean(ROS), intensity = mean(intensity), flame_length = mean(flame_length), PIG = mean(PIG)) 
+
+```
+
+```{r fuel change seasonal metrics, include=FALSE}
+#fine fuel percentage
+fuel_summaries %>% 
+  mutate(grass_percentage = grass_mass/fine_load, litter_percentage = litter_mass/fine_load)
+
+#litter load increases by plot_type
+#(ddf late - ddf early) / ddf early = 125%
+#(evg late - evg early) / evg early = 129%
+
+```
+
+```{r add fuel moistures to summaries, include = FALSE}
+fm_summaries <- LAIxfm_obs %>% 
+  group_by(plot_type, season) %>% 
+  summarize(grass = mean(grass, na.rm = TRUE), litter = mean(litter, na.rm = TRUE), woody_leaf = mean(woody_leaf, na.rm = TRUE), ten_hr = mean(ten_hr, na.rm = TRUE), one_hr = mean(one_hr, na.rm = TRUE))
+```
+
+```{r add tomst microclimate to summaries, include=FALSE}
+tomst_summaries <- TOMST_seasons %>% 
+  group_by(plot_type, season) %>% 
+  summarize(mean_air_temp = mean(mean_air_temp))
+```
+
+```{r add kestrel data, include=FALSE}
+kestrel_wind_summaries <- kestrel %>% 
+  group_by(plot_type, season) %>% 
+  summarize( wind_speed = mean(wind_speed))
+
+kestrel_rh_summaries <- kestrel_midday %>% 
+  group_by(plot_type, season) %>% 
+  summarize(mean_rh = mean(mean_rh))
+```
+Now, join fuel moisture summaries into fuel and fire and microclimate summaries:
+
+```{r summaries table, include=FALSE}
+fuel_summaries <- fuel_summaries %>% 
+  left_join(fm_summaries)
+
+fuel_summaries <- fuel_summaries %>% 
+  left_join(tomst_summaries)
+
+fuel_summaries <- fuel_summaries %>% 
+  left_join(kestrel_rh_summaries)
+
+fuel_summaries <- fuel_summaries %>% 
+  left_join(kestrel_wind_summaries)
+```
+
+
+### 4.1) Sensitivity Analysis
+We will perform a sensitivity analysis to determine the relative contributions of the major flammability factors (fuel load, bulk density, fuel moisture, and weather) that separate the open and closed canopy areas. We will perform one sensitivity analysis for the early season and one for the late season, to see how the flammability factors vary across the dry season. Fuel loads, fuel bulk density, fuel moisture, and microclimate conditions are all important in establishing the flammability differences between open and closed states, but the contributions of each factor and how/if those contributions vary across the season has not been studied in dipterocarp mosaics. Understanding how the these factors contribute to flammability and how they may change over the course of the season helps us better understand 1)how fire feedbacks create mosaics and 2)how stable/sensitive these feedbacks are to changes in weather and fuel conditions.
+
+#### a) What are the relative contributions of flammability factors in seperating fire-feedbacks between open and closed systems?
+
+Similarly to Hoffman 2012, I will average each Behaveplus inputs across all 46 runs, per season (we will do this twice, 1 average per season), then change one set of parameters at a time to represent open canopy conditions (average of DDF3 - DDF6) or closed canopy conditions (average of EVG1-5). I am including DDF2 with the open canopy plots, because it has low LAI, but it is worth noting that DDF2 is more accurately classified as mixed deciduous (according to rangers and aligns with Tani 2007) which tends to be somewhere in between the broad designations of open and closed. The microclimate of DDF2 resembles the open canopy plots, but the surface fuel composition of DDF2 is more aligned with the SEF plots.
+
+```{r Across forest type sensitivty analysis setup}
+library(readxl)
+SA1 <- read_excel("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Sensitivity Analysis/SA_differences_V5.xlsx")
+
+SA_late <- SA1 %>% 
+filter(season == "late")
+
+SA_early <- SA1 %>% 
+  filter(season == "early")
+
+```
+
+```{r ROS}
+p1 <- SA_early %>% 
+ggplot(aes(x = variable, y = ROS)) +
+  geom_col(fill = "blue4")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Rate of Spread Increase (m/min)", title = "Early Season")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  ylim(0,2)
+
+p2 <- SA_late %>% 
+  ggplot(aes(x = variable, y = ROS)) +
+  geom_col(fill = "darkred")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Rate of Spread Increase (m/min)", title = "Late Season")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  ylim(0,2)
+
+```
+
+```{r Intensity}
+SA_early %>% 
+ggplot(aes(x = variable, y = intensity)) +
+  geom_col(fill = "blue4")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Fire Intensity Increase (kW/m)", title = "Early Season")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  ylim(0,400)
+
+SA_late %>% 
+  ggplot(aes(x = variable, y = intensity)) +
+  geom_col(fill = "darkred")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Fire Intensity Increase (kW/m)", title = "Late Season")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  ylim(0,400)
+```
+
+```{r Flame Length}
+SA_early %>% 
+ggplot(aes(x = variable, y = flame_length)) +
+  geom_col(fill = "blue4")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Flame Length Increase (m)", title = "Early Season")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  ylim(0,1)
+
+SA_late %>% 
+  ggplot(aes(x = variable, y = flame_length)) +
+  geom_col(fill = "darkred")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Flame Length Increase (m)", title = "Late Season")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  ylim(0,1)
+```
+
+#### b) How do the contributions of flammability factors affect differences in flammability between early and late dry season within each forest type?
+
+Before, we wanted to see how flammability factors differ between the two forest types. Now we are interested in how the flammability of each forest type changes from the early to the late season.
+
+```{r Across season sensitivty analysis setup}
+library(readxl)
+SA2 <- read_excel("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Sensitivity Analysis/forest_type_SA_differences.xlsx")
+ 
+SA_evg <- SA2 %>% 
+filter(plot_type == "evg")
+
+SA_ddf <- SA2 %>% 
+  filter(plot_type == "ddf")
+
+
+p1 <- SA_ddf %>% 
+ggplot(aes(x = variable, y = ROS)) +
+  geom_col(fill = "blue4")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Rate of spread increase (m/min)", title = "DDF")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))
+
+p2 <- SA_evg %>% 
+  ggplot(aes(x = variable, y = ROS)) +
+  geom_col(fill = "darkred")+
+  theme_minimal() + 
+  labs(x = "Factor", y = "Rate of spread increase (m/min)", title = "EVG")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))
+
+```
