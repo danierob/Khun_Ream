@@ -162,17 +162,9 @@ This graph provides an idea of how canopy cover varies among our plots and how L
 
 Canopy cover influences surface fuel in two primary ways: Q1) canopy cover restricts shade-intolerant species, like C4 grasses, reducing the surface fuel load while simultaneously/contrastingly adding to the surface fuel load via leaf shedding, and Q2) canopy cover provides a buffer that moderates microclimate by decreasing daily highs in temp and daily lows in RH (and less significantly by buffering nighttime temp lows and RH highs). As the dry season progresses, microclimate conditions and surface fuel structure change as temperatures reach annual maximums and leaves shed and flush at various intervals according to diverse phenological traits . Both microclimate and fuel-load are important in establishing the feedbacks that reinforce the mosaic of open-closed canopy states in Cambodia but few empirical records exist (particularly when compared to similar mosaicked ecosystems in Australia, Africa, and South America) that describe the relationship in the region.
 
-**Q1: 1) How does the distribution of surface fuel vary with canopy cover? 2) How does this relationship change throughout the dry season?**
+First we will create a "data" df to use for all fuel distribution analyses:
 
-The amount and type of surface fuel is critical to the distribution of forest savanna mosaics (ref). Savannas can be difficult to delineate given the wide range of physiognomies in tree cover that they support, so we define savannas here as an area with continuous grassy understory and a significant tree component (Lehmann et al 2011, Ratnam 2011). This definition is intentionally unconcerned with an upper margin of canopy cover or tree cover or stand height or stand structure because the establishment of rigid physiognomic boundaries (say anything below 60% tree cover is savanna, and anything above is forest) may fail to account for the range of savanna-conforming functional adaptations across different regions with varying climates and evolutionary histories. This may be particular deleterious in regions that do not fit into the current physiognomic expectations of savanna, but may host a broad lineage of savanna-adapted species and traits. Instead, our definition relies on the ubiquitous relationship between canopy shading and grass exclusion, where at a certain amount of canopy cover, grass is no longer able to grow densely enough to support fire. This is particularly true for the highly flammable C4 grasses, which generally have a lower capacity for establishment in low-light environments (ref).
-
-### 1. 1) The LAI threshold for grass establishment
-
-Past studies suggest that surface fuel composition varies across a gradient of canopy cover, however the precise canopy cover/tree density thresholds for grass exclusion varies by system (Hoffman 2012a, Charles-Dominique 2018, Newberry 2020, Cardosa 2018). Surface fuels transition from grass-dominated to litter-dominated as canopy cover increases. C4 grasses are highly sensitive to light, and at a given canopy density, grass growth is restricted to such an extent that it is no longer relevant as a fuel source (fire-threshold). In most tropical studies the value of this threshold is ~3.0 LAI (Hoffman 2012a, Cardosa 2018) but no study, to my knowledge, has quantified this relationship, between canopy cover and grass biomass in Southeast Asia (Khaing 2019 looked at the C4 layer and herb layer relationship with Basal Area).
-
-In this analysis, we consider the relationship between LAI and grass load using fixed, early season LAI (because grasses do not grow/change much in the dry season, so their abundance is most influenced by growing/wet season canopy levels). We will join the LAI observation 1+2 data with the averaged early and late season Biomass observations data to assess the relationship. We use observations 1 (Jan. 26) and 2 (Feb. 2) of the LAI data because LAI did not start to decline significantly until LAI ob. 3 (Feb. 8), so averaging obs. 1 and 2 will mitigate deviations in LAI records due to sky conditions at the time of observation without sacrificing data integrity
-
-``` {r grass setup, include = FALSE}
+``` {r fuel distribution data setup, include = FALSE}
 #loading in LAI data
 LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
                 col_types = cols(date = col_date(format = "%m/%d/%Y"), 
@@ -224,12 +216,27 @@ LAI_earlyxbiomass_seasons <- right_join(LAI_early, biomass_seasons, by = c("plot
 #drop the quadrants that did not have biomass records
 LAI_earlyxbiomass_seasons <- LAI_earlyxbiomass_seasons %>% drop_na(grass_mass)
 
+data <- LAI_earlyxbiomass_seasons
+```
+
+**Q1: 1) How does the distribution of surface fuel vary with canopy cover? 2) How does this relationship change throughout the dry season?**
+
+The amount and type of surface fuel is critical to the distribution of forest savanna mosaics (ref). Savannas can be difficult to delineate given the wide range of physiognomies in tree cover that they support, so we define savannas here as an area with continuous grassy understory and a significant tree component (Lehmann et al 2011, Ratnam 2011). This definition is intentionally unconcerned with an upper margin of canopy cover or tree cover or stand height or stand structure because the establishment of rigid physiognomic boundaries (say anything below 60% tree cover is savanna, and anything above is forest) may fail to account for the range of savanna-conforming functional adaptations across different regions with varying climates and evolutionary histories. This may be particular deleterious in regions that do not fit into the current physiognomic expectations of savanna, but may host a broad lineage of savanna-adapted species and traits. Instead, our definition relies on the ubiquitous relationship between canopy shading and grass exclusion, where at a certain amount of canopy cover, grass is no longer able to grow densely enough to support fire. This is particularly true for the highly flammable C4 grasses, which generally have a lower capacity for establishment in low-light environments (ref).
+
+### 1. 1) The LAI threshold for grass establishment
+
+Past studies suggest that surface fuel composition varies across a gradient of canopy cover, however the precise canopy cover/tree density thresholds for grass exclusion varies by system (Hoffman 2012a, Charles-Dominique 2018, Newberry 2020, Cardosa 2018). Surface fuels transition from grass-dominated to litter-dominated as canopy cover increases. C4 grasses are highly sensitive to light, and at a given canopy density, grass growth is restricted to such an extent that it is no longer relevant as a fuel source (fire-threshold). In most tropical studies the value of this threshold is ~3.0 LAI (Hoffman 2012a, Cardosa 2018) but no study, to my knowledge, has quantified this relationship, between canopy cover and grass biomass in Southeast Asia (Khaing 2019 looked at the C4 layer and herb layer relationship with Basal Area).
+
+In this analysis, we consider the relationship between LAI and grass load using fixed, early season LAI (because grasses do not grow/change much in the dry season, so their abundance is most influenced by growing/wet season canopy levels). We will join the LAI observation 1+2 data with the averaged early and late season Biomass observations data to assess the relationship. We use observations 1 (Jan. 26) and 2 (Feb. 2) of the LAI data because LAI did not start to decline significantly until LAI ob. 3 (Feb. 8), so averaging obs. 1 and 2 will mitigate deviations in LAI records due to sky conditions at the time of observation without sacrificing data integrity.
+
+``` {r grass data setup, include = FALSE}
+
 #remove the massive bamboo outlier in DDF5 Q4
 z_scores <- scale(LAI_earlyxbiomass_seasons$grass_mass)
 outliers <- abs(z_scores) > 3  # Adjust the threshold as needed
 
 # Create a subset without outliers
-data <- LAI_earlyxbiomass_seasons[!outliers, ]
+data_outliers <- data[!outliers, ]
 
 ```
 
@@ -237,13 +244,13 @@ We use the segmented() function to determine the breakpoints at which grass mass
 
 ``` {r grass segmented}
 #avg grass mass data between early and late
-data_avg <- data %>% 
+data_grass <- data_outliers %>% 
   group_by(plot_id, quad_id, mean_LAI) %>% 
   summarize(grass_mass = mean(grass_mass))
 
 # Fit a 2 segmented regression model (2 segments!)
 
-m1 <- lm(grass_mass ~ mean_LAI, data=data_avg) 
+m1 <- lm(grass_mass ~ mean_LAI, data=data_grass) 
 
 ms1 <- segmented(m1, npsi = 2)
 plot(ms1)
@@ -251,12 +258,12 @@ summary(ms1)
 confint.segmented(ms1)
 
 # Create a data frame for prediction
-pred_df <- data.frame(mean_LAI = seq(min(data_avg$mean_LAI), max(data_avg$mean_LAI), length.out = 100))
+pred_df <- data.frame(mean_LAI = seq(min(data_grass$mean_LAI), max(data_grass$mean_LAI), length.out = 100))
 
 # Predictions for segmented model
 pred_df$grass_mass_pred <- predict(ms1, newdata = pred_df)
 
-ggplot(data_avg, aes(x = mean_LAI, y = grass_mass)) +
+ggplot(data_grass, aes(x = mean_LAI, y = grass_mass)) +
   geom_point(size = 2) +  # Add points for the original data
   labs(x = "Canopy Cover (LAI)", y = "Grass Mass (g/m2)") +
   theme_minimal() +
@@ -269,12 +276,12 @@ And we will also use a 3rd order polynomial linear regression to evaluate the ov
 
 ``` {r grass lmm}
 #add grass + 1 column to log grass (several grass values of 0 cant be logged)
-data_avg <- data_avg %>% 
+data_grass <- data_grass %>% 
 group_by(grass_mass, plot_id, mean_LAI, quad_id) %>%
 mutate(grass1 = grass_mass + 1)
 
 #random intercepts model
-m1 <- lmer(log(grass1) ~log(mean_LAI) + (1|plot_id), data = data_avg, REML = TRUE)
+m1 <- lmer(log(grass1) ~log(mean_LAI) + (1|plot_id), data = data_grass, REML = TRUE)
 
 plot(m1)
 
@@ -296,8 +303,8 @@ pred <- ggpredict(m1, terms = "mean_LAI")
    geom_line(aes(x = x, y = predicted), fill = NA, color = "red") +          # slope
    geom_ribbon(aes(x = x, ymin = predicted - std.error, ymax = predicted + std.error), 
                fill = NA, alpha = 0.5) +  # error band
-   geom_point(data = data_avg,                # adding the raw data
-              aes(x = data_avg$mean_LAI, y = data_avg$grass_mass)) + 
+   geom_point(data = data_grass,                # adding the raw data
+              aes(x = data_grass$mean_LAI, y = data_grass$grass_mass)) + 
    labs(x = "LAI", y = "Grass Mass (g)", 
         title = "Grass Load Decreases Across Canopy Gradient") + 
    theme_bw()
@@ -607,81 +614,7 @@ Grass Accounted for most of the fine fuel load in the open canopy in the early s
 ###1. 4) Fuel Bulk Density
 Dry grass and dry leaf litter are the main components of fine dead fuel. However, in the field, grass and litter tend to have contrasting flammability. This contrast is largely due to variation in fuel arrangement, specifically bulk density (g/cm3). The compact arrangement -- high bulk density -- of litter reduces fire likelihood and spread compared to the light, aerated architecture -- low bulk density -- of grass. Curing grasses invite a passing fuel source to ignite and carry fire more readily. In savanna-forest mosaics of other continents, bulk density has been identified as the primary driver in establishing the functional dichotomy between forest and savanna (Hoffman 2012b, Newberry 2020). I anticipate fine fuel bulk densities to increase as grass biomass decreases and litter biomass increases. I predict peak bulk densities will correspond to peak canopy cover, where litter accumulation should be greatest and grass presence should be lowest.
 
-In this analysis, we consider the relationship between LAI and fuel bulk density as an average of all biomass measurements (3 in early season + 3 in late season = 6 quadrats ) per plot, only considering biomass ob. 1 (as in 1.1.1), to evaluate the maximum extent of fine fuel load discrepancy.
 ```{r bulk density setup}
-#data from 1.1 setup
-#Bulk Density
-data_bulk <- data %>% 
-    group_by(plot_id, quad_id, mean_LAI) %>% 
-    summarize(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass),
-              other_mass = mean(other_mass), grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
-              grass_per = mean(grass_per), litter_per = mean(litter_per))
-
-### creating a grass ratio and litter ratio column so that litter percentage plus grass percentage add up to 1
-#GRASS RATIO
-data_bulk <- data_bulk %>% 
-  mutate(grass_ratio = grass_per/(litter_per+ grass_per))
-
-#LITTER RATIO
-data_bulk <- data_bulk %>% 
-  mutate(litter_ratio = litter_per/(litter_per+ grass_per))
-
-
-#Weighted means of litter and mass for all subplots with grass loads <240g/m2
-#Here we are determining fuel depth as grass height if there is more that 240g/m2 of grass, as litter depth if there is less than 30g/m2 of grass and as the weighted mean of grass height and litter depth otherwise.
-data_bulk <- data_bulk  %>%
-  mutate(fuel_depth = ifelse(grass_mass > 240, 
-              (grass_height),(grass_height*grass_ratio+litter_depth*litter_ratio)))
-
-data_bulk <- data_bulk  %>% 
-  mutate(fuel_depth = ifelse(grass_mass < 30, 
-              (litter_depth),(fuel_depth)))
-
-data_bulk <- data_bulk %>%
-  mutate(bulk_density = (grass_mass+litter_mass+ one_hr_mass)/
-                                 (fuel_depth/100))
-
-```
-
-```{r bulk density model}
-#almost no difference between seasons, so going to do analysis with avg of seasons!
-#bulk density averaged across seasons
-m1 <- lmer(bulk_density ~ mean_LAI + ((mean_LAI)^2)+ (1|plot_id) , data = data_bulk)
-summary(m1)
-
-plot(m1)
-
-hist(resid(m1))
-qqPlot(resid(m1))
-
-
-###Testing Assumptions
-sim_residuals <- DHARMa::simulateResiduals(fittedModel = m1)
-plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
-shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
-plotResiduals(sim_residuals) # For visual validation of (iii)
-random_effects <- lme4::ranef(m1) # For visual validation of (iv)
-plot(random_effects)
-```
-
-```{r bulk density plot}
-ggplot(data_bulk, aes(x = mean_LAI, y = bulk_density/1000))+
-  geom_point(color = "blue4", alpha = .7, size = 1) +
-  stat_smooth(method = "lm", fill = "NA", size = 1, formula = y ~ poly(x, 2), color= "blue4") +
-  labs(x = "Canopy Cover (LAI)", y = "Fuel Bulk Density (g/m3)")+
-  theme_bw() +
-  theme(text=element_text(size= 16), legend.position="none", 
-                 plot.title = element_text(hjust = 0.5))
-
-
-```
-
-
-These assumptions don't look great but their the best I've got at the moment. I ended up using a quadratic that fits the data pretty well and maybe barely passes assumptions, but the intercept is quite high because almost all of the DDF points fall at ~0.
-
-Now we'll check out the seasonal effect, but its not very exciting:
-
-```{r bulk seasonal effect setup}
 
 #Bulk 
 bulk_seasons <- data %>% 
