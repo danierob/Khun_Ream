@@ -113,7 +113,9 @@ LAI_summaries <- LAI %>%
 LAI_summaries <- LAI_summaries %>% 
   mutate(LAI_difference = evg-ddf)
 
+```
 
+```{r LAI table}
 LAI_table <- LAI_summaries %>% 
 gt() %>% 
   tab_header(
@@ -134,8 +136,6 @@ gt() %>%
     columns = c("LAI_difference", "ddf","evg"), # Specify the columns to format
     decimals = 2 # Number of decimal places
   )
-
-
 
 ```
 **Canopy cover change by plot across the season**
@@ -185,17 +185,17 @@ LAI$season <- factor(LAI$season)
 LAI$plot_id <- factor(LAI$plot_id)
 
 
-biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V4.csv", 
+biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V6.csv", 
                     col_types = cols(grass_height = col_number(), 
                                      litter_depth = col_number(), grass_per = col_number(), 
                                      wood_per = col_number(), bare_per = col_number(), 
                                      litter_per = col_number(), grass_mass = col_number(), 
-                                     other_mass = col_number(), wood_mass = col_number(), 
+                                     other_mass = col_number(), one_hr_mass = col_number(), ten_hr_mass = col_number(), hundred_hr_mass = col_number(),
                                      litter_mass = col_number(), seedlings = col_integer()))
 
 #multiply fuel masses by 4 to get g/m2 (quads were .25m l and w)
 biomass <- biomass %>%
-  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, wood_mass = wood_mass*4, other_mass = other_mass *4)
+  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, one_hr_mass = one_hr_mass*4, ten_hr_mass = ten_hr_mass*4, hundred_hr_mass = hundred_hr_mass*4, other_mass = other_mass *4)
 
 #make season a factor
 biomass$season <- factor(biomass$season)
@@ -208,7 +208,7 @@ biomass$plot_id <- factor(biomass$plot_id)
 biomass_seasons <- biomass %>%
   group_by(plot_id, quad_id, season, plot_type) %>% 
   summarise(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), 
-            wood_mass = mean(wood_mass), other_mass = mean(other_mass), 
+            one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass), other_mass = mean(other_mass), 
             grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
             grass_per = mean(grass_per), litter_per = mean(litter_per), seedlings = mean(seedlings))
 
@@ -276,6 +276,9 @@ mutate(grass1 = grass_mass + 1)
 #random intercepts model
 m1 <- lmer(log(grass1) ~log(mean_LAI) + (1|plot_id), data = data_avg, REML = TRUE)
 
+plot(m1)
+
+
 summary(m1)
 
 # Calculate R² values
@@ -284,15 +287,13 @@ r2_values <- r.squaredGLMM(m1)
 # Display R² values
 print(r2_values)
 
-
-
 ```
 
 ```{r grass lmer plot, echo = FALSE}
 pred <- ggpredict(m1, terms = "mean_LAI")
 
 (ggplot(pred) + 
-   geom_smooth(aes(x = x, y = predicted), fill = NA, color = "red") +          # slope
+   geom_line(aes(x = x, y = predicted), fill = NA, color = "red") +          # slope
    geom_ribbon(aes(x = x, ymin = predicted - std.error, ymax = predicted + std.error), 
                fill = NA, alpha = 0.5) +  # error band
    geom_point(data = data_avg,                # adding the raw data
@@ -302,11 +303,7 @@ pred <- ggpredict(m1, terms = "mean_LAI")
    theme_bw()
 )
 
-ggplot(data = data_avg, aes(x = log(mean_LAI), y = log(grass1))) +
-  geom_smooth()  + geom_point() +
-  labs(title = "Seasonal Variation in Relationship Between Litter Load and Canopy Cover",
-       x="LAI", y="Litter Load (g/m2)")+
-  theme_bw()
+
 
 ```
 
@@ -335,17 +332,17 @@ LAI$season <- factor(LAI$season)
 LAI$plot_id <- factor(LAI$plot_id)
 
 
-biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V4.csv", 
+biomass <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Biomass/biomass_V6.csv", 
                     col_types = cols(grass_height = col_number(), 
                                      litter_depth = col_number(), grass_per = col_number(), 
                                      wood_per = col_number(), bare_per = col_number(), 
                                      litter_per = col_number(), grass_mass = col_number(), 
-                                     other_mass = col_number(), wood_mass = col_number(), 
+                                     other_mass = col_number(), one_hr_mass = col_number(), ten_hr_mass = col_number(), hundred_hr_mass = col_number(),
                                      litter_mass = col_number(), seedlings = col_integer()))
 
 #multiply fuel masses by 4 to get g/m2 (quads were .25m l and w)
 biomass <- biomass %>%
-  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, wood_mass = wood_mass*4, other_mass = (other_mass+seedlings*2) *4)
+  mutate(grass_mass = grass_mass*4, litter_mass = litter_mass*4, one_hr_mass = one_hr_mass*4, ten_hr_mass = ten_hr_mass*4, hundred_hr_mass = hundred_hr_mass*4, other_mass = other_mass *4)
 
 #make season a factor
 biomass$season <- factor(biomass$season)
@@ -358,10 +355,9 @@ biomass$plot_id <- factor(biomass$plot_id)
 biomass_seasons <- biomass %>%
   group_by(plot_id, quad_id, season, plot_type) %>% 
   summarise(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), 
-            wood_mass = mean(wood_mass), other_mass = mean(other_mass), 
+            one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass), other_mass = mean(other_mass), 
             grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
             grass_per = mean(grass_per), litter_per = mean(litter_per), seedlings = mean(seedlings))
-
 
 #isolating and averaging LAI ob 1&2  data across all observations for one value per quadrant (n=50) because peak LAI (growing season canopy cover) ultimately determines fuel loads.
 LAI_early <- LAI %>%
@@ -487,7 +483,7 @@ LAI_earlyxbiomass_seasons <- LAI_earlyxbiomass_seasons %>%
   mutate(fine_mass = grass_mass + litter_mass)
 
 LAI_earlyxbiomass_seasons <- LAI_earlyxbiomass_seasons %>% 
-  mutate(fuel_load = grass_mass + litter_mass + wood_mass + other_mass)
+  mutate(fuel_load = grass_mass + litter_mass + one_hr_mass + ten_hr_mass + hundred_hr_mass + other_mass)
 
 #remove huge bamboo outlier 
 data <- LAI_earlyxbiomass_seasons
@@ -613,11 +609,11 @@ Dry grass and dry leaf litter are the main components of fine dead fuel. However
 
 In this analysis, we consider the relationship between LAI and fuel bulk density as an average of all biomass measurements (3 in early season + 3 in late season = 6 quadrats ) per plot, only considering biomass ob. 1 (as in 1.1.1), to evaluate the maximum extent of fine fuel load discrepancy.
 ```{r bulk density setup}
-
+#data from 1.1 setup
 #Bulk Density
 data_bulk <- data %>% 
     group_by(plot_id, quad_id, mean_LAI) %>% 
-    summarize(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), wood_mass = mean(wood_mass),
+    summarize(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass),
               other_mass = mean(other_mass), grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
               grass_per = mean(grass_per), litter_per = mean(litter_per))
 
@@ -642,7 +638,7 @@ data_bulk <- data_bulk  %>%
               (litter_depth),(fuel_depth)))
 
 data_bulk <- data_bulk %>%
-  mutate(bulk_density = (grass_mass+litter_mass)/
+  mutate(bulk_density = (grass_mass+litter_mass+ one_hr_mass)/
                                  (fuel_depth/100))
 
 ```
@@ -687,12 +683,13 @@ Now we'll check out the seasonal effect, but its not very exciting:
 
 ```{r bulk seasonal effect setup}
 
-#Bulk Density
+#Bulk 
 bulk_seasons <- data %>% 
     group_by(plot_id, quad_id, mean_LAI, season) %>% 
-    summarize(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), wood_mass = mean(wood_mass),
+    summarize(grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass),
               other_mass = mean(other_mass), grass_height = mean(grass_height), litter_depth = mean(litter_depth), 
               grass_per = mean(grass_per), litter_per = mean(litter_per))
+
 
 ### creating a grass ratio and litter ratio column so that litter percentage plus grass percentage add up to 1
 #GRASS RATIO
@@ -706,16 +703,17 @@ bulk_seasons <- bulk_seasons %>%
 #Weighted means of litter and mass for all subplots with grass loads <240g/m2
 
 bulk_seasons <- bulk_seasons %>%
-  mutate(bulk_density = ifelse(grass_mass > 240, (grass_mass+litter_mass)/
-                                 (grass_height/100),((grass_mass+ litter_mass)/
+  mutate(bulk_density = ifelse(grass_mass > 240, (grass_mass+litter_mass+one_hr_mass)/
+                                 (grass_height/100),((grass_mass+ litter_mass+ one_hr_mass)/
                                  ((grass_height*grass_ratio+litter_depth*litter_ratio)/100))))
 
-``` 
+
+```
 
 ```{r bulk density model seasonal}
 
 #bulk density by season
-m2 <- lmer(bulk_density ~ (mean_LAI)*season + (mean_LAI*season)^2 + (1|plot_id) , data = bulk_seasons)
+m2 <- lmer((bulk_density) ~ (mean_LAI)*season + (mean_LAI*season)^2 + (1|plot_id) , data = bulk_seasons)
 summary(m2)
 
 plot(m2)
@@ -776,42 +774,29 @@ Tree canopies moderate microclimate by acting as a thermal insulator, buffering 
 
 Past research suggests that relationships between canopy cover and microclimate buffering tend to be linear in tropical forest systems (Hardwick 2015). But extent of buffering, or the slope of microclimate buffering across the canopy gradient should increase as free-air (open-canopy) temperatures increase. Basically, as macroclimate heat or open-air heat temperatures get more extreme, open canopies should be relatively worse bufferers and closed canopies should be relatively better bufferers, exaggerating the differences in microclimate between open and closed systems (Davis 2018, De Frenne 2019).
 
-####a) TOMST temp early and late season
-```{r TOMST temp seasons setup, include = FALSE}
-LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
-     col_types = cols(date = col_date(format = "%m/%d/%Y"), 
-      obs_period = col_character(), LAI = col_number(), 
-      month = col_character()))
-
-#Turn obs_period into a factor class variable
-LAI$obs_period <- factor(LAI$obs_period)
+```{r tomst temp setup}
+TOMST_filter <- subset(TOMST_V1, date > "2023/02/10")
 
 
-TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/TOMST/TOMST_V1.csv", 
-    col_types = cols(date = col_date(format = "%Y.%m.%d"), 
-        date_time = col_datetime(format = "%Y.%m.%d %H:%M"), 
-        air_temp = col_number(), soil_moisture = col_number()))
-
-
-#Initially I had tried to filter the temps around the heat of the day, but had an issue where in the early season some of the loggers time zones were not calibrated, so instead we look at daily max and min and avg, which is more aligned with the literature we are comparing to anyway. 
-TOMST_filter <- TOMST_V1 %>%
-  group_by(date, plot_id, quad_id, plot_type) %>%
-  summarize(max_air_temp = max(air_temp), min_air_temp = min(air_temp), avg_air_temp = mean(air_temp))
-
-#need to assign season to tomst dates: early = Jan 15 - Feb 22
-#late = Feb 23 - Apr 11
+#need to assign season to tomst dates: early = Feb 11 - Mar 1
+#late = Mar 1 - Apr 11
 
 TOMST_seasons <- TOMST_filter %>% 
-    mutate(season = case_when(
-        date < "2023/02/23" ~ "early",
-        date >= "2023/02/23" ~  "late"
-    ))
+  mutate(season = case_when(
+    date < "2023/03/1" ~ "early",
+    date >= "2023/03/1" ~  "late"
+  ))
 
-#now average each daily max, min and avg
+#establish daytime range to find daytime temp avg during the time period where we sampled(rather than max temp for each day which was crazy hot (like 50C sometimes) in the late season)
+TOMST_seasons <- TOMST_seasons %>% 
+  filter(hour(date_time) > 11, hour(date_time) < 19) 
+
+
+#now average by variable for midday range across season
 TOMST_seasons <- TOMST_seasons %>%
   group_by(season, plot_id, quad_id, plot_type) %>%
-  summarize(max_air_temp = max(max_air_temp), min_air_temp = min(min_air_temp), avg_air_temp = mean(avg_air_temp))
- 
+  summarize(mean_air_temp = mean(air_temp), mean_surface_temp = mean(surface_temp), mean_soil_temp = mean(soil_temp), mean_soil_moisture = mean(soil_moisture))
+
 #we will filter out obs period 5 because bad sky conditions resulted in unreliable LAI readings:
 LAI_no5 <- LAI %>%
   filter(!obs_period == "5")           
@@ -822,22 +807,15 @@ LAI_avg <- LAI_no5 %>%
   summarise(LAI = mean(LAI, na.rm = TRUE))
 
 LAI_avgxTOMST_seasons <- TOMST_seasons %>% 
-    left_join(LAI_avg, by = c("quad_id", "plot_id", "plot_type"))
-
+  left_join(LAI_avg, by = c("quad_id", "plot_id", "plot_type"))
 ```
 
-```{r TOMST seasons model, include = FALSE}
-m1 <- lmer(max_air_temp ~ LAI*season + (1|plot_id), data = LAI_avgxTOMST_seasons, REML = TRUE)
+```{r tomst temp model}
+m1 <- lmer(mean_air_temp ~ LAI*season + (1|plot_id), data = LAI_avgxTOMST_seasons, REML=TRUE)
 
 summary(m1)
 
-###Testing Assumptions (they look good)
-sim_residuals <- DHARMa::simulateResiduals(fittedModel = m1)
-plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
-shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
-plotResiduals(sim_residuals) # For visual validation of (iii)
-random_effects <- lme4::ranef(m1) # For visual validation of (iv)
-plot(random_effects)
+plot(m1)
 
 
 ### Interpreting coefficients with CIs using emmeans
@@ -848,178 +826,27 @@ r2_values <- r.squaredGLMM(m1)
 
 # Display R² values
 print(r2_values)
-
 ```
 
-```{r TOMST seasons plot}
-#Now lets graphically represent this
-mylist <- list(LAI=seq(0,7,by=1))
+```{r tomst temp plot}
+#plot with predicted values from model
+# Create a new data frame for prediction
+new_data <- expand.grid(
+  LAI = seq(min(LAI_avgxTOMST_seasons$LAI), max(LAI_avgxTOMST_seasons$LAI), length.out = 100),
+  season = unique(LAI_avgxTOMST_seasons$season))
 
-#emmip
-max_temp <- emmip(m1, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
+new_data$predicted <- predict(m1, newdata = new_data, re.form = NA)
 
-#make ggplot with emmip data
-p <- ggplot(data = max_temp, aes(x = LAI, y = yvar, color = season)) +
-  geom_line() + geom_ribbon(aes(ymax=UCL, ymin=LCL, fill=season), alpha=0.4) +
-  labs(title = "Max daily temperatures across the canopy gradient",
-       x="Canopy Cover (LAI)", y="Average of max daily surface air temp (C)", color = "Season", fill = "Season")+
-  theme_bw()
-
-#add points from the original data
-p + geom_point(data = LAI_avgxTOMST_seasons, aes(x = LAI, y = max_air_temp, color = season), alpha = .5) 
-
-```
-####b) TOMST Temp by observation
-**Average of peak weather hours across canopy cover over season**
-
-In this analysis we will be looking at the relationship between microclimate and canopy cover
-
-```{r 2.1.1 setup, include = FALSE}
-LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
-     col_types = cols(date = col_date(format = "%m/%d/%Y"), 
-      obs_period = col_character(), LAI = col_number(), 
-      month = col_character()))
-
-#Turn obs_period into a factor class variable
-LAI$obs_period <- factor(LAI$obs_period)
-
-
-TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/TOMST/TOMST_V1.csv", 
-    col_types = cols(date = col_date(format = "%Y.%m.%d"), 
-        date_time = col_datetime(format = "%Y.%m.%d %H:%M"), 
-        air_temp = col_number(), soil_moisture = col_number()))
-
-
-#Initially I had tried to filter the temps around the heat of the day, but had an issue where in the early season some of the loggers time zones were not calibrated, so instead we look at daily max and min, which is more aligned with the literature we are comparing to anyway. 
-TOMST_filter <- TOMST_V1 %>%
-  group_by(date, plot_id, quad_id, plot_type) %>%
-  summarize(max_air_temp = max(air_temp), min_air_temp = min(air_temp), max_surface_temp = max(surface_temp), min_surface_temp = min(surface_temp),
-            max_soil_temp = max(soil_temp), min_soil_temp = min(soil_temp), max_soil_moisture = max(soil_moisture), min_soil_moisture = min(soil_moisture))
-
-#Filter for the dates that match the LAI records
-TOMST_2.1 <- TOMST_filter %>% 
-  filter(date %in% c("2023-01-25", "2023-01-26", "2023-01-27",  "2023-02-03", "2023-02-02", "2023-02-04","2023-02-07", "2023-02-08", "2023-02-09", "2023-02-16", "2023-02-17", "2023-02-18", "2023-02-27", "2023-02-28", "2023-02-29", "2023-03-13", "2023-03-14", "2023-03-15", "2023-03-28", "2023-03-29",
-                     "2023-03-30", "2023-04-09", "2023-04-10", "2023-04-11"))
-
-#create obs_periods for easy merge with LAI, because some LAI were collected over two days
-
-#for each obs period we average the values for three days: 1) because some of the LAI records took place over two days and some over 1 day and 2) this will temper any potential days that were uncharacteristically hot.
-
-TOMST_2.1 <- TOMST_2.1 %>%
-  mutate(obs_period = case_when(
-    date %in% c("2023-01-25", "2023-01-26", "2023-01-27") ~ "1", date %in% c("2023-02-03", "2023-02-02", "2023-02-04") ~ "2",  date %in% c("2023-02-07", "2023-02-08", "2023-02-09") ~ "3", 
-    date %in% c("2023-02-16", "2023-02-17", "2023-02-18") ~ "4",  date %in% c("2023-02-27", "2023-02-28", "2023-02-29") ~ "5",  date %in% c("2023-03-13", "2023-03-14", "2023-03-15") ~ "6",
-     date %in% c("2023-03-28", "2023-03-29", "2023-03-30") ~ "7",  date %in% c("2023-04-09", "2023-04-10", "2023-04-11") ~ "8"
-  ))
-
-#turn obs_period into factor class variable
-TOMST_2.1$obs_period <- factor(TOMST_2.1$obs_period)
-
-#Average the values for the obs_periods that have 2 dates
-TOMST_2.1 <- TOMST_2.1 %>% 
-group_by(plot_id, quad_id, obs_period) %>% 
-  summarize(max_soil_temp = mean(max_soil_temp), min_soil_temp = mean(min_soil_temp), 
-            max_surface_temp = mean(max_surface_temp), min_surface_temp = mean(min_surface_temp),
-            max_air_temp = mean(max_air_temp), min_air_temp = mean(min_air_temp),
-            max_soil_moist = mean(max_soil_moisture), min_soil_moist = mean(min_soil_moisture))
-
-LAIxTOMST2.1 <- TOMST_2.1 %>% 
-  left_join(LAI, by = c("quad_id", "plot_id", "obs_period"))
+ggplot(LAI_avgxTOMST_seasons, aes(x = LAI, y = mean_air_temp, color = season)) +
+  geom_point() +  # Add points
+  geom_line(data = new_data, aes(x = LAI, y = predicted, color = season), size = 1) +  # Add regression lines
+  labs(title = "Regression Lines for LAI by Season",
+       x = "Leaf Area Index (LAI)",
+       y = "Mean Air Temperature",
+       color = "Season") +  # Add labels
+  theme_minimal()  # Use a minimal theme
 
 ```
-
-```{r 2.1.1 plot}
-
-facet_labels <- c("Jan 26", "Feb 2", "Feb 8", "Feb 17", "Feb 28", "Mar 14", "Mar 29", "Apr 11")
-names(facet_labels) <- c("1", "2", "3", "4", "5", "6", "7", "8")
-
-dev.new(width=10, height=5)
-
-ggplot(LAIxTOMST2.1, aes(x = LAI, y = max_air_temp)) +
-  geom_smooth(fill = NA, color = "blue4") +
-  geom_smooth(fill = NA, method = "lm", color = "red3") +
-   geom_point(size = .8, alpha = .7) +
-  facet_wrap(~obs_period, labeller = labeller(obs_period = facet_labels)) +
-  labs(x = "Canopy Cover (LAI by Observation Period)", y = "Max Daily Air Temperature (Celsius)", color = "Observation",
-       title = "Canopy cover affect on microclimate temps across the dry season" ) +
-  theme_bw()
-```
-
-
-```{r 2.1.1 data analysis, include=FALSE}
-#Here we will get the LINEAR slope of each 
-slope2.1.1 <- LAIxTOMST2.1 %>%
-  group_by(obs_period) %>%
-  do(model = lm(max_air_temp ~ LAI, data = .)) %>%
-  summarize(obs_period, slope = coef(model)[2])     #coef[2] extracts just the slope from the huge list that results from the lm()
-
-ggplot(slope2.1.1, aes(x= obs_period, y=slope))+
-         geom_point() + stat_smooth(fill = "NA", color = "brown")
-
-#obs_period converted to numeric from factor to do lm
-slope2.1.1$obs_period <- as.numeric(as.character(slope2.1.1$obs_period))
-
-model2.1.1 <- lm(slope ~ obs_period, data = slope2.1.1)
-```
-
-``` {r 2.1.1 model summary}
-# View the model summary
-summary(model2.1.1)
-```
-
-Across the season, as the temperatures increase and yearly temperature extremes set in, the linear slope between microclimate and canopy cover did *not* change. There is no relationship evidenced by the slopes of the different obs periods. This is in contrast with many microclimate buffering studies (De Frenne, Davis) that suggest that microclimate buffering from canopies should become more exaggerated between open and closed systems as temperatures increase. We see no change in slope related to microclimate over the dry season, despite seeing max daily temperature increases of up to 10 C.
-
-
-**2.1.2) Same thing as above, but now I will keep canopy cover fixed to early season values only**
-
-I'm going to look at the same thing but if you keep canopy cover static, so looking at each logger as a fixed point to understand how the microclimate changes over the season for a fixed surface location. I will average LAI across the season because this gives us the aaverage of dry season canopy cover change, and most robust estimation for each point, as each point will have 8 obs.
-
-```{r 2.1.2 setup}
-LAI_avg <- LAI %>%
-  group_by(plot_id, quad_id, plot_type) %>%
-  summarise(LAI = mean(LAI))
-
-LAIxTOMST2.1.2 <- TOMST_2.1 %>% 
-  left_join(LAI_avg, by = c("quad_id", "plot_id"))
-```
-
-```{r 2.1.2 observations plot}
-#Plot
-facet_labels <- c("Jan 26", "Feb2", "Feb 8", "Feb 17", "Feb 28", "Mar 14", "Mar 29", "Apr 11")
-names(facet_labels) <- c("1", "2", "3", "4", "5", "6", "7", "8")
-
-ggplot(LAIxTOMST2.1.2, aes(x = LAI, y = max_air_temp)) +
-  geom_smooth(fill = NA, color="blue4") +
-  geom_smooth(fill = NA, method = "lm", color = "red3") + 
-  geom_point(size = .8, alpha = .7) +
-  facet_wrap(~obs_period, labeller = labeller(obs_period = facet_labels)) +
-  labs(x = "Canopy Cover (LAI fixed - early season)", y = "Max Daily Air Temperature (Celsius)", color = "Observation",
-       title = "Canopy cover effect on microclimate temps across the dry season" ) +
-  theme_bw()
-
-```
-
-```{r 2.1.2 analysis}
-slope2.1.2 <- LAIxTOMST2.1.2 %>%
-  group_by(obs_period) %>%
-  do(model = lm(max_air_temp ~ LAI, data = .)) %>%
-  summarize(obs_period, slope = coef(model)[2])     #coef[2] extracts just the slope from the huge list that results from the lm()
-
-ggplot(slope2.1.2, aes(x= obs_period, y=slope))+
-         geom_point() + stat_smooth(fill = NA, colour="brown")
-
-#obs_period converted to numeric from factor to do lm
-slope2.1.2$obs_period <- as.numeric(as.character(slope2.1.2$obs_period))
-
-model2.1.2 <- lm(slope ~ obs_period, data = slope2.1.2)
-summary(model2.1.2)
-
-```
-
-This is actually pretty cool. There is a steeper slope in the early to midseason prior to a sort of *blurring of the threshold between open and closed canopy microclimates*  around late Feb likely coinciding with the beginning of a big leaf shedding event which is why this relationship is evident in this graph where canopy cover is static and not in the previous chart where LAI changes with each ob.
-
-By the end of the season (April 11 ob), we see almost a complete blurring of the threshold to a completely linear relationship.
-
 
 
 ### 2. 2) Microclimate Kestrel (RH, Wind, Temp) varies by LAI across the season
@@ -1028,12 +855,13 @@ By the end of the season (April 11 ob), we see almost a complete blurring of the
 This is just for illustrative purposes to go with the behaveplus plots to visual explain the difference in wind speed.
 ``` {r wind setup, include = FALSE}
 #daily max windspeed
-kestrel <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_V1.csv", 
-     col_types = cols(month = col_integer(), 
+kestrel_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_V1.csv", 
+        col_types = cols(date_time = col_datetime(format = "%m/%d/%Y %H:%M"),
+         month = col_integer(), 
          day = col_integer(), temp = col_number(), 
          rh = col_number(), wind_speed = col_number()))
 
-kestrel <- kestrel %>% 
+kestrel <- kestrel_V1 %>% 
   group_by(month, day, plot_id, plot_type) %>% 
   summarize(wind_speed = max(wind_speed), max_rh = max(rh), min_rh = min(rh), avg_rh = mean(rh), max_temp = max(temp), min_temp = min(temp), avg_temp = mean(temp))
 
@@ -1060,7 +888,7 @@ kestrel <- kestrel %>%
 
 ```{r wind plot)}
  
-ggplot(kestrel, aes(x = date, y = wind_speed, color = plot_type)) +
+p1 <- ggplot(kestrel, aes(x = date, y = wind_speed, color = plot_type)) +
   geom_line(aes(group = plot_id), size = .4, alpha = .4) +
   geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
   labs(x = element_blank(), y = "Wind Speed (m/s)", color = "Canopy Cover") +
@@ -1098,10 +926,10 @@ ggplot(kestrel_wind, aes(x = plot_type, y = wind_speed, color = season)) +
 **2m Temperatures (Celcius)**
 
 ```{r temp max}
-ggplot(kestrel, aes(x = date, y = avg_temp, color = plot_type)) +
+p2 <- ggplot(kestrel, aes(x = date, y = avg_temp, color = plot_type)) +
   geom_line(aes(group = plot_id), size = .4, alpha = .4) +
   geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
-  labs(x = element_blank(), y = "Average relative humidity (%)", color = "Canopy Cover") +
+  labs(x = element_blank(), y = "Average temperature (C)", color = "Canopy Cover") +
   scale_color_manual(labels = c("open", "closed"), values = c("red4", "blue4")) + 
   theme(text=element_text(size= 15), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
@@ -1110,18 +938,44 @@ ggplot(kestrel, aes(x = date, y = avg_temp, color = plot_type)) +
 
 **Relative Humidity (RH%)**
 ```{r RH setup}
+kestrel_midday <- kestrel_V1 %>% 
+  filter(hour(date_time) > 11, hour(date_time) < 19) 
+
+kestrel_midday <- kestrel_midday %>% 
+  mutate(year = "2023")
+
+kestrel_midday <- kestrel_midday %>% 
+  mutate(date = dmy(paste(day, month, year, sep = "/")))
+
+#make month a factor
+kestrel_midday$month <- factor(kestrel_midday$month)
+
+#make season column
+kestrel_midday <- kestrel_midday %>% 
+    mutate(season = case_when(
+        date < "2023/02/23" ~ "early",
+        date >= "2023/02/23" ~  "late"
+    ))
+#make season column
+kestrel_midday <- kestrel_midday %>% 
+    mutate(season = case_when(
+        date < "2023/02/23" ~ "early",
+        date >= "2023/02/23" ~  "late"
+    ))
+
 #filter out dd4 because the rh readings are definitely impacted. I think that the rh sensor was obstructed.
-kestrel_rh <- kestrel %>% 
+kestrel_midday <- kestrel_midday %>% 
   filter(plot_id != "ddf4")
 
-kestrel_rh$date <- as.Date(kestrel_rh$date , format = "%m-%d-%y")
+kestrel_midday <- kestrel_midday %>%
+  group_by(season, plot_id, plot_type, date, month) %>%
+  summarize(mean_temp = mean(temp), mean_rh = mean(rh))
 
-kestrel_rh <- kestrel_rh %>%
-                filter(date <"2023-04-06")
+
 ```
 
 ```{r RH plot}
-ggplot(kestrel_rh, aes(x = date, y = avg_rh, color = plot_id)) +
+ggplot(kestrel_midday, aes(x = date, y = mean_rh, color = plot_id)) +
   geom_point(size = .7, alpha = .7) + geom_line(alpha = .8) +
   labs(title = "Daily RH at Different Canopy Levels Across Dry Season",
        x = element_blank(), y = "Relative Humidity (%)", color = "LAI") +
@@ -1130,17 +984,10 @@ ggplot(kestrel_rh, aes(x = date, y = avg_rh, color = plot_id)) +
              plot.title = element_text(hjust = 0.5))+
   theme_minimal()
 
-ggplot(kestrel_rh, aes(x = date, y = avg_rh, color = plot_type)) +
-  geom_line(aes(group = plot_id), size = .4, alpha = .4) +
-  geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
-  labs(x = element_blank(), y = "Average relative humidity (%)", color = "Canopy Cover") +
-  scale_color_manual(labels = c("open", "closed"), values = c("red4", "blue4")) + 
-  theme(text=element_text(size= 15), legend.position="none", 
-        plot.title = element_text(hjust = 0.5))+
-  theme_minimal()
 ```
+
 ```{r rh min}
-ggplot(kestrel_rh, aes(x = date, y = min_rh, color = plot_type)) +
+p3 <- ggplot(kestrel, aes(x = date, y = min_rh, color = plot_type)) +
   geom_line(aes(group = plot_id), size = .4, alpha = .4) +
   geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
   labs(x = element_blank(), y = "Average relative humidity (%)", color = "Canopy Cover") +
@@ -1151,7 +998,7 @@ ggplot(kestrel_rh, aes(x = date, y = min_rh, color = plot_type)) +
 ```
 
 ```{r rh model, include = FALSE}
-m_rh <- lmer(avg_rh ~ plot_type * month + (1 | plot_id), data = kestrel_rh)
+m_rh <- lmer(mean_rh ~ plot_type * month + (1 | plot_id), data = kestrel_midday)
 
 # Summary of the model
 summary(m_rh)
@@ -1163,6 +1010,9 @@ anova(m_rh)
 emmeans(m_rh, pairwise ~ plot_type | month)
 ```
 
+```{r arrange mc plots}
+grid.arrange(p1, p2, p3, nrow=3)
+```
 
 ### 2. 3) Fuel Moisture Content
 We are going to look at fuel moisture content for each fuel type across LAI separated between early and late season, to match the biomass data. Even though we collected fmc data across 6-7 observations, there is little week to week variation, but clear midseason jump between ob 4-5, so we will show all data points, across changing LAI, but only show the relationships (slopes) for early vs late measurments, same as biomass.
@@ -1181,7 +1031,7 @@ fm <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Fuel-Mo
 #need to assign season to tomst dates: early = Jan 15 - Feb 22
 #late = Feb 23 - Apr 11
 
-fm_seasons <- fm %>% 
+fm <- fm %>% 
     mutate(season = case_when(
         date < "2023/02/23" ~ "early",
         date >= "2023/02/23" ~  "late"
@@ -1203,7 +1053,20 @@ LAI_avg <- LAI_no5 %>%
   summarise(LAI = mean(LAI, na.rm = TRUE))
 
 #merge LAI and fm_avg for LAIxfm
-LAIxfm_obs <- left_join(fm_seasons, LAI_avg, by = c("quad_id", "plot_id", "plot_type"))
+LAIxfm_obs <- left_join(fm, LAI_avg, by = c("quad_id", "plot_id", "plot_type"))
+
+#make season a factor
+LAIxfm_obs$season <- factor(LAIxfm_obs$season)
+
+#make plot_id a factor
+LAIxfm_obs$plot_id <- factor(LAIxfm_obs$plot_id)
+
+#average all measurments by season
+fmc_seasons <- LAIxfm_obs %>% 
+  group_by(season, plot_id, quad_id, plot_type) %>% 
+  summarise(grass = mean(grass, na.rm = TRUE), litter = mean(litter,na.rm = TRUE), woody_leaf = mean(woody_leaf,na.rm = TRUE), ten_hr = mean(ten_hr,na.rm = TRUE), LAI = mean(LAI))
+  
+
 
 ```
 **Litter Fuel Moisture Content**
@@ -1213,65 +1076,50 @@ Litter is the weirdest fuel type, since we didn't start systematically collectin
 We view litter and one-hr synonomously throughout this project, because that is how we view them in behvave plus, so we will combine 1hr and litter data for this analysis. There was little discernable difference between 1hr and litter fmc trends throughout the season.
 
 ```{r litter fmc analysis, include = FALSE}
-#no litter or one_hr obs for period 3
-litter <- LAIxfm_obs %>% 
-  filter(obs_period %in% c("1", "2", "4", "5", "6", "7"))
 
-#remove particularly wet outlier
-z_scores <- scale(litter$litter)
-outliers <- abs(z_scores) > 4  # Adjust the threshold as needed
+m1<- lmer(litter ~ LAI*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
 
-# Create a subset without outlier
-litter <- litter[!outliers, ]
+m2 <- lmer(log(litter) ~ LAI*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
+
+m3 <- lmer(litter ~ LAI*season + I(LAI^2) * season + (1|plot_id), data = fmc_seasons, REML = TRUE)
 
 
-m1 <- lmer(log(litter) ~ LAI*season + (1|plot_id), data = litter, REML = TRUE)
+###Testing Assumptions
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m1)
+plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
+shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
+plotResiduals(sim_residuals) # For visual validation of (iii)
+random_effects <- lme4::ranef(m1) # For visual validation of (iv)
+plot(random_effects)
 
-mnolog <- lmer(litter ~ LAI*season + (1|plot_id), data = litter, REML = TRUE)
 
 plot(resid(m1))
-plot(resid(mnolog))
 
 qqnorm(residuals(m1))
 
-summary(mnolog)
+summary(m1)
+
 
 ```
 
 
+
 ```{r litter fmc plot, include = FALSE}
+
 pred_data <- data.frame(
-  LAI = seq(min(litter$LAI), max(litter$LAI), length.out = 100),
+  LAI = seq(min(fmc_seasons$LAI), max(fmc_seasons$LAI), length.out = 100),
   season = rep(c("early", "late"), each = 100))
 
-pred_data$pred_log_litter <- predict(m1, newdata = pred_data, re.form = NA)
+pred_data$pred_litter <- predict(m1, newdata = pred_data, re.form = NA)
 
-# Reverse transform the predicted values
-pred_data$pred_litter <- exp(pred_data$pred_log_litter)
 
 # Scatter plot with fitted lines on the original scale
-p1 <- ggplot(litter, aes(x = LAI, y = litter, color = season)) +
+p1 <- ggplot(fmc_seasons, aes(x = LAI, y = litter, color = season)) +
   geom_point(alpha = .7, size = 1) +
   geom_line(data = pred_data, aes(x = LAI, y = pred_litter, color = season)) +
   labs(y = "Litter Mass", x = "LAI", title = "Litter Mass vs. LAI by Season") +
 scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
-      labs(title = "Litter", x = "Canopy Cover(LAI)", y = "Litter Fuel Mositure Content (%)", color = element_blank())+ 
-   theme_bw()
-
-p1 <- p1 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
-
-p1
-
-#no litter or one_hr obs for period 3
-litter <- LAIxfm_obs %>% 
-  filter(obs_period %in% c("1", "2", "4", "5", "6", "7"))
-
-p1 <- ggplot(litter, aes(x = LAI, y = log(litter), color = season)) +
-  geom_point(alpha = .8, size = .8) +
-  geom_smooth(aes(group = obs_period), fill = "NA", method = "lm", size = .1) +
-  geom_smooth(aes(group = season), fill = "NA", method = "lm", size = .8)+
-  scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
-      labs(title = "Litter", x = element_blank(), y = element_blank(), color = element_blank())+ 
+      labs(title = "Litter", x = "Canopy Cover(LAI)", y = "Litter Fuel Mositure Content (%)", color = "Season")+ 
    theme_bw()
 
 p1 <- p1 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
@@ -1282,7 +1130,7 @@ p1
 
 ```{r grass fmc analysis, include = FALSE}
 
-m2 <- lmer(grass ~ LAI*season + (1|plot_id), data = LAIxfm_obs, REML = TRUE)
+m2 <- lmer(grass ~ LAI*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
 
 plot(resid(m2))
 
@@ -1294,12 +1142,20 @@ summary(m2)
 
 ```{r grass fmc, include = FALSE}
 
-p2 <- ggplot(LAIxfm_obs, aes(x = LAI, y = grass, color = season)) +
-  geom_point(alpha = .5, size = .5) +
-  geom_smooth(aes(group = obs_period), fill = "NA", method = "lm", size = .1) +
-  geom_smooth(aes(group = season), fill = "NA", method = "lm", size = .8)+
-  scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
-      labs(title = "Grass", x = element_blank(), y = element_blank(), color = element_blank())+ 
+pred_data <- data.frame(
+  LAI = seq(min(fmc_seasons$LAI), max(fmc_seasons$LAI), length.out = 100),
+  season = rep(c("early", "late"), each = 100))
+
+pred_data$pred_grass <- predict(m2, newdata = pred_data, re.form = NA)
+
+
+# Scatter plot with fitted lines on the original scale
+p2 <- ggplot(fmc_seasons, aes(x = LAI, y = grass, color = season)) +
+  geom_point(alpha = .7, size = 1) +
+  geom_line(data = pred_data, aes(x = LAI, y = pred_grass, color = season)) +
+  labs(y = "Litter Mass", x = "LAI", title = "Litter Mass vs. LAI by Season") +
+scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
+      labs(title = "Grass", x = "Canopy Cover(LAI)", y = "Grass Fuel Mositure Content (%)", color = "Season")+ 
    theme_bw()
 
 p2 <- p2 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
@@ -1312,9 +1168,11 @@ p2
 
 ```{r woody_leaf fmc analysis, include = FALSE}
 
-m3 <- lmer(woody_leaf ~ LAI*season + (1|plot_id), data = LAIxfm_obs, REML = TRUE)
+m3 <- lmer(woody_leaf ~ LAI*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
+
 
 plot(resid(m3))
+
 
 qqnorm(residuals(m3))
 
@@ -1325,12 +1183,20 @@ summary(m3)
 
 ```{r woody leaf fmc, include = FALSE}
 
-p3<- ggplot(LAIxfm_obs, aes(x = LAI, y = woody_leaf, color = season)) +
-  geom_point(alpha = .5, size = .5) +
-  geom_smooth(aes(group = obs_period), fill = "NA", method = "lm", size = .1) +
-  geom_smooth(aes(group = season), fill = "NA", method = "lm", size = .8)+
-  scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
-      labs(title = "Live Woody Leaf", x = element_blank(), y = "Fuel Mositure Content (%)", color = "Season")+ 
+pred_data <- data.frame(
+  LAI = seq(min(fmc_seasons$LAI), max(fmc_seasons$LAI), length.out = 100),
+  season = rep(c("early", "late"), each = 100))
+
+pred_data$pred_woody <- predict(m3, newdata = pred_data, re.form = NA)
+
+
+# Scatter plot with fitted lines on the original scale
+p3 <- ggplot(fmc_seasons, aes(x = LAI, y = woody_leaf, color = season)) +
+  geom_point(alpha = .7, size = 1) +
+  geom_line(data = pred_data, aes(x = LAI, y = pred_woody, color = season)) +
+  labs(y = "Litter Mass", x = "LAI", title = "Litter Mass vs. LAI by Season") +
+scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
+      labs(title = "Live Dicot Leaves", x = "Canopy Cover(LAI)", y = "Live Dicot Fuel Mositure Content (%)", color = "Season")+ 
    theme_bw()
 
 p3 <- p3 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
@@ -1344,7 +1210,7 @@ p3
 
 ```{r 10-hr fmc analysis, include=FALSE}
 
-m4 <- lmer(ten_hr ~ LAI*season + (1|plot_id), data = LAIxfm_obs, REML = TRUE)
+m4 <- lm(ten_hr ~ LAI*season, data = fmc_seasons)
 
 plot(resid(m4))
 
@@ -1357,12 +1223,20 @@ summary(m4)
 
 ```{r 10-hr fmc, include = FALSE}
 
-p4 <- ggplot(LAIxfm_obs, aes(x = LAI, y = ten_hr, color = season)) +
-  geom_point(alpha = .5, size = .5) +
-  geom_smooth(aes(group = obs_period), fill = "NA", method = "lm", size = .1) +
-  geom_smooth(aes(group = season), fill = "NA", method = "lm", size = .8)+
-  scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
-      labs(title = "10 Hour Fuel Rod", x = "Canopy Cover (LAI)", y = element_blank(), color = element_blank())+ 
+pred_data <- data.frame(
+  LAI = seq(min(fmc_seasons$LAI), max(fmc_seasons$LAI), length.out = 100),
+  season = rep(c("early", "late"), each = 100))
+
+pred_data$pred_ten <- predict(m4, newdata = pred_data, re.form = NA)
+
+
+# Scatter plot with fitted lines on the original scale
+p4 <- ggplot(fmc_seasons, aes(x = LAI, y = ten_hr, color = season)) +
+  geom_point(alpha = .7, size = 1) +
+  geom_line(data = pred_data, aes(x = LAI, y = pred_ten, color = season)) +
+  labs(y = "Litter Mass", x = "LAI", title = "Litter Mass vs. LAI by Season") +
+scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
+      labs(title = "10 Hour Fuel", x = "Canopy Cover(LAI)", y = "Ten Hour Fuel Mositure Content (%)", color = "Season")+ 
    theme_bw()
 
 p4 <- p4 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0.5))
@@ -1370,7 +1244,7 @@ p4 <- p4 + theme(text=element_text(size= 8), plot.title = element_text(hjust = 0
 p4
 ```
 
-```{r arrange plots}
+```{r arrange fmc plots}
 grid.arrange(p1, p2, p3, p4, nrow=4)
 ```
 
@@ -1779,14 +1653,16 @@ ggplot(behave_late, aes(x = mean_LAI, y = ROS)) +
 ```{r ROS segmented plot combined}
 
 #Late + early season ROS segmented regressions
-ggplot(behave, aes(x = mean_LAI, y = ROS)) +
-  geom_point(aes(color = season), alpha = .7, size = .8) +  # Add points for the original data
+p1 <- ggplot(behave, aes(x = mean_LAI, y = ROS)) +
+  geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
   labs(x = "Canopy Cover (LAI)", y = "Rate of Spread (m/min)") +
   scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
   theme_minimal() +
   geom_line(data = pred_df1, aes(x = mean_LAI, y = ROS_pred), color = "darkred", size = .6) +
   geom_line(data = pred_df, aes(x = mean_LAI, y = ROS_pred), color = "blue4", size = .6) +
   ylim(-0.1,30)
+
+p1
 
 ```
 
@@ -1811,7 +1687,6 @@ model_late <- lm(flame_length ~ mean_LAI, data=behave_late)
 # Apply segmented to find a breakpoint
 segmented_model_early <- segmented(model_early, seg.Z = ~mean_LAI, data = behave_early)
 segmented_model_late <- segmented(model_late, seg.Z = ~mean_LAI, data = behave_late)
-
 
 summary(segmented_model_early)
 summary(segmented_model_late)
@@ -1850,7 +1725,7 @@ ggplot(behave_late, aes(x = mean_LAI, y = flame_length)) +
 ```{r flame length combined plot }
 
 #Late + early season flame length segmented regressions
-ggplot(behave, aes(x = mean_LAI, y = flame_length)) +
+p2 <- ggplot(behave, aes(x = mean_LAI, y = flame_length)) +
   geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
   labs(x = "Canopy Cover (LAI)", y = "Flame Length (m)") +
   scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
@@ -1913,7 +1788,7 @@ ggplot(behave_late, aes(x = mean_LAI, y = intensity)) +
 ```{r fireline intensity combined plot}
 
 #Late + early season intensity segmented regressions
-ggplot(behave, aes(x = mean_LAI, y = intensity)) +
+p3 <- ggplot(behave, aes(x = mean_LAI, y = intensity)) +
   geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
   labs(x = "Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)") +
   scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
@@ -1922,6 +1797,8 @@ ggplot(behave, aes(x = mean_LAI, y = intensity)) +
   geom_line(data = pred_df, aes(x = mean_LAI, y = intensity_pred), color = "blue4", size = .8) 
 
 ```
+
+
 
 ```{r PIG intensity segmented data analysis, include = FALSE}
 #subset by season
@@ -1946,6 +1823,10 @@ segmented_model_late <- segmented(model_late, seg.Z = ~mean_LAI, data = behave_l
 summary(segmented_model_early)
 summary(segmented_model_late)
 
+```
+
+```{r arrange fmc plots}
+grid.arrange(p1, p2, p3, nrow=3)
 ```
 
 ``` {r PIG segmented plots by season, include = FALSE}
@@ -2007,14 +1888,14 @@ summary(closed_model)
 ```
 
 ``` {r ROS subset plot}
-ggplot(closed_data, aes(x = mean_LAI, y = ROS, color = season))+
+p1 <- ggplot(closed_data, aes(x = mean_LAI, y = ROS, color = season))+
   geom_point(alpha = .5) + geom_smooth(method = "lm")+
   labs(title = "Closed Canopy Rate of Fire Spread in Surface Fuels",
        x = "Canopy Cover (LAI)", y = "ROS", color = "Season") +
   scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
   theme_minimal()
 
-ggplot(open_data, aes(x = mean_LAI, y = ROS, color = season))+
+p2 <- ggplot(open_data, aes(x = mean_LAI, y = ROS, color = season))+
   geom_point(alpha = .5) + geom_smooth(method = "lm")+ 
   labs(title = "Open Canopy Rate of Fire Spread in Surface Fuels",
        x = "Canopy Cover (LAI)", y = "ROS", color = "Season") +
@@ -2040,14 +1921,14 @@ summary(closed_model)
 
 ```{r flame length subset plot}
 
-ggplot(closed_data, aes(x = mean_LAI, y = flame_length, color = season))+
+p3 <- ggplot(closed_data, aes(x = mean_LAI, y = flame_length, color = season))+
   geom_point(alpha = .5) + geom_smooth(method = "lm")+
   labs(title = "Closed Canopy Surface Flame Length",
        x = "Canopy Cover (LAI)", y = "Flame Length (m)", color = "Season") +
   scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
   theme_minimal()
 
-ggplot(open_data, aes(x = mean_LAI, y = flame_length, color = season))+
+p4 <- ggplot(open_data, aes(x = mean_LAI, y = flame_length, color = season))+
   geom_point(alpha = .5) + geom_smooth(method = "lm")+
   labs(title = "Open Canopy Surface Flame Length",
        x = "Canopy Cover (LAI)", y = "Flame Length (m)", color = "Season") +
@@ -2074,14 +1955,14 @@ summary(closed_model)
 
 ```{r fireline intensity subset plots}
 
-ggplot(closed_data, aes(x = mean_LAI, y = intensity, color = season))+
+p5 <- ggplot(closed_data, aes(x = mean_LAI, y = intensity, color = season))+
   geom_point(alpha = .5) + geom_smooth(method = "lm")+
   labs(title = "Closed Canopy Surface Fireline Intensity",
        x = "Canopy Cover (LAI)", y = "Fireline Intensity (kW/m)", color = "Season") +
   scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
   theme_minimal()
 
-ggplot(open_data, aes(x = mean_LAI, y = intensity, color = season))+
+p6 <- ggplot(open_data, aes(x = mean_LAI, y = intensity, color = season))+
   geom_point(alpha = .5) + geom_smooth(method = "lm")+
   labs(title = "Open Canopy Surface Fireline Intensity",
        x = "Canopy Cover (LAI)", y = "Fireline Intensity (kW/m)", color = "Season") +
@@ -2089,6 +1970,11 @@ ggplot(open_data, aes(x = mean_LAI, y = intensity, color = season))+
   theme_minimal()
 
 ```
+
+```{r arrange behave subset plots}
+grid.arrange(p1, p2, nrow=2)
+```
+
 ####c) Summaries by Plot Type
 Here we will look at the summaries of fuel and microclimate values averaged by forest type and by season. Previously, for fuel dist variables, we have only considered early season LAI (because wet season LAI determines grass growth adn keeping LAI constant from early to late dry season allows us to compare seasonal conditions at given locations.
 
@@ -2107,7 +1993,7 @@ fuel_seasons <- fuel_seasons %>%
   mutate(fine_load = grass_mass + litter_mass)
 
 fuel_seasons <- fuel_seasons %>% 
-  mutate(fuel_load = grass_mass + litter_mass + wood_mass + other_mass)
+  mutate(fuel_load = grass_mass + litter_mass + one_hr_mass + ten_hr_mass + hundred_hr_mass + other_mass)
 
 #add bulk density and fuel depth (taken from 1.4)
 fuel_seasons <- fuel_seasons %>% 
@@ -2128,21 +2014,14 @@ fuel_seasons <- fuel_seasons  %>%
   mutate(fuel_depth = ifelse(grass_mass < 30, 
               (litter_depth),(fuel_depth)))
 
+#fine fuel bulk density
 fuel_seasons <- fuel_seasons %>%
-  mutate(bulk_density = (grass_mass+litter_mass+other_mass+wood_mass)/
+  mutate(bulk_density = (grass_mass+litter_mass+one_hr_mass)/
                                  (fuel_depth/100))
 
 fuel_seasons <- fuel_seasons %>%
   mutate(bulk_density = (bulk_density/1000))
 
-
-#Fine Fuel Bulk Density
-fuel_seasons <- fuel_seasons %>%
-  mutate(fine_density = (grass_mass+litter_mass)/
-                                 (fuel_depth/100))
-
-fuel_seasons <- fuel_seasons %>%
-  mutate(fine_density = (fine_density/1000))
 
 
 #drop the quadrants that did not have biomass records
@@ -2162,7 +2041,7 @@ fuel_seasons_fire <- fuel_seasons %>%
 
 fuel_summaries <- fuel_seasons_fire %>% 
   group_by(plot_type, season) %>% 
-  summarize(LAI = mean(LAI), grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), wood_mass = mean(wood_mass), seedlings = mean(seedlings), fuel_load = mean(fuel_load), fine_load = mean(fine_load),fuel_depth = mean(fuel_depth), bulk_density = mean(bulk_density), ROS = mean(ROS), intensity = mean(intensity), flame_length = mean(flame_length), PIG = mean(PIG)) 
+  summarize(LAI = mean(LAI), grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass), seedlings = mean(seedlings), fuel_load = mean(fuel_load), fine_load = mean(fine_load),fuel_depth = mean(fuel_depth), bulk_density = mean(bulk_density), ROS = mean(ROS), intensity = mean(intensity), flame_length = mean(flame_length), PIG = mean(PIG)) 
 
 ```
 
@@ -2183,24 +2062,24 @@ fm_summaries <- LAIxfm_obs %>%
   summarize(grass = mean(grass, na.rm = TRUE), litter = mean(litter, na.rm = TRUE), woody_leaf = mean(woody_leaf, na.rm = TRUE), ten_hr = mean(ten_hr, na.rm = TRUE), one_hr = mean(one_hr, na.rm = TRUE))
 ```
 
-```{r add tomst microclimate to summaries}
+```{r add tomst microclimate to summaries, include=FALSE}
 tomst_summaries <- TOMST_seasons %>% 
   group_by(plot_type, season) %>% 
-  summarize(max_temp = mean(max_air_temp), min_temp = mean(min_air_temp), avg_temp = mean(avg_air_temp))
+  summarize(mean_air_temp = mean(mean_air_temp))
 ```
 
-```{r add kestrel data}
+```{r add kestrel data, include=FALSE}
 kestrel_wind_summaries <- kestrel %>% 
   group_by(plot_type, season) %>% 
   summarize( wind_speed = mean(wind_speed))
 
-kestrel_rh_summaries <- kestrel_rh %>% 
+kestrel_rh_summaries <- kestrel_midday %>% 
   group_by(plot_type, season) %>% 
-  summarize(avg_rh = mean(avg_rh), min_rh = mean(min_rh))
+  summarize(mean_rh = mean(mean_rh))
 ```
 Now, join fuel moisture summaries into fuel and fire and microclimate summaries:
 
-```{r summaries table}
+```{r summaries table, include=FALSE}
 fuel_summaries <- fuel_summaries %>% 
   left_join(fm_summaries)
 
@@ -2213,6 +2092,8 @@ fuel_summaries <- fuel_summaries %>%
 fuel_summaries <- fuel_summaries %>% 
   left_join(kestrel_wind_summaries)
 ```
+
+
 ### 4.1) Sensitivity Analysis
 We will perform a sensitivity analysis to determine the relative contributions of the major flammability factors (fuel load, bulk density, fuel moisture, and weather) that separate the open and closed canopy areas. We will perform one sensitivity analysis for the early season and one for the late season, to see how the flammability factors vary across the dry season. Fuel loads, fuel bulk density, fuel moisture, and microclimate conditions are all important in establishing the flammability differences between open and closed states, but the contributions of each factor and how/if those contributions vary across the season has not been studied in dipterocarp mosaics. Understanding how the these factors contribute to flammability and how they may change over the course of the season helps us better understand 1)how fire feedbacks create mosaics and 2)how stable/sensitive these feedbacks are to changes in weather and fuel conditions.
 
@@ -2233,7 +2114,7 @@ SA_early <- SA1 %>%
 ```
 
 ```{r ROS}
-SA_early %>% 
+p1 <- SA_early %>% 
 ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "blue4")+
   theme_minimal() + 
@@ -2242,7 +2123,7 @@ ggplot(aes(x = variable, y = ROS)) +
         plot.title = element_text(hjust = 0.5))+
   ylim(0,2)
 
-SA_late %>% 
+p2 <- SA_late %>% 
   ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
   theme_minimal() + 
@@ -2308,7 +2189,7 @@ SA_ddf <- SA2 %>%
   filter(plot_type == "ddf")
 
 
-SA_ddf %>% 
+p1 <- SA_ddf %>% 
 ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "blue4")+
   theme_minimal() + 
@@ -2316,7 +2197,7 @@ ggplot(aes(x = variable, y = ROS)) +
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))
 
-SA_evg %>% 
+p2 <- SA_evg %>% 
   ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
   theme_minimal() + 
