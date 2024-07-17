@@ -276,7 +276,7 @@ And we will also use a 3rd order polynomial linear regression to evaluate the ov
 
 ``` {r grass lmm}
 #add grass + 1 column to log grass (several grass values of 0 cant be logged)
-data_grass <- data_grass %>% 
+data_grass_log <- data_grass %>% 
 group_by(grass_mass, plot_id, mean_LAI, quad_id) %>%
 mutate(grass1 = grass_mass + 1)
 
@@ -309,8 +309,6 @@ pred <- ggpredict(m1, terms = "mean_LAI")
         title = "Grass Load Decreases Across Canopy Gradient") + 
    theme_bw()
 )
-
-
 
 ```
 
