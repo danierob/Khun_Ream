@@ -1670,387 +1670,215 @@ Here we are particularly interested in the presence or absence of a threshold. A
 Since we are less concerned with precisely interpreting differences between factors than we are with the identification/visualization of a threshold, we will use the segmented function here (as we did to identify grass thresholds in 1.1).
 
 **b) How do fire effects vary by season in either forest type?**
-We will be isolating either side of the threshold by subsetting plots of the same type (open canopy or closed canopy). This will allow for more direct and interpretable linear comparisons of early vs late season and a more detailed assessment of how risk of fire relatively changes on either side of the boundary. For the open-canopy, fire danger should increase quite a lot in terms of total ROS and intensity, but I believe the relative change should be greater on the closed canopy side as the litter fm and litter loads start to permit late season fire in the closed system. 
+Rather than subsetting the plot types and running a linear analysis and plotting, we merely subset each model output variable by plot type in order to run an anova across the season. We know that early and late season data are significantly different from one another, but the Surface fire portion of the summary table will reflect whether fire behavior is significantly different across the season within plot types (because running a normal 2-way anova of the fire outputs and LAI is always violated by non-normality and heteroskedasticity). If we run anova on just the EVG data for example, the data is normally distributed and we see that there is significant difference between early and late season, that would have been obscured if run with the ddf data.
 
 
 #### a) How do modelled fire effects and PIG change across the canopy gradient?
-```{r ROS segmented data analysis, include=FALSE}
-#subset by season
-behave_early <- behave %>% 
-  filter(season == "early")
-
-behave_late <- behave %>% 
-  filter(season == "late")
-
-#Model behave output with segmented to id breakpoints
-# Fit a mixed effects model
-model_early <- lm(ROS ~ LAI, data=behave_early)
-
-model_late <- lm(ROS ~ LAI, data=behave_late)
 
 
-# Apply segmented to find a breakpoint
-segmented_model_early <- segmented(model_early, seg.Z = ~mean_LAI, data = behave_early)
-segmented_model_late <- segmented(model_late, seg.Z = ~mean_LAI, data = behave_late)
+```{r ROS segmented}
+m_ros <- lme(ROS ~ LAI*season, random = ~ 1 | plot_id, data = behave)
+
+ms <- segmented.lme(m_ros, ~LAI, z.psi =~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+
+summary(ms)
+
+# Create dataframes for prediction
+pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
+pred_data_late <- data.frame(LAI = seq(0,7,.1), season = "late")
+
+# Combine prediction data
+pred_data <- rbind(pred_data_early, pred_data_late)
 
 
-summary(segmented_model_early)
-summary(segmented_model_late)
+# Extract fixed effects
+fixed_effects <- fixed.effects(ms)
 
-```
-
-``` {r ROS segmented plots by season, include = FALSE}
-pred_df <- data.frame(mean_LAI = seq(min(behave_early$mean_LAI), max(behave_early$mean_LAI), length.out = 100))
-
-# Predictions for segmented model
-pred_df$ROS_pred <- predict(segmented_model_early, newdata = pred_df)
-
-ggplot(behave_early, aes(x = mean_LAI, y = ROS)) +
-  geom_point() +  # Add points for the original data
-  labs(title = "Early Dry Season", x = "Canopy Cover (LAI)", y = "Rate of Spread (m/min)") +
-  theme_minimal() +
-  geom_line(data = pred_df, aes(x = mean_LAI, y = ROS_pred), color = "red")+
-  ylim(-0.1,30)
+# Extract fixed effects
+#G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
+intercept <- fixed_effects[1]
+lai_effect <- fixed_effects[2]
+seasonlate_effect <- fixed_effects[3]
+u_effect <- fixed_effects[4]
+breakpoint_early <- fixed_effects[5] 
+breakpoint_late <- fixed_effects[5] + fixed_effects[6]
+u_seasonlate_effect <- fixed_effects[7]
+lai_seasonlate_effect <- fixed_effects[8]
 
 
-# Create a data frame for prediction
-pred_df1 <- data.frame(mean_LAI = seq(min(behave_late$mean_LAI), max(behave_late$mean_LAI), length.out = 100))
 
-# Predictions for segmented model
-pred_df1$ROS_pred <- predict(segmented_model_late, newdata = pred_df)
+# Calculate fitted values for each segment and season
+pred_data$fit <- with(pred_data, ifelse(
+  season == "early",
+  ifelse(LAI < breakpoint_early,
+         intercept + lai_effect * LAI,
+         intercept + lai_effect * breakpoint_early + (lai_effect + u_effect) * (LAI - breakpoint_early)),
+  ifelse(LAI < breakpoint_late,
+         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * LAI,
+         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * breakpoint_late + 
+           (lai_effect + u_effect + lai_seasonlate_effect + u_seasonlate_effect) * (LAI - breakpoint_late))
+))
 
-ggplot(behave_late, aes(x = mean_LAI, y = ROS)) +
-  geom_point() +  # Add points for the original data
-  labs(title = "Late Dry Season", x = "Canopy Cover (LAI)", y = "Rate of Spread (m/min)") +
-  theme_minimal() +
-  geom_line(data = pred_df1, aes(x = mean_LAI, y = ROS_pred), color = "red") +
-  ylim(0,30)
-```
 
 
-```{r ROS segmented plot combined}
-
-#Late + early season ROS segmented regressions
-p1 <- ggplot(behave, aes(x = mean_LAI, y = ROS)) +
-  geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
-  labs(x = "Canopy Cover (LAI)", y = "Rate of Spread (m/min)") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
-  theme_minimal() +
-  geom_line(data = pred_df1, aes(x = mean_LAI, y = ROS_pred), color = "darkred", size = .6) +
-  geom_line(data = pred_df, aes(x = mean_LAI, y = ROS_pred), color = "blue4", size = .6) +
-  ylim(-0.1,30)
-
-p1
+ggplot() +
+  geom_point(data = behave, aes(x = LAI, y = ROS, color = season)) +
+  geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
+  labs(
+    title = "Segmented Mixed-Effects Model with Seasonal Interaction",
+    x = "Canopy Cover (LAI)",
+    y = "Rate of Surface Fire Spread (m/min)",
+    color = "Time of Dry Season"
+  ) +
+  theme_minimal()
 
 ```
 
-The segmented regressions for early and late season identified a flammability cutoff of 1.87 LAI and 1.94 LAI respectively. These are very similar thresholds, suggesting that when viewed across the gradient, seasonality does not have much affect on the differences in flammability. It is important to note that since we averaged across the season, and use the same LAI values for early and late season ROS, what we are seeing here is how flammability changes at given locations across the season, rather than how ROS directly relates to canopy cover. 
-We can see here a clear difference between early and late season flammability in the open canopy, but to compare flammability between the early and late season we will subset data by forest type (open canopy/closed canopy) and perform linear mixed regression incorporating the individual plots (plot_id) as random effects. After having established a flammability threshold, this subsetting analysis will allow us to perform more thorough comparisons of seasonal effects on flammability by disregarding the nonlinearity associated with the differences in flammability across forest types.
-
-```{r Flame Length segmented data analysis, include=FALSE}
-#subset by season
-behave_early <- behave %>% 
-  filter(season == "early")
-
-behave_late <- behave %>% 
-  filter(season == "late")
-
-#Model behave output with segmented to id breakpoints
-# Fit a mixed effects model
-model_early <- lm(flame_length ~ mean_LAI, data=behave_early)
-
-model_late <- lm(flame_length ~ mean_LAI, data=behave_late)
+```{r Flame Length segmented}
+##segmented FL ----
+m_fl <- lme(flame_length ~ LAI*season, random = ~ 1 | plot_id, data = behave)
 
 
-# Apply segmented to find a breakpoint
-segmented_model_early <- segmented(model_early, seg.Z = ~mean_LAI, data = behave_early)
-segmented_model_late <- segmented(model_late, seg.Z = ~mean_LAI, data = behave_late)
+ms <- segmented.lme(m_fl, ~LAI, psi = 2.5, z.psi =~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
 
-summary(segmented_model_early)
-summary(segmented_model_late)
+summary(ms)
 
+# Create dataframes for prediction
+pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
+pred_data_late <- data.frame(LAI = seq(0,7,.1), season = "late")
+
+# Combine prediction data
+pred_data <- rbind(pred_data_early, pred_data_late)
+
+
+# Extract fixed effects
+fixed_effects <- fixed.effects(ms)
+
+# Extract fixed effects
+#G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
+intercept <- fixed_effects[1]
+lai_effect <- fixed_effects[2]
+seasonlate_effect <- fixed_effects[3]
+u_effect <- fixed_effects[4]
+breakpoint_early <- fixed_effects[5] 
+breakpoint_late <- fixed_effects[5] + fixed_effects[6]
+u_seasonlate_effect <- fixed_effects[7]
+lai_seasonlate_effect <- fixed_effects[8]
+
+
+
+# Calculate fitted values for each segment and season
+pred_data$fit <- with(pred_data, ifelse(
+  season == "early",
+  ifelse(LAI < breakpoint_early,
+         intercept + lai_effect * LAI,
+         intercept + lai_effect * breakpoint_early + (lai_effect + u_effect) * (LAI - breakpoint_early)),
+  ifelse(LAI < breakpoint_late,
+         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * LAI,
+         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * breakpoint_late + 
+           (lai_effect + u_effect + lai_seasonlate_effect + u_seasonlate_effect) * (LAI - breakpoint_late))
+))
+
+#plot with interaction
+ggplot() +
+  geom_point(data = behave, aes(x = LAI, y = flame_length, color = season)) +
+  geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
+  labs(
+    title = "Segmented Mixed-Effects Model with Seasonal Interaction",
+    x = "Canopy Cover (LAI)",
+    y = "Flame Length (m)",
+    color = "Time of Dry Season"
+  ) +
+  theme_minimal()
+```
+
+```{r surface fire intensity segmented}
+
+###intensity----
+m_int <- lme(intensity ~ LAI*season, random = ~ 1 | plot_id, data = behave)
+
+
+ms <- segmented.lme(m_int, ~LAI, psi = 2.5, z.psi =~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+
+summary(ms)
+
+# Create dataframes for prediction
+pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
+pred_data_late <- data.frame(LAI = seq(0,7,.1), season = "late")
+
+# Combine prediction data
+pred_data <- rbind(pred_data_early, pred_data_late)
+
+
+# Extract fixed effects
+fixed_effects <- fixed.effects(ms)
+
+# Extract fixed effects
+#G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
+intercept <- fixed_effects[1]
+lai_effect <- fixed_effects[2]
+seasonlate_effect <- fixed_effects[3]
+u_effect <- fixed_effects[4]
+breakpoint_early <- fixed_effects[5] 
+breakpoint_late <- fixed_effects[5] + fixed_effects[6]
+u_seasonlate_effect <- fixed_effects[7]
+lai_seasonlate_effect <- fixed_effects[8]
+
+
+
+# Calculate fitted values for each segment and season
+pred_data$fit <- with(pred_data, ifelse(
+  season == "early",
+  ifelse(LAI < breakpoint_early,
+         intercept + lai_effect * LAI,
+         intercept + lai_effect * breakpoint_early + (lai_effect + u_effect) * (LAI - breakpoint_early)),
+  ifelse(LAI < breakpoint_late,
+         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * LAI,
+         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * breakpoint_late + 
+           (lai_effect + u_effect + lai_seasonlate_effect + u_seasonlate_effect) * (LAI - breakpoint_late))
+))
+
+
+#plot with interaction
+ggplot() +
+  geom_point(data = behave, aes(x = LAI, y = intensity, color = season)) +
+  geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
+  labs(
+    title = "Segmented Mixed-Effects Model with Seasonal Interaction",
+    x = "Canopy Cover (LAI)",
+    y = "Surface Fire Intensity (kW/m)",
+    color = "Time of Dry Season"
+  ) +
+  theme_minimal()
 ```
 
 
+####b) Fire behavior Anovas
 
-``` {r Flame length segmented plots by season, include = FALSE}
-pred_df <- data.frame(mean_LAI = seq(min(behave_early$mean_LAI), max(behave_early$mean_LAI), length.out = 100))
-
-# Predictions for segmented model
-pred_df$flame_length_pred <- predict(segmented_model_early, newdata = pred_df)
-
-ggplot(behave_early, aes(x = mean_LAI, y = flame_length)) +
-  geom_point() +  # Add points for the original data
-  labs(title = "Early Dry Season", x = "Canopy Cover (LAI)", y = "Flame Length (m)") +
-  theme_minimal() +
-  geom_line(data = pred_df, aes(x = mean_LAI, y = flame_length_pred), color = "red")
-
-
-# Create a data frame for prediction
-pred_df1 <- data.frame(mean_LAI = seq(min(behave_late$mean_LAI), max(behave_late$mean_LAI), length.out = 100))
-
-# Predictions for segmented model
-pred_df1$flame_length_pred <- predict(segmented_model_late, newdata = pred_df)
-
-ggplot(behave_late, aes(x = mean_LAI, y = flame_length)) +
-  geom_point() +  # Add points for the original data
-  labs(title = "Late Dry Season", x = "Canopy Cover (LAI)", y = "Flame Length (m)") +
-  theme_minimal() +
-  geom_line(data = pred_df1, aes(x = mean_LAI, y = flame_length_pred), color = "red") 
-
-```
-
-```{r flame length combined plot }
-
-#Late + early season flame length segmented regressions
-p2 <- ggplot(behave, aes(x = mean_LAI, y = flame_length)) +
-  geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
-  labs(x = "Canopy Cover (LAI)", y = "Flame Length (m)") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
-  theme_minimal() +
-  geom_line(data = pred_df1, aes(x = mean_LAI, y = flame_length_pred), color = "darkred", size = .8) +
-  geom_line(data = pred_df, aes(x = mean_LAI, y = flame_length_pred), color = "blue4", size = .8) 
-
-```
-
-```{r Fireline intensity segmented data analysis, include = FALSE}
-#subset by season
-behave_early <- behave %>% 
-  filter(season == "early")
-
-behave_late <- behave %>% 
-  filter(season == "late")
-
-#Model behave output with segmented to id breakpoints
-# Fit a mixed effects model
-model_early <- lm(intensity ~ mean_LAI, data=behave_early)
-
-model_late <- lm(intensity ~ mean_LAI, data=behave_late)
-
-
-# Apply segmented to find a breakpoint
-segmented_model_early <- segmented(model_early, seg.Z = ~mean_LAI, data = behave_early)
-segmented_model_late <- segmented(model_late, seg.Z = ~mean_LAI, data = behave_late)
-
-summary(segmented_model_early)
-summary(segmented_model_late)
-
-```
-
-``` {r Intensity segmented plots by season, include = FALSE}
-pred_df <- data.frame(mean_LAI = seq(min(behave_early$mean_LAI), max(behave_early$mean_LAI), length.out = 100))
-
-# Predictions for segmented model
-pred_df$intensity_pred <- predict(segmented_model_early, newdata = pred_df)
-
-ggplot(behave_early, aes(x = mean_LAI, y = intensity)) +
-  geom_point() +  # Add points for the original data
-  labs(title = "Early Dry Season", x = "Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)") +
-  theme_minimal() +
-  geom_line(data = pred_df, aes(x = mean_LAI, y = intensity_pred), color = "red")
-
-
-# Create a data frame for prediction
-pred_df1 <- data.frame(mean_LAI = seq(min(behave_late$mean_LAI), max(behave_late$mean_LAI), length.out = 100))
-
-# Predictions for segmented model
-pred_df1$intensity_pred <- predict(segmented_model_late, newdata = pred_df)
-
-ggplot(behave_late, aes(x = mean_LAI, y = intensity)) +
-  geom_point() +  # Add points for the original data
-  labs(title = "Late Dry Season", x = "Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)") +
-  theme_minimal() +
-  geom_line(data = pred_df1, aes(x = mean_LAI, y = intensity_pred), color = "red") 
-```
-
-```{r fireline intensity combined plot}
-
-#Late + early season intensity segmented regressions
-p3 <- ggplot(behave, aes(x = mean_LAI, y = intensity)) +
-  geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
-  labs(x = "Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
-  theme_minimal() +
-  geom_line(data = pred_df1, aes(x = mean_LAI, y = intensity_pred), color = "darkred", size = .8) +
-  geom_line(data = pred_df, aes(x = mean_LAI, y = intensity_pred), color = "blue4", size = .8) 
-
-```
-
-
-
-```{r PIG intensity segmented data analysis, include = FALSE}
-#subset by season
-behave_early <- behave %>% 
-  filter(season == "early")
-
-behave_late <- behave %>% 
-  filter(season == "late")
-
-#Model behave output with segmented to id breakpoints
-# Fit a mixed effects model
-model_early <- lm(PIG ~ mean_LAI, data=behave_early)
-
-model_late <- lm(PIG ~ mean_LAI, data=behave_late)
-
-
-# Apply segmented to find a breakpoint
-segmented_model_early <- segmented(model_early, seg.Z = ~mean_LAI, npsi = 2, data = behave_early)
-segmented_model_late <- segmented(model_late, seg.Z = ~mean_LAI, data = behave_late)
-
-
-summary(segmented_model_early)
-summary(segmented_model_late)
-
-```
-
-```{r arrange fmc plots}
-grid.arrange(p1, p2, p3, nrow=3)
-```
-
-``` {r PIG segmented plots by season, include = FALSE}
-pred_df <- data.frame(mean_LAI = seq(min(behave_early$mean_LAI), max(behave_early$mean_LAI), length.out = 100))
-
-# Predictions for segmented model
-pred_df$PIG_pred <- predict(segmented_model_early, newdata = pred_df)
-
-ggplot(behave_early, aes(x = mean_LAI, y = PIG)) +
-  geom_point() +  # Add points for the original data
-  labs(title = "Early Dry Season", x = "Canopy Cover (LAI)", y = "Probablity of Ignition (%)") +
-  theme_minimal() +
-  geom_line(data = pred_df, aes(x = mean_LAI, y = PIG_pred), color = "red")
-
-
-# Create a data frame for prediction
-pred_df1 <- data.frame(mean_LAI = seq(min(behave_late$mean_LAI), max(behave_late$mean_LAI), length.out = 100))
-
-# Predictions for segmented model
-pred_df1$PIG_pred <- predict(segmented_model_late, newdata = pred_df)
-
-ggplot(behave_late, aes(x = mean_LAI, y = PIG)) +
-  geom_point() +  # Add points for the original data
-  labs(title = "Late Dry Season", x = "Canopy Cover (LAI)", y = "Probablity of Ignition (%)") +
-  theme_minimal() +
-  geom_line(data = pred_df1, aes(x = mean_LAI, y = PIG_pred), color = "red") 
-```
-
-```{r PIG combined plot}
-
-#Late + early season intensity segmented regressions
-ggplot(behave, aes(x = mean_LAI, y = PIG)) +
-  geom_point(aes(color = season), alpha = .7) +  # Add points for the original data
-  labs(x = "Canopy Cover (LAI)", y = "Probablity of Ignition (%)") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
-  theme_minimal() +
-  geom_line(data = pred_df1, aes(x = mean_LAI, y = PIG_pred), color = "darkred", size = .8) +
-  geom_line(data = pred_df, aes(x = mean_LAI, y = PIG_pred), color = "blue4", size = .8) 
-
-```
-
-#### b) How do fire effects vary by season in either forest type?
-
-With the fire effects variables (flame length, fireline intensity, and ROS) we see clear differences between early and late season flammability in the open canopy, but to compare flammability between the early and late season we will subset data by forest type (open canopy/closed canopy) and perform linear mixed regression incorporating the individual plots (plot_id) as random effects. After having assessed the flammability thresholds, this subsetting analysis will allow us to perform more thorough comparisons of seasonal effects on flammability by disregarding the nonlinearity associated with the differences in flammability across forest types.
-
-``` {r ROS subset model, include = FALSE}
-open_data <- behave %>% 
-  filter(plot_type == "ddf")
-
-open_model <- lmer(ROS ~ mean_LAI*season + (1|plot_id), data = open_data)
-summary(open_model)
-
-
-closed_data <- behave %>% 
+```{r fire behavior table}
+#create subset by plot_type 
+behave_evg <- behave %>% 
   filter(plot_type == "evg")
 
-closed_model <- lmer(ROS ~ mean_LAI*season + (1|plot_id), data = closed_data)
-summary(closed_model)
-```
-
-``` {r ROS subset plot}
-p1 <- ggplot(closed_data, aes(x = mean_LAI, y = ROS, color = season))+
-  geom_point(alpha = .5) + geom_smooth(method = "lm")+
-  labs(title = "Closed Canopy Rate of Fire Spread in Surface Fuels",
-       x = "Canopy Cover (LAI)", y = "ROS", color = "Season") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
-  theme_minimal()
-
-p2 <- ggplot(open_data, aes(x = mean_LAI, y = ROS, color = season))+
-  geom_point(alpha = .5) + geom_smooth(method = "lm")+ 
-  labs(title = "Open Canopy Rate of Fire Spread in Surface Fuels",
-       x = "Canopy Cover (LAI)", y = "ROS", color = "Season") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
-  theme_minimal()
-
-```
-
-``` {r flame length subset model}
-open_data <- behave %>% 
+behave_ddf <- behave %>% 
   filter(plot_type == "ddf")
 
-open_model <- lmer(flame_length ~ mean_LAI*season + (1|plot_id), data = open_data)
-summary(open_model)
+#ROS by season
+summary(lmer(ROS ~ season + (1 | plot_id), data = behave_evg))
+summary(lmer(ROS ~ season + (1 | plot_id), data = behave_ddf))
 
+#FL by season
+summary(lmer(flame_length ~ season + (1 | plot_id), data = behave_evg))
+summary(lmer(flame_length ~ season + (1 | plot_id), data = behave_ddf))
 
-closed_data <- behave %>% 
-  filter(plot_type == "evg")
+#Intensity by season
+summary(lmer(intensity ~ season + (1 | plot_id), data = behave_evg))
+summary(lmer(intensity ~ season + (1 | plot_id), data = behave_ddf))
 
-closed_model <- lmer(flame_length ~ mean_LAI*season + (1|plot_id), data = closed_data)
-summary(closed_model)
-```
+#PIG by season
+summary(lmer(PIG ~ season + (1 | plot_id), data = behave_evg))
+summary(lmer(PIG ~ season + (1 | plot_id), data = behave_ddf))
 
-```{r flame length subset plot}
-
-p3 <- ggplot(closed_data, aes(x = mean_LAI, y = flame_length, color = season))+
-  geom_point(alpha = .5) + geom_smooth(method = "lm")+
-  labs(title = "Closed Canopy Surface Flame Length",
-       x = "Canopy Cover (LAI)", y = "Flame Length (m)", color = "Season") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
-  theme_minimal()
-
-p4 <- ggplot(open_data, aes(x = mean_LAI, y = flame_length, color = season))+
-  geom_point(alpha = .5) + geom_smooth(method = "lm")+
-  labs(title = "Open Canopy Surface Flame Length",
-       x = "Canopy Cover (LAI)", y = "Flame Length (m)", color = "Season") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
-  theme_minimal()
-
-```
-
-``` {r fireline intensity subset models}
-open_data <- behave %>% 
-  filter(plot_type == "ddf")
-
-open_model <- lmer(intensity ~ mean_LAI*season + (1|plot_id), data = open_data)
-summary(open_model)
-
-
-closed_data <- behave %>% 
-  filter(plot_type == "evg")
-
-closed_model <- lmer(intensity ~ mean_LAI*season + (1|plot_id), data = closed_data)
-summary(closed_model)
-
-```
-
-```{r fireline intensity subset plots}
-
-p5 <- ggplot(closed_data, aes(x = mean_LAI, y = intensity, color = season))+
-  geom_point(alpha = .5) + geom_smooth(method = "lm")+
-  labs(title = "Closed Canopy Surface Fireline Intensity",
-       x = "Canopy Cover (LAI)", y = "Fireline Intensity (kW/m)", color = "Season") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
-  theme_minimal()
-
-p6 <- ggplot(open_data, aes(x = mean_LAI, y = intensity, color = season))+
-  geom_point(alpha = .5) + geom_smooth(method = "lm")+
-  labs(title = "Open Canopy Surface Fireline Intensity",
-       x = "Canopy Cover (LAI)", y = "Fireline Intensity (kW/m)", color = "Season") +
-  scale_color_manual(labels = c("Early", "Late"), values = c("blue4", "darkred"))+
-  theme_minimal()
-
-```
-
-```{r arrange behave subset plots}
-grid.arrange(p1, p2, nrow=2)
 ```
 
 ####c) Summaries by Plot Type
@@ -2174,7 +2002,7 @@ fuel_summaries <- fuel_summaries %>%
   left_join(kestrel_wind_summaries)
 ```
 
-#### Fuel Stats
+##### Fuel Stats
 
 ```{r summary analysis setup}
 fuel_stats <- fuel_seasons_fire %>% 
@@ -2357,86 +2185,6 @@ summary(lmer(PIG ~ season + (1 | plot_id), data = behave_evg))
 summary(lmer(PIG ~ season + (1 | plot_id), data = behave_ddf))
 
 ```
-
-
-```{r anova transformations}
-#boxcox
-library(MASS)
-m <- aov(ROS+.02 ~ season*plot_type, data = fuel_stats)
-
-# Perform Box-Cox transformation
-boxcox_result <- boxcox(m, lambda = seq(-2, 2, 0.1))
-
-# Find the optimal lambda
-lambda_opt <- boxcox_result$x[which.max(boxcox_result$y)]
-print(lambda_opt)
-
-# Apply the Box-Cox transformation
-fuel_stats$ROS_bc <- (fuel_stats$ROS^lambda_opt - 1) / lambda_opt
-
-
-# Fit the linear model with the transformed response
-m_bc <- aov(ROS_bc ~ season *plot_type, data = fuel_stats)
-summary(transformed_lm_model)
-
-
-
-
-# Log-transform the response
-fuel_stats$tran_ROS <- -1/(fuel_stats$ROS)
-
-# Fit the two-way ANOVA model with interaction
-m_log <- aov(log_ROS ~ season * plot_type, data = fuel_stats)
-summary(m_log)
-
-
-# Check normality of residuals
-par(mfrow = c(1, 2))
-plot(m_log, which = 2) # Q-Q plot
-shapiro.test(residuals(m_sqrt))
-hist(fuel_stats$log_ROS)
-
-plot(m_aov)
-
-# Check homoscedasticity
-plot(anova_model, which = 1) # Residuals vs Fitted plot
-leveneTest(response ~ factor1 * factor2, data = data)
-
-# Check for interaction
-interaction.plot(data$factor1, data$factor2, data$response)
-
-TukeyHSD(m_aov)
-
-m_noint <- aov(ROS ~ season + plot_type, data = fuel_stats)
-
-TukeyHSD(m_noint)
-
-
-#significance of closed canopy ROS when open canopy is excluded
-closed_stats <- fuel_stats %>% 
-  filter(plot_type == "evg")
-
-m_evg <- aov(ROS ~ season, data = closed_stats)
-TukeyHSD(m_evg)
-
-#Full model with random effects
-m_full <- lmer(grass_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
-summary(m_full)
-
-emms <- emmeans(m_full, ~ season*plot_type)
-
-# Perform Tukey's HSD test
-pairs <- contrast(emms, method = "tukey")
-summary(pairs)
-
-#compare with lm grass model
-m <- aov(grass_mass ~ season*plot_type, data = fuel_stats)
-summary(m)
-TukeyHSD(m)
-
-#the full model has similar estimates but has different significance than the model without random effects. The m_aov model makes more intuitive ecological sense (e.g. late ddf and evg are different in the aov model). I am afraid that including random effect for plot_id is throwing the data off (same as with TOMST temp) because there are not enough samples per plot.
-```
-
 
 
 ### 4.1) Sensitivity Analysis
