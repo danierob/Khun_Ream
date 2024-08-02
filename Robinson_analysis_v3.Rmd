@@ -941,6 +941,8 @@ kestrel <- kestrel_V1 %>%
   group_by(month, day, plot_id, plot_type) %>% 
   summarize(wind_speed = max(wind_speed), max_rh = max(rh), min_rh = min(rh), avg_rh = mean(rh), max_temp = max(temp), min_temp = min(temp), avg_temp = mean(temp))
 
+write.csv(kestrel,"C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_max.csv", row.names = FALSE)
+
 
 #create manageable date column
 library(lubridate)
@@ -2279,43 +2281,83 @@ emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
-#wind speed######### working on this
-m <- lmer(wind_speed ~ season*plot_type + (1|plot_id), data = kestrel)
-
-emm <- emmeans(m, ~season*plot_type)
-tukey_results <- pairs(emm, adjust = "tukey")
-summary(tukey_results)
-
-summary(m)
-
-m_simple <- lm(wind_speed ~ season * plot_type, data = kestrel)
-emm_simple <- emmeans(m_simple, ~ season * plot_type)
-tukey_simple <- pairs(emm_simple, adjust = "tukey")
-summary(tukey_simple)
-
-library(ggplot2)
-ggplot(kestrel, aes(x = interaction(season, plot_type), y = wind_speed)) +
-  geom_boxplot() +
-  facet_wrap(~ plot_id)
-
-m_wind <- lmer(wind_speed ~ plot_type * season + (1 | plot_id), data = kestrel)
-
-# Summary of the model
-summary(m_wind)
-
-# Anova to test the fixed effects
-anova(m_wind)
-
-# Post-hoc analysis for canopy cover differences by season
-emmeans(m_wind, pairwise ~ plot_type | season)
-
 #RH
 m <- lmer(mean_rh ~ season*plot_type + (1|plot_id), data = kestrel_midday)
 emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
+#wind speed######### working on this
+m <- lmer(wind_speed ~ season*plot_type + (1|plot_id), data = kestrel)
+emm <- emmeans(m, ~ plot_type*season)
+tukey_results <- pairs(emm)
+summary(tukey_results)
+summary(m)
+
+pairwise_comparisons <- contrast(emm, method = "pairwise", adjust = "tukey")
+print(pairwise_comparisons)
+
+#ZERO INFLATED
+install.packages("glmmTMB")
+library(glmmTMB)
+
+# Fit a zero-inflated model
+zi_model <- glmmTMB(wind_speed ~ season * plot_type + (1 | plot_id), 
+                    ziformula = ~1, 
+                    family = nbinom2, 
+                    data = kestrel)
+
+# Model summary
+summary(zi_model)
+
+# Compute estimated marginal means
+emm_zi <- emmeans(zi_model, ~ season * plot_type)
+summary(emm_zi)
+
+# Extract residuals
+residuals_zi <- residuals(zi_model, type = "pearson")
+fitted_zi <- predict(zi_model, type = "response")
+
+plot(fitted_zi, residuals_zi,
+     xlab = "Fitted Values", ylab = "Pearson Residuals",
+     main = "Residuals vs Fitted Values")
+abline(h = 0, col = "red")
+
+qqnorm(residuals_zi)
+qqline(residuals_zi, col = "red")
+
+# Pairwise comparisons
+pairs(emm_zi, adjust = "tukey")
+
 ```
+We are making a separate table to present the results of the fire behavior output because in this analysis we will focus on differences by season within plot_type, because we already know that flammability differences between open and closed are significant. If we were to analyse the model output data with two-way anovas, the difference in scale (e.g. very high ROS in the open canopy vs closed) would obscure changes to flammability in the closed canopy, since the values are so much greater.
+
+```{r fire behavior table}
+#create subset by plot_type 
+behave_evg <- behave %>% 
+  filter(plot_type == "evg")
+
+behave_ddf <- behave %>% 
+  filter(plot_type == "ddf")
+
+#ROS by season
+summary(lmer(ROS ~ season + (1 | plot_id), data = behave_evg))
+summary(lmer(ROS ~ season + (1 | plot_id), data = behave_ddf))
+
+#FL by season
+summary(lmer(flame_length ~ season + (1 | plot_id), data = behave_evg))
+summary(lmer(flame_length ~ season + (1 | plot_id), data = behave_ddf))
+
+#Intensity by season
+summary(lmer(intensity ~ season + (1 | plot_id), data = behave_evg))
+summary(lmer(intensity ~ season + (1 | plot_id), data = behave_ddf))
+
+#PIG by season
+summary(lmer(PIG ~ season + (1 | plot_id), data = behave_evg))
+summary(lmer(PIG ~ season + (1 | plot_id), data = behave_ddf))
+
+```
+
 
 ```{r anova transformations}
 #boxcox
