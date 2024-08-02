@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
 ```{r packages, include=FALSE}
+library(performance)
 library(MuMIn)
 library(mgcv)
 library(tidyverse)
@@ -317,10 +318,11 @@ Currently, we are just evaluating the assumptions of m1, the random intercept mo
 #Checking out mixed effects models with interaction between mean_LAI and season
 #to allow for variable slopes between levels (early and late) of season 
 
+#grab data df from part 1
 data
 
 #random intercepts model
-m1 <- lmer(litter_mass ~ LAI*season + (1|plot_id), data = data, REML = TRUE)
+m1 <- lmer((litter_mass) ~ LAI*season + (1|plot_id), data = data, REML = TRUE)
 summary(m1)
 
 ###Testing Assumptions
@@ -364,6 +366,7 @@ m2 <- lmer(litter_mass ~ LAI*season + I(LAI^2) * season + (1|plot_id), data = da
 
 summary(m2)
 
+plot(m2)
 
 ### Interpreting coefficients with CIs using emmeans
 emtrends(m2, ~ season, var="LAI")
@@ -401,15 +404,6 @@ p <- ggplot(data = lit_dat2, aes(x = LAI, y = yvar, color = season)) +
 #add points from the original data
 p + geom_point(data = data, aes(x =LAI, y = litter_mass, color = season), alpha = .7)
 
-
-ggplot(data, aes(x = LAI, y = litter_mass, color = season))+
-  geom_point() +
-  stat_smooth(fill = "NA", method = "lm", formula = y~poly(x,2), aes(color = season)) +
-  labs(title = "Bulk Density Across the Tree Cover Gradient",
-       x = "LAI", y = "Fine Fuel Bulk Density (g/m3)", color = "Season") +
-  theme_minimal() 
-
-
 ```
 
 
@@ -441,7 +435,7 @@ data_outliers <- data[!outliers, ]
 ```
 
 ``` {r fine fuel model}
-m1 <- lmer(fine_mass ~ mean_LAI*season + (mean_LAI^2) *season + (1|plot_id), data = data, REML = TRUE)
+m1 <- lmer(fine_mass ~ LAI*season + (LAI^2) *season + (1|plot_id), data = data, REML = TRUE)
 summary(m1)
 
 plot(m1)
@@ -463,7 +457,7 @@ plot(random_effects)
 ```
 
 ``` {r fine fuel plot}
-ggplot(data = data, aes(x=mean_LAI, y = fine_mass, color = season)) +
+ggplot(data = data, aes(LAI, y = fine_mass, color = season)) +
   geom_point() + stat_smooth(method = "lm", formula = y ~ poly(x, 2)) +
   theme_bw()
 
@@ -577,14 +571,21 @@ bulk_seasons <- bulk_seasons %>%
   mutate(litter_ratio = litter_per/(litter_per+ grass_per))
 
 #Weighted means of litter and mass for all subplots with grass loads <240g/m2
+#Here we are determining fuel depth as grass height if there is more that 240g/m2 of grass, as litter depth if there is less than 30g/m2 of grass and as the weighted mean of grass height and litter depth otherwise.
+bulk_seasons <- bulk_seasons  %>%
+  mutate(fuel_depth = ifelse(grass_mass > 200, 
+              (grass_height),(grass_height*grass_ratio+litter_depth*litter_ratio)))
 
+bulk_seasons <- bulk_seasons  %>% 
+  mutate(fuel_depth = ifelse(grass_mass < 30, 
+              (litter_depth),(fuel_depth)))
+
+#fine fuel bulk density
 bulk_seasons <- bulk_seasons %>%
-  mutate(bulk_density = ifelse(grass_mass > 240, (grass_mass+litter_mass+one_hr_mass)/
-                                 (grass_height/100),((grass_mass+ litter_mass+ one_hr_mass)/
-                                 ((grass_height*grass_ratio+litter_depth*litter_ratio)/100))))
+  mutate(bulk_density = (grass_mass+litter_mass+one_hr_mass)/
+                                 (fuel_depth/100))
 
 bulk_seasons$bulk_density <- bulk_seasons$bulk_density/1000
-
 
 ```
 
@@ -593,26 +594,50 @@ m1 <- lmer((bulk_density) ~ LAI*season + (1|plot_id) , data = bulk_seasons)
 
 summary(m1)
 plot(m1)
-plot(m2)
 
 m2 <- lmer(bulk_density ~ LAI*season + I(LAI^2) * season + (1|plot_id), data = bulk_seasons, REML = TRUE)
 
+plot(m2)
 summary(m2)
 
+#sqrt transformation
+bulk_seasons <- bulk_seasons %>% 
+group_by(bulk_density, plot_id, LAI, quad_id) %>%
+mutate(bulk_sqrt = sqrt(bulk_density)) 
 
-### Interpreting coefficients with CIs using emmeans
-emtrends(m2, ~ season, var="LAI")
+m3 <- lmer(bulk_sqrt ~ (LAI)*season + (1|plot_id), data = bulk_seasons, REML = TRUE)
+
+plot(m3)
+summary(m3)
+
+#getting p-values from the m3 t-values
+t_values <- c(5.073, 3.547, 3.018, 3.596)
+# Calculate p-values
+p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
+# Print p-values
+p_values
+
+###Testing Assumptions
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m3)
+plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
+shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
+plotResiduals(sim_residuals) # For visual validation of (iii)
+random_effects <- lme4::ranef(m3) # For visual validation of (iv)
+plot(random_effects)
 
 
+#R2 goodness of fit
 r2_values1 <- r.squaredGLMM(m1)
 r2_values2 <- r.squaredGLMM(m2)
+r2_values3 <- r.squaredGLMM(m3)
+
 
 # Display R² values
 print(r2_values1)
 print(r2_values2)
+print(r2_values3)
 
 
-AIC(m1,m2)
 
 ```
 
@@ -621,27 +646,18 @@ AIC(m1,m2)
 mylist <- list(LAI=seq(.1,7,by=0.1))
 
 #emmip
-bulk_dat <- emmip(m2, season ~ LAI + I(LAI^2), at=mylist , CIs=TRUE, plotit = FALSE)
+bulk_dat <- emmip(m3, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
-p <- ggplot(data = bulk_dat, aes(x = LAI, y = yvar, color = season)) +
-  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL, fill = season), alpha = .3, size = .3) +
+p <- ggplot(data = bulk_dat, aes(x = LAI, y = (yvar^2), color = season)) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL^2, ymin=LCL^2, fill = season), alpha = .3, size = .3) +
   labs(x="Canopy Cover (LAI)", y="Litter Load (g/m2)", color = "Season", fill = "Season")+
   theme_bw()
 
 #add points from the original data
 p + geom_point(data = bulk_seasons, aes(x = LAI, y = bulk_density, color = season), alpha = .5) 
 
-
-#Same plot but with stat_smooth rather than emmip predictions (totally different line)
-ggplot(bulk_seasons, aes(x = LAI, y =bulk_density, color = season))+
-  geom_point(aes(color = season), alpha = .7, size = 1) +
-  stat_smooth(fill = "NA",size = 1, method = "lm", formula = y~poly(x,2), aes(color= season)) +
-  scale_color_manual(values = c("early" = "blue4", "late" = "darkred")) +
-  labs(x = "Canopy Cover (LAI)", y = "Fuel Bed Bulk Density (g/m3)", color = "Time of Season")+
-  theme_bw() +
-  theme(text=element_text(size= 16), 
-                 plot.title = element_text(hjust = 0.5))
+#
 
 ```
 
@@ -652,8 +668,8 @@ data2 <- bulk_seasons %>%
   filter(!(plot_id %in% "ddf2")) %>% 
   mutate(plot_id = droplevels(plot_id))
 
-ggplot(bulk_seasons, aes(x = LAI, y = bulk_density/1000), color = season)+
-  geom_point(aes(color = plot_id)) +
+ggplot(data2, aes(x = LAI, y = bulk_density/1000, color = season))+
+  geom_point() +
   stat_smooth(fill = "NA", method = "lm", formula = y~poly(x,2), aes(color = season)) +
   labs(title = "Bulk Density Across the Tree Cover Gradient",
        x = "LAI", y = "Fine Fuel Bulk Density (g/m3)", color = "Season") +
@@ -681,7 +697,18 @@ Tree canopies moderate microclimate by acting as a thermal insulator, buffering 
 Past research suggests that relationships between canopy cover and microclimate buffering tend to be linear in tropical forest systems (Hardwick 2015). But extent of buffering, or the slope of microclimate buffering across the canopy gradient should increase as free-air (open-canopy) temperatures increase. Basically, as macroclimate heat or open-air heat temperatures get more extreme, open canopies should be relatively worse bufferers and closed canopies should be relatively better bufferers, exaggerating the differences in microclimate between open and closed systems (Davis 2018, De Frenne 2019).
 
 ```{r tomst temp setup}
-library(readr)
+#loading in LAI data
+LAI <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/LAI/LAI_V1.csv", 
+                col_types = cols(date = col_date(format = "%m/%d/%Y"), 
+                                 LAI = col_number()))
+
+#make season a factor
+LAI$season <- factor(LAI$season)
+
+#make plot_id a factor
+LAI$plot_id <- factor(LAI$plot_id)
+
+#load in tomst
 TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/TOMST/TOMST_V1.csv", 
     col_types = cols(date = col_date(format = "%Y.%m.%d"), 
         date_time = col_datetime(format = "%Y.%m.%d %H:%M"), 
@@ -722,14 +749,105 @@ LAI_avg <- LAI_no5 %>%
 
 LAI_avgxTOMST_seasons <- TOMST_seasons %>% 
   left_join(LAI_avg, by = c("quad_id", "plot_id", "plot_type"))
+
+data <- LAI_avgxTOMST_seasons
 ```
 
-```{r tomst temp model}
-m1 <- lmer(mean_air_temp ~ LAI*season + (1|plot_id), data = LAI_avgxTOMST_seasons, REML=TRUE)
+```{r gls tomst temp model}
 
+m0 <- gls(mean_air_temp ~ LAI*season, correlation = corExp(form = ~ mean_air_temp + LAI | plot_id), data = data)
+summary(m0)
+summary(m_lm)
+
+plot(m0)
+
+```
+
+```{r tomst temp plot}
+#plot with predicted values from model
+new_data <- expand.grid(
+  LAI = seq(min(LAI_avgxTOMST_seasons$LAI), max(LAI_avgxTOMST_seasons$LAI), length.out = 100),
+  season = unique(LAI_avgxTOMST_seasons$season))
+
+# Extract model parameters
+params <- coef(m0)
+
+# Extract covariance matrix of the parameters
+vcov_matrix <- vcov(m0)
+
+# Calculate the linear predictor (Xb)
+X <- model.matrix(~ LAI * season, data = new_data)  # Adjust according to your model
+linear_pred <- X %*% params
+
+# Calculate standard errors
+# Compute the variance-covariance matrix of the predictions
+var_pred <- diag(X %*% vcov_matrix %*% t(X))
+std_errors <- sqrt(var_pred)
+
+# Calculate confidence intervals
+z_score <- qnorm(0.975)  # For 95% CI
+lower_ci <- linear_pred - z_score * std_errors
+upper_ci <- linear_pred + z_score * std_errors
+
+# Combine results
+predictions_df <- data.frame(
+  predicted = linear_pred,
+  lower_ci = lower_ci,
+  upper_ci = upper_ci
+)
+
+# Combine predictions with new_data
+new_data <- cbind(new_data, predictions_df)
+
+ggplot(data = data, aes(x = LAI, y = mean_air_temp, color = season)) +
+  geom_point() +  # Add points
+  geom_line(data = new_data, aes(x = LAI, y = predicted, color = season), size = 1) +  # Add regression lines
+  geom_ribbon(data = new_data, aes(x = LAI, y = predicted, ymin = lower_ci, ymax = upper_ci, fill = season), alpha = 0.2) +  
+  labs(title = "Regression Lines for LAI by Season",
+       x = "Leaf Area Index (LAI)",
+       y = "Mean Air Temperature",
+       color = "Season",
+       fill = "Season") +  # Add labels
+  theme_minimal()  # Use a minimal theme
+
+
+##LM MODEL
+#emmip
+temp_dat <- emmip(m_lm, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
+
+#make ggplot with emmip data
+p <- ggplot(data = temp_dat, aes(x = LAI, y = yvar, color = season)) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL, fill = season), alpha = .3, size = .3) +
+  labs(x="Canopy Cover (LAI)", y="Temp", color = "Season", fill = "Season")+
+  theme_minimal()
+
+#add points from the original data
+p + geom_point(data = LAI_avgxTOMST_seasons, aes(x = LAI, y = mean_air_temp, color = season), alpha = .5) 
+
+```
+
+```{r lm and lmer plots and transformations}
+
+m_lm <- lm((mean_air_temp) ~ LAI*season, data = data)
+summary(m_lm)
+
+m1 <- lmer((mean_air_temp) ~ LAI*season + (LAI | plot_id), data = data, REML=TRUE)
 summary(m1)
 
+#add log and sqrt data
+data <- data %>% 
+group_by(mean_air_temp, plot_id, LAI, quad_id) %>%
+mutate(ln_temp = log(mean_air_temp)) %>% 
+mutate(sqrt_temp = sqrt(mean_air_temp))
+
+m2 <- lmer(sqrt_temp ~ LAI*season + (1|plot_id), data = data, REML=TRUE)
+
+m3 <- lmer(ln_temp ~ (LAI)*season +(1|plot_id), data = data, REML=TRUE)
+
+plot(m_lm)
 plot(m1)
+plot(m2)
+plot(m3)
 
 
 ### Interpreting coefficients with CIs using emmeans
@@ -737,28 +855,72 @@ emtrends(m1, ~ season, var="LAI")
 
 # Calculate R² values
 r2_values <- r.squaredGLMM(m1)
+r2_values2 <- r.squaredGLMM(m2)
+r2_values3 <- r.squaredGLMM(m3)
 
 # Display R² values
 print(r2_values)
-```
+print(r2_values2)
+print(r2_values3)
 
-```{r tomst temp plot}
-#plot with predicted values from model
-# Create a new data frame for prediction
-new_data <- expand.grid(
-  LAI = seq(min(LAI_avgxTOMST_seasons$LAI), max(LAI_avgxTOMST_seasons$LAI), length.out = 100),
-  season = unique(LAI_avgxTOMST_seasons$season))
+#Same as above but using emmip
+mylist <- list(LAI=seq(.1,7,by=0.1))
 
-new_data$predicted <- predict(m1, newdata = new_data, re.form = NA)
 
-ggplot(LAI_avgxTOMST_seasons, aes(x = LAI, y = mean_air_temp, color = season)) +
-  geom_point() +  # Add points
-  geom_line(data = new_data, aes(x = LAI, y = predicted, color = season), size = 1) +  # Add regression lines
-  labs(title = "Regression Lines for LAI by Season",
-       x = "Leaf Area Index (LAI)",
-       y = "Mean Air Temperature",
-       color = "Season") +  # Add labels
-  theme_minimal()  # Use a minimal theme
+##LM MODEL
+#emmip
+temp_dat <- emmip(m_lm, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
+
+#make ggplot with emmip data
+p <- ggplot(data = temp_dat, aes(x = LAI, y = yvar, color = season)) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL, fill = season), alpha = .3, size = .3) +
+  labs(x="Canopy Cover (LAI)", y="Temp", color = "Season", fill = "Season")+
+  theme_bw()
+
+#add points from the original data
+p + geom_point(data = LAI_avgxTOMST_seasons, aes(x = LAI, y = mean_air_temp, color = season), alpha = .5) 
+
+
+##LMER MODEL
+#emmip
+temp_dat <- emmip(m1, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
+
+#make ggplot with emmip data
+p <- ggplot(data = temp_dat, aes(x = LAI, y = yvar, color = season)) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL, fill = season), alpha = .3, size = .3) +
+  labs(x="Canopy Cover (LAI)", y="Temp", color = "Season", fill = "Season")+
+  theme_bw()
+
+#add points from the original data
+p + geom_point(data = LAI_avgxTOMST_seasons, aes(x = LAI, y = mean_air_temp, color = season), alpha = .5) 
+
+
+##SQUARED MODEL
+#emmip
+temp_dat <- emmip(m2, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
+
+#make ggplot with emmip data
+p <- ggplot(data = temp_dat, aes(x = LAI, y = yvar^2, color = season)) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL^2, ymin=LCL^2, fill = season), alpha = .3, size = .3) +
+  labs(x="Canopy Cover (LAI)", y="Temp", color = "Season", fill = "Season")+
+  theme_bw()
+
+#add points from the original data
+p + geom_point(data = data, aes(x = LAI, y = mean_air_temp, color = season), alpha = .5) 
+
+
+##LOG MODEL
+#emmip
+temp_dat <- emmip(m3, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
+
+#make ggplot with emmip data
+p <- ggplot(data = temp_dat, aes(x = LAI, y = exp(yvar), color = season)) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=exp(UCL), ymin=exp(LCL), fill = season), alpha = .3, size = .3) +
+  labs(x="Canopy Cover (LAI)", y="Temp", color = "Season", fill = "Season")+
+  theme_bw()
+
+#add points from the original data
+p + geom_point(data = data, aes(x = LAI, y = mean_air_temp, color = season), alpha = .5) 
 
 ```
 
@@ -823,7 +985,7 @@ summary(m_wind)
 # Anova to test the fixed effects
 anova(m_wind)
 
-# Post-hoc analysis for canopy cover differences by month
+# Post-hoc analysis for canopy cover differences by season
 emmeans(m_wind, pairwise ~ plot_type | season)
 ```
 Output of emmeans tells us that early season contrast between ddf and evg not quite significant (p-val = .08), but as late season increases wind speed in both plot types, late season contrast between ddf and evg is significant at p-val = .03.
@@ -1482,9 +1644,9 @@ behave_tbl_3.2 <- behave_tbl_3.2%>%
 BEHAVE UPDATE MAY 24
 ```{r behave update}
 behave <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Behaveplus/behave_seasons_V6.csv", 
-     col_types = cols(mean_LAI = col_number(), 
+     col_types = cols(LAI = col_number(), 
          ROS = col_number(), intensity = col_number(), 
-         flame_length = col_number(), PIG = col_number()))
+         flame_length = col_number(), PIG = col_number(), grass_load = col_number()))
 
 #drop NA rows for plots with no loggers
 behave <- behave %>% drop_na(fuel_depth)
@@ -1520,9 +1682,9 @@ behave_late <- behave %>%
 
 #Model behave output with segmented to id breakpoints
 # Fit a mixed effects model
-model_early <- lm(ROS ~ mean_LAI, data=behave_early)
+model_early <- lm(ROS ~ LAI, data=behave_early)
 
-model_late <- lm(ROS ~ mean_LAI, data=behave_late)
+model_late <- lm(ROS ~ LAI, data=behave_late)
 
 
 # Apply segmented to find a breakpoint
@@ -1894,6 +2056,8 @@ Here we will look at the summaries of fuel and microclimate values averaged by f
 
 For the summary statistics, we will look average all values of interest by plot type and by season, including LAI. Where the cutoff between the early and late season will be observation 4, when most microclimate conditions started to change rapidly.
 
+This summary includes the large bamboo outlier from DDF5 in the early season.
+
 ```{r fine fuel composition setup, include = FALSE}
 LAI_seasons <- LAI %>% 
   group_by(season, plot_id, quad_id, plot_type) %>% 
@@ -1921,7 +2085,7 @@ fuel_seasons <- fuel_seasons %>%
 #Weighted means of litter and mass for all subplots with grass loads <240g/m2
 #Here we are determining fuel depth as grass height if there is more that 240g/m2 of grass, as litter depth if there is less than 30g/m2 of grass and as the weighted mean of grass height and litter depth otherwise.
 fuel_seasons <- fuel_seasons  %>%
-  mutate(fuel_depth = ifelse(grass_mass > 240, 
+  mutate(fuel_depth = ifelse(grass_mass > 200, 
               (grass_height),(grass_height*grass_ratio+litter_depth*litter_ratio)))
 
 fuel_seasons <- fuel_seasons  %>% 
@@ -1958,6 +2122,7 @@ fuel_summaries <- fuel_seasons_fire %>%
   summarize(LAI = mean(LAI), grass_mass = mean(grass_mass), litter_mass = mean(litter_mass), one_hr_mass = mean(one_hr_mass), ten_hr_mass = mean(ten_hr_mass), hundred_hr_mass = mean(hundred_hr_mass), seedlings = mean(seedlings), fuel_load = mean(fuel_load), fine_load = mean(fine_load),fuel_depth = mean(fuel_depth), bulk_density = mean(bulk_density), ROS = mean(ROS), intensity = mean(intensity), flame_length = mean(flame_length), PIG = mean(PIG)) 
 
 ```
+For the grass biomass, we need to remove the giant bamboo outlier in the early season at DDF5 q4.
 
 ```{r fuel change seasonal metrics, include=FALSE}
 #fine fuel percentage
@@ -2027,64 +2192,207 @@ fuel_stats <- fuel_stats  %>%
 
 fuel_stats  <- fuel_stats  %>% 
   left_join(fm_stats)
+
+#make season a factor
+fuel_stats$season <- factor(fuel_stats$season)
+
+#make plot_id a factor
+fuel_stats$plot_id <- factor(fuel_stats$plot_id)
+
+#make plot_type a factor
+fuel_stats$plot_type <- factor(fuel_stats$plot_type)
 ```
 
 ```{r summary stats significance}
-m <- aov(LAI ~ season*plot_type, data = fuel_stats)
-summary(m)
-TukeyHSD(m)
 
-m <- aov(litter_mass ~ season*plot_type, data = fuel_stats)
-summary(m)
-TukeyHSD(m)
+#LAI
+m <- lmer(LAI ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
 
+#litter load
+m <- lmer(litter_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#grass load
+m <- lmer(grass_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#1-hr load
+m <- lmer(one_hr_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#10-hr load
+m <- lmer(ten_hr_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#100-hr load
+m <- lmer(hundred_hr_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#fuel bed density
+#sqrt to meet assumptions!
+m <- lmer(sqrt(bulk_density) ~ season*plot_type + (1|plot_id), data = fuel_stats)
+plot(m)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#litter fm
+m <- lmer(litter_fm ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#grass fm
+m <- lmer(grass_fm ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#woody fm
+m <- lmer(woody_fm ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#ten-hr fm
+m <- lmer(ten_hr_fm ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#air temp fm
+m <- lmer(mean_air_temp ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#wind speed######### working on this
+m <- lmer(wind_speed ~ season*plot_type + (1|plot_id), data = kestrel)
+
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+summary(m)
+
+m_simple <- lm(wind_speed ~ season * plot_type, data = kestrel)
+emm_simple <- emmeans(m_simple, ~ season * plot_type)
+tukey_simple <- pairs(emm_simple, adjust = "tukey")
+summary(tukey_simple)
+
+library(ggplot2)
+ggplot(kestrel, aes(x = interaction(season, plot_type), y = wind_speed)) +
+  geom_boxplot() +
+  facet_wrap(~ plot_id)
+
+m_wind <- lmer(wind_speed ~ plot_type * season + (1 | plot_id), data = kestrel)
+
+# Summary of the model
+summary(m_wind)
+
+# Anova to test the fixed effects
+anova(m_wind)
+
+# Post-hoc analysis for canopy cover differences by season
+emmeans(m_wind, pairwise ~ plot_type | season)
+
+#RH
+m <- lmer(mean_rh ~ season*plot_type + (1|plot_id), data = kestrel_midday)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+```
+
+```{r anova transformations}
+#boxcox
+library(MASS)
+m <- aov(ROS+.02 ~ season*plot_type, data = fuel_stats)
+
+# Perform Box-Cox transformation
+boxcox_result <- boxcox(m, lambda = seq(-2, 2, 0.1))
+
+# Find the optimal lambda
+lambda_opt <- boxcox_result$x[which.max(boxcox_result$y)]
+print(lambda_opt)
+
+# Apply the Box-Cox transformation
+fuel_stats$ROS_bc <- (fuel_stats$ROS^lambda_opt - 1) / lambda_opt
+
+
+# Fit the linear model with the transformed response
+m_bc <- aov(ROS_bc ~ season *plot_type, data = fuel_stats)
+summary(transformed_lm_model)
+
+
+
+
+# Log-transform the response
+fuel_stats$tran_ROS <- -1/(fuel_stats$ROS)
+
+# Fit the two-way ANOVA model with interaction
+m_log <- aov(log_ROS ~ season * plot_type, data = fuel_stats)
+summary(m_log)
+
+
+# Check normality of residuals
+par(mfrow = c(1, 2))
+plot(m_log, which = 2) # Q-Q plot
+shapiro.test(residuals(m_sqrt))
+hist(fuel_stats$log_ROS)
+
+plot(m_aov)
+
+# Check homoscedasticity
+plot(anova_model, which = 1) # Residuals vs Fitted plot
+leveneTest(response ~ factor1 * factor2, data = data)
+
+# Check for interaction
+interaction.plot(data$factor1, data$factor2, data$response)
+
+TukeyHSD(m_aov)
+
+m_noint <- aov(ROS ~ season + plot_type, data = fuel_stats)
+
+TukeyHSD(m_noint)
+
+
+#significance of closed canopy ROS when open canopy is excluded
+closed_stats <- fuel_stats %>% 
+  filter(plot_type == "evg")
+
+m_evg <- aov(ROS ~ season, data = closed_stats)
+TukeyHSD(m_evg)
+
+#Full model with random effects
+m_full <- lmer(grass_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
+summary(m_full)
+
+emms <- emmeans(m_full, ~ season*plot_type)
+
+# Perform Tukey's HSD test
+pairs <- contrast(emms, method = "tukey")
+summary(pairs)
+
+#compare with lm grass model
 m <- aov(grass_mass ~ season*plot_type, data = fuel_stats)
 summary(m)
 TukeyHSD(m)
 
-m <- aov(one_hr_mass ~ plot_type, data = fuel_stats)
-summary(m)
-
-m <- aov(ten_hr_mass ~ plot_type, data = fuel_stats)
-summary(m)
-
-m <- aov(hundred_hr_mass ~ plot_type, data = fuel_stats)
-summary(m)
-
-m <- aov(bulk_density ~ season*plot_type, data = fuel_stats)
-summary(m)
-TukeyHSD(m)
-
-m <- aov(litter_fm ~ season*plot_type, data = fuel_stats)
-summary(m)
-TukeyHSD(m)
-
-m <- aov(grass_fm ~ season*plot_type, data = fuel_stats)
-summary(m)
-TukeyHSD(m)
-
-m <- aov(woody_fm ~ season*plot_type, data = fuel_stats)
-summary(m)
-TukeyHSD(m)
-
-m <- aov(ten_hr_fm ~ season*plot_type, data = fuel_stats)
-summary(m)
-TukeyHSD(m)
-
-m <- aov(mean_air_temp ~ season*plot_type, data = fuel_stats)
-summary(m)
-TukeyHSD(m)
-
-m <- aov(ROS ~ season*plot_type, data = fuel_stats)
-summary(m)
-TukeyHSD(m)
-
-closed_stats <- fuel_stats %>% 
-  filter(plot_type == "evg")
-
-m <- aov(ROS ~ season, data = closed_stats)
-
-
+#the full model has similar estimates but has different significance than the model without random effects. The m_aov model makes more intuitive ecological sense (e.g. late ddf and evg are different in the aov model). I am afraid that including random effect for plot_id is throwing the data off (same as with TOMST temp) because there are not enough samples per plot.
 ```
 
 
