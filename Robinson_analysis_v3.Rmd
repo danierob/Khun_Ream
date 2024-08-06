@@ -1004,7 +1004,7 @@ ggplot(kestrel_wind, aes(x = plot_type, y = wind_speed, color = season)) +
 **2m Temperatures (Celcius)**
 
 ```{r temp max}
-p2 <- ggplot(kestrel, aes(x = date, y = avg_temp, color = plot_type)) +
+p2 <- ggplot(kestrel_midday, aes(x = date, y = mean_temp, color = plot_type)) +
   geom_line(aes(group = plot_id), size = .4, alpha = .4) +
   geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
   labs(x = element_blank(), y = "Average temperature (C)", color = "Canopy Cover") +
@@ -1065,7 +1065,7 @@ ggplot(kestrel_midday, aes(x = date, y = mean_rh, color = plot_id)) +
 ```
 
 ```{r rh min}
-p3 <- ggplot(kestrel, aes(x = date, y = min_rh, color = plot_type)) +
+p3 <- ggplot(kestrel_midday, aes(x = date, y = mean_rh, color = plot_type)) +
   geom_line(aes(group = plot_id), size = .4, alpha = .4) +
   geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
   labs(x = element_blank(), y = "Average relative humidity (%)", color = "Canopy Cover") +
@@ -1073,10 +1073,12 @@ p3 <- ggplot(kestrel, aes(x = date, y = min_rh, color = plot_type)) +
   theme(text=element_text(size= 15), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
   theme_minimal()
+
+p3
 ```
 
 ```{r rh model, include = FALSE}
-m_rh <- lmer(mean_rh ~ plot_type * month + (1 | plot_id), data = kestrel_midday)
+m_rh <- lmer(mean_rh ~ plot_type * season + (1 | plot_id), data = kestrel_midday)
 
 # Summary of the model
 summary(m_rh)
@@ -1085,7 +1087,7 @@ summary(m_rh)
 anova(m_rh)
 
 # Post-hoc analysis for canopy cover differences by month
-emmeans(m_rh, pairwise ~ plot_type | month)
+emmeans(m_rh, pairwise ~ plot_type | season)
 ```
 
 ```{r arrange mc plots}
@@ -1898,7 +1900,7 @@ fuel_seasons <- right_join(LAI_seasons, biomass_seasons, by = c("plot_id", "quad
 
 #add fine load and total fuel load (taken from 1.3)
 fuel_seasons <- fuel_seasons %>% 
-  mutate(fine_load = grass_mass + litter_mass)
+  mutate(fine_load = grass_mass + litter_mass + one_hr_mass)
 
 fuel_seasons <- fuel_seasons %>% 
   mutate(fuel_load = grass_mass + litter_mass + one_hr_mass + ten_hr_mass + hundred_hr_mass + other_mass)
@@ -1924,7 +1926,7 @@ fuel_seasons <- fuel_seasons  %>%
 
 #fine fuel bulk density
 fuel_seasons <- fuel_seasons %>%
-  mutate(bulk_density = (grass_mass+litter_mass+one_hr_mass)/
+  mutate(bulk_density = (fine_load)/
                                  (fuel_depth/100))
 
 fuel_seasons <- fuel_seasons %>%
@@ -2071,6 +2073,14 @@ emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
+#fine fuel load
+m <- lmer(fine_load ~ season*plot_type + (1|plot_id), data = fuel_stats)
+plot(m)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+
 #fuel bed density
 #sqrt to meet assumptions!
 m <- lmer(sqrt(bulk_density) ~ season*plot_type + (1|plot_id), data = fuel_stats)
@@ -2111,6 +2121,13 @@ summary(tukey_results)
 
 #RH
 m <- lmer(mean_rh ~ season*plot_type + (1|plot_id), data = kestrel_midday)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+plot(m)
+
+m <- lm(mean_rh ~ season*plot_type, data = kestrel_midday)
 emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
