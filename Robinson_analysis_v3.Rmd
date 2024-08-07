@@ -242,65 +242,81 @@ data_outliers <- data[!outliers, ]
 
 And we will also use a 3rd order polynomial linear regression to evaluate the overall relationship between LAI and grass mass with random intercepts for plot_id.
 
-``` {r grass lmm}
-#open canopy subset
-data_grass <- data_outliers %>% 
-group_by(grass_mass, plot_id, LAI, quad_id) %>%
-mutate(grass1 = grass_mass + 1) %>% 
-mutate(ln_grass_mass = log(grass1)) %>% 
-mutate(ln_LAI = log(LAI))
+``` {r grass segmented.lme, include=FALSE }
+
+data_season <- data_outliers %>% 
+  group_by(plot_id, quad_id, LAI, season) %>% 
+  summarize(grass_mass = mean(grass_mass))
 
 
-#random intercepts model
-m0 <- lmer((grass_mass) ~ (LAI)*season + (1|plot_id), data = data_grass, REML = TRUE)
-
-m1 <- lmer(ln_grass_mass ~ (LAI)*season + (1|plot_id), data = data_grass, REML = TRUE)
-
-m2 <- lmer(ln_grass_mass ~ ln_LAI*season + (1|plot_id), data = data_grass, REML = TRUE)
+m2 <- lme(grass_mass ~ LAI*season, random = ~ 1 | plot_id, data = data_season)
 
 
-plot(m2)
+ms2 <- segmented.lme(m2, ~LAI, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
 
-summary(m2)
-
-# Calculate R² values
-r2_values <- r.squaredGLMM(m1)
-
-# Display R² values
-print(r2_values)
-
-AIC(m0,m1,m2)
+summary(ms2)
 
 ```
 
-```{r grass lmer plot, echo = FALSE}
-
-# Create sequences of values for log(LAI)
-explanatory_data <- expand_grid(ln_LAI = seq(-0.5,1.9,.05), season = unique(data_grass$season))
-
-prediction_data <- explanatory_data %>% 
-  mutate(grass_mass = predict(m2, explanatory_data))
-
- # Create dataframes for prediction
-pred_data_early <- data.frame(log_LAI = log_LAI_seq, season = "early")
-pred_data_late <- data.frame(log_LAI = log_LAI_seq, season = "late")
+``` {r grass segmented predictions, include=FALSE}
+# Create dataframes for prediction
+pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
+pred_data_late <- data.frame(LAI = seq(0,7,.1), season = "late")
 
 # Combine prediction data
 pred_data <- rbind(pred_data_early, pred_data_late)
 
-# Calculate fitted values for each season
-pred_data$fit <- predict(m1, newdata = pred_data)
+
+# Extract fixed effects
+fixed_effects <- fixed.effects(ms2)
+
+# Extract fixed effects
+#G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
+intercept <- fixed_effects[1]
+lai_effect <- fixed_effects[2]
+seasonlate_effect <- fixed_effects[3]
+u_effect <- fixed_effects[4]
+breakpoint <- fixed_effects[5]
+u_seasonlate_effect <- fixed_effects[6]
+lai_seasonlate_effect <- fixed_effects[7]
 
 
+# Calculate fitted values for each segment and season
+pred_data$fit <- with(pred_data, ifelse(
+  season == "early",
+  ifelse(LAI < breakpoint,
+         intercept + lai_effect * LAI,
+         intercept + lai_effect * breakpoint + (lai_effect + u_effect) * (LAI - breakpoint)),
+  ifelse(LAI < breakpoint,
+         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * LAI,
+         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * breakpoint + 
+           (lai_effect + u_effect + lai_seasonlate_effect + u_seasonlate_effect) * (LAI - breakpoint))
+))
 
-ggplot(data_grass, aes(x = exp(ln_LAI), y = exp(ln_grass_mass), color = season))+
-  stat_smooth()+
-  geom_point()
+```
+
+```{r grass segmented plot}
+p1 <- ggplot() +
+  geom_point(data = data_season, aes(x = LAI, y = grass_mass, color = season)) +
+  geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
+  geom_vline(xintercept = breakpoint, linetype = "dashed") +
+  labs(x = "Canopy Cover (LAI)",  y = expression("Grass Biomass (g/m"^2*")"), color = "Time of Dry Season") +
+  theme_minimal()+
+    theme(
+    axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+     legend.position = c(0.70, 0.75),
+    axis.title.y = element_text(margin = margin(r = 10)))
+
+p1
+
 ```
 
 ### 1. 2) Litter distribution across the canopy gradient
 
-Grass burns readily due to its fine, aerated structure and continuity. As a result, grass is the major fuel type that delineates differences in fire recruitment between open and closed ecosystems. But litter is often a critical component of the fuel load depending on the fuel amount and arrangement. In savanna-forest systems, leaf litter tends to increase as tree density increases (Hoffman 2012b, Newberry 2020), and when grass is excluded by canopy density, litter is the primary source of ignition and the primary fuel carrier. I expect litter to increase across the tree density gradient in our system, as in similar studies. However, it is important to note that the savannas in Cambodia are particularly mesic, or more densely treed, than the savannas of similar study systems on other continents (ref), which may result in more litter in the savanna. While in the closed forest, even the most densely canopied tree stands of our research area have a high degree of deciduousness, which may result in more litter in the closed forest.
+Grass burns readily due to its fine, aerated structure and continuity. As a result, grass is the major fuel type that delineates differences in fire recruitment between open and closed ecosystems. But litter is often a critical component of the fuel load depending on the fuel amount and arrangement. In savanna-forest systems, leaf litter tends to increase as tree density increases (Hoffman 2012b, Newberry 2020), and when grass is excluded by canopy density, litter is the primary source of ignition and the primary fuel carrier. I expect litter to increase across the tree density gradient in our system, as in similar studies. However, it is important to note that the savannas in Cambodia are particularly mesic, or more densely treed, than the savannas of similar study systems on other continents, which may result in more litter in the savanna. While in the closed forest, even the most densely canopied tree stands of our research area have a high degree of deciduousness, which may result in more litter in the closed forest.
 
 **Seasonal Litter Loads**
 
@@ -341,7 +357,7 @@ emtrends(m1, ~ season, var="LAI")
 #litter load is significant across the LAI gradient in the late but not the early season
 ```
 
-```{r litter plot, echo = FALSE}
+```{r litter plot, include = FALSE}
 #Now lets graphically represent this
 mylist <- list(LAI=seq(0,7,by=.1))
 
@@ -360,13 +376,26 @@ p + geom_point(data = data, aes(x = LAI, y = litter_mass, color = season), alpha
 
 ```
 Going to take a peak at Litter as a quadratic (2 order poly graph)
-```{r litter squared}
+```{r litter squared, include  = FALSE}
 #random intercepts model
 m2 <- lmer(litter_mass ~ LAI*season + I(LAI^2) * season + (1|plot_id), data = data, REML = TRUE)
 
+m3 <- lmer(sqrt(litter_mass) ~ LAI*season + (1|plot_id), data = data, REML = TRUE)
+
+
 summary(m2)
+summary(m3)
 
 plot(m2)
+
+###Testing Assumptions
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m3)
+plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
+shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
+plotResiduals(sim_residuals) # For visual validation of (iii)
+random_effects <- lme4::ranef(m3) # For visual validation of (iv)
+plot(random_effects)
+
 
 ### Interpreting coefficients with CIs using emmeans
 emtrends(m2, ~ season, var="LAI")
