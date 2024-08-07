@@ -301,14 +301,14 @@ p1 <- ggplot() +
   geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
   geom_vline(xintercept = breakpoint, linetype = "dashed") +
   labs(x = "Canopy Cover (LAI)",  y = expression("Grass Biomass (g/m"^2*")"), color = "Time of Dry Season") +
-  theme_minimal()+
+  theme_bw()+
     theme(
     axis.title = element_text(size = 10),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
      legend.position = c(0.70, 0.75),
-    axis.title.y = element_text(margin = margin(r = 10)))
+    axis.title.y = element_text(margin = margin(r = 5)))
 
 p1
 
@@ -380,20 +380,16 @@ Going to take a peak at Litter as a quadratic (2 order poly graph)
 #random intercepts model
 m2 <- lmer(litter_mass ~ LAI*season + I(LAI^2) * season + (1|plot_id), data = data, REML = TRUE)
 
-m3 <- lmer(sqrt(litter_mass) ~ LAI*season + (1|plot_id), data = data, REML = TRUE)
-
-
 summary(m2)
-summary(m3)
 
 plot(m2)
 
 ###Testing Assumptions
-sim_residuals <- DHARMa::simulateResiduals(fittedModel = m3)
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m2)
 plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
 shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
 plotResiduals(sim_residuals) # For visual validation of (iii)
-random_effects <- lme4::ranef(m3) # For visual validation of (iv)
+random_effects <- lme4::ranef(m2) # For visual validation of (iv)
 plot(random_effects)
 
 
@@ -424,14 +420,22 @@ lit_dat2 <- emmip(m2, season ~ LAI + I(LAI^2), at=mylist , CIs=TRUE, plotit = FA
 
 
 #make ggplot with emmip data
-p <- ggplot(data = lit_dat2, aes(x = LAI, y = yvar, color = season)) +
+p2 <- ggplot(data = lit_dat2, aes(x = LAI, y = yvar, color = season)) +
   geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL, fill = season), alpha = .3, size = .3) +
-  labs(x="Canopy Cover (LAI)", y="Litter Load (g/m2)", color = "Season", fill = "Season")+
+  labs(x="Canopy Cover (LAI)", y = expression("Litter Biomass (g/m"^2*")"), color = "Season", fill = "Season")+
   theme_bw()
 
 
 #add points from the original data
-p + geom_point(data = data, aes(x =LAI, y = litter_mass, color = season), alpha = .7)
+p2 <- p2 + geom_point(data = data, aes(x =LAI, y = litter_mass, color = season), alpha = .7) + theme(
+    axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(margin = margin(r = 5)))
+
+p2
 
 ```
 
@@ -786,7 +790,6 @@ data <- LAI_avgxTOMST_seasons
 
 m0 <- gls(mean_air_temp ~ LAI*season, correlation = corExp(form = ~ mean_air_temp + LAI | plot_id), data = data)
 summary(m0)
-summary(m_lm)
 
 plot(m0)
 
@@ -838,20 +841,6 @@ ggplot(data = data, aes(x = LAI, y = mean_air_temp, color = season)) +
        color = "Season",
        fill = "Season") +  # Add labels
   theme_minimal()  # Use a minimal theme
-
-
-##LM MODEL
-#emmip
-temp_dat <- emmip(m_lm, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
-
-#make ggplot with emmip data
-p <- ggplot(data = temp_dat, aes(x = LAI, y = yvar, color = season)) +
-  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL, fill = season), alpha = .3, size = .3) +
-  labs(x="Canopy Cover (LAI)", y="Temp", color = "Season", fill = "Season")+
-  theme_minimal()
-
-#add points from the original data
-p + geom_point(data = LAI_avgxTOMST_seasons, aes(x = LAI, y = mean_air_temp, color = season), alpha = .5) 
 
 ```
 
@@ -2033,7 +2022,6 @@ fuel_summaries <- fuel_summaries %>%
   left_join(kestrel_wind_summaries)
 ```
 
-##### Fuel Stats
 
 ```{r summary analysis setup}
 fuel_stats <- fuel_seasons_fire %>% 
@@ -2054,6 +2042,29 @@ fuel_stats <- fuel_stats  %>%
 fuel_stats  <- fuel_stats  %>% 
   left_join(fm_stats)
 
+#export to csv for quick pull in future analysis below
+
+```
+
+##### Fuel Stats
+
+```{r summary stats significance}
+
+fuel_stats <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/fuel_stats/fuel_stats.csv", 
+    col_types = cols(LAI = col_number(), 
+        grass_mass = col_number(), litter_mass = col_number(), 
+        one_hr_mass = col_number(), ten_hr_mass = col_number(), 
+        hundred_hr_mass = col_number(), seedlings = col_number(), 
+        fuel_load = col_number(), fine_load = col_number(), 
+        fuel_depth = col_number(), bulk_density = col_number(), 
+        ROS = col_number(), intensity = col_number(), 
+        flame_length = col_number(), PIG = col_number(), 
+        mean_air_temp = col_number(), grass_fm = col_number(), 
+        litter_fm = col_number(), woody_fm = col_number(), 
+        ten_hr_fm = col_number(), one_hr_fm = col_number()))
+
+
+
 #make season a factor
 fuel_stats$season <- factor(fuel_stats$season)
 
@@ -2062,9 +2073,6 @@ fuel_stats$plot_id <- factor(fuel_stats$plot_id)
 
 #make plot_type a factor
 fuel_stats$plot_type <- factor(fuel_stats$plot_type)
-```
-
-```{r summary stats significance}
 
 #LAI
 m <- lmer(LAI ~ season*plot_type + (1|plot_id), data = fuel_stats)
@@ -2075,6 +2083,11 @@ summary(tukey_results)
 #litter load
 m <- lmer(litter_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
 emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+m2 <- lmer(sqrt(litter_mass) ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m2, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
