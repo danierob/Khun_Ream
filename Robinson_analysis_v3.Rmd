@@ -451,7 +451,7 @@ The densely treed savannas of Northern Cambodia may require extra consideration 
 
 We will look at the total fine fuel loads (grass + litter) in the early and late season to better understand how the fuel load shifts from grass dominated to litter dominated.
 
-```{r fine fuel setup}
+```{r fine fuel setup, include = FALSE}
 
 fine_data <- data %>% 
   mutate(fine_mass = grass_mass + litter_mass)
@@ -467,7 +467,7 @@ fine_data <- data[!outliers, ]
 
 ```
 
-``` {r fine fuel model}
+``` {r fine fuel model, include = FALSE}
 m <- lmer(fine_mass ~ LAI*season + (1|plot_id), data = fine_data, REML = TRUE)
 summary(m)
 
@@ -536,6 +536,8 @@ p3 <- p3 + geom_point(data = fine_data, aes(x =LAI, y = fine_mass, color = seaso
     axis.title.y = element_text(margin = margin(r = 5)))
 
 p3
+
+
 ```
 The key here is that between the early and late season there is a dramatic shift from a grass dominated to litter dominated fine fuel loads in the open canopy. There is a large litter component in our system compared to savanna-forest mosaics elsewhere. In both the savanna and the forest, we see ~doubling of litter loads that, when paired with decreasing grass loads, result in similar fine fuel loads across the canopy gradient (in the late season) compared to the declining fine fuel loads in the early season where grasses are at annual maximums and most litter has yet to fall. The consequences on fire likelihood from this seasonal change in fine fuel composition will be discussed in the following modeling chapter.
 
@@ -620,7 +622,7 @@ Grass Accounted for most of the fine fuel load in the open canopy in the early s
 ###1. 4) Fuel Bulk Density
 Dry grass and dry leaf litter are the main components of fine dead fuel. However, in the field, grass and litter tend to have contrasting flammability. This contrast is largely due to variation in fuel arrangement, specifically bulk density (g/cm3). The compact arrangement -- high bulk density -- of litter reduces fire likelihood and spread compared to the light, aerated architecture -- low bulk density -- of grass. Curing grasses invite a passing fuel source to ignite and carry fire more readily. In savanna-forest mosaics of other continents, bulk density has been identified as the primary driver in establishing the functional dichotomy between forest and savanna (Hoffman 2012b, Newberry 2020). I anticipate fine fuel bulk densities to increase as grass biomass decreases and litter biomass increases. I predict peak bulk densities will correspond to peak canopy cover, where litter accumulation should be greatest and grass presence should be lowest.
 
-```{r bulk density setup}
+```{r bulk density setup, include = FALSE}
 #remove the massive bamboo outlier in DDF5 Q4
 z_scores <- scale(data$grass_mass)
 outliers <- abs(z_scores) > 3  # Adjust the threshold as needed
@@ -664,7 +666,7 @@ bulk_seasons$bulk_density <- bulk_seasons$bulk_density/1000
 
 ```
 
-```{r bulk density model seasonal}
+```{r bulk density model seasonal, include = FALSE}
 m1 <- lmer((bulk_density) ~ LAI*season + (1|plot_id) , data = bulk_seasons)
 
 summary(m1)
@@ -675,7 +677,7 @@ m2 <- lmer(bulk_density ~ LAI*season + I(LAI^2) * season + (1|plot_id), data = b
 plot(m2)
 summary(m2)
 
-#sqrt transformation
+#sqrt transformation to meet assumptions
 bulk_seasons <- bulk_seasons %>% 
 group_by(bulk_density, plot_id, LAI, quad_id) %>%
 mutate(bulk_sqrt = sqrt(bulk_density)) 
@@ -702,16 +704,11 @@ plot(random_effects)
 
 
 #R2 goodness of fit
-r2_values1 <- r.squaredGLMM(m1)
-r2_values2 <- r.squaredGLMM(m2)
-r2_values3 <- r.squaredGLMM(m3)
+r2_values <- r.squaredGLMM(m3)
 
 
 # Display R² values
-print(r2_values1)
-print(r2_values2)
-print(r2_values3)
-
+print(r2_values)
 
 
 ```
@@ -724,21 +721,30 @@ mylist <- list(LAI=seq(.1,7,by=0.1))
 bulk_dat <- emmip(m3, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
-p <- ggplot(data = bulk_dat, aes(x = LAI, y = (yvar^2), color = season)) +
+p4 <- ggplot(data = bulk_dat, aes(x = LAI, y = (yvar^2), color = season)) +
   geom_line(size = .8) + geom_ribbon(aes(ymax=UCL^2, ymin=LCL^2, fill = season), alpha = .3, size = .3) +
-  labs(x="Canopy Cover (LAI)", y="Litter Load (g/m2)", color = "Season", fill = "Season")+
+  labs(x="Canopy Cover (LAI)", y = expression("Fuel bed Denisty (g/m"^3*")"), color = "Season", fill = "Season")+
   theme_bw()
 
 #add points from the original data
-p + geom_point(data = bulk_seasons, aes(x = LAI, y = bulk_density, color = season), alpha = .5) 
+p4 + geom_point(data = bulk_seasons, aes(x = LAI, y = bulk_density, color = season), alpha = .5) +
+  theme(
+    axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(margin = margin(r = 5)))
 
-#
+#model significance and fit
+p_values
+r2_values
 
 ```
 
 Now, check it out with ddf2 removed. 
 
-```{r bulk density no ddf}
+```{r bulk density no ddf, include=FALSE}
 data2 <- bulk_seasons %>%
   filter(!(plot_id %in% "ddf2")) %>% 
   mutate(plot_id = droplevels(plot_id))
@@ -1001,8 +1007,6 @@ kestrel <- kestrel_V1 %>%
   group_by(month, day, plot_id, plot_type) %>% 
   summarize(wind_speed = max(wind_speed), max_rh = max(rh), min_rh = min(rh), avg_rh = mean(rh), max_temp = max(temp), min_temp = min(temp), avg_temp = mean(temp))
 
-write.csv(kestrel,"C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/Kestrel/kestrel_max.csv", row.names = FALSE)
-
 
 #create manageable date column
 library(lubridate)
@@ -1019,8 +1023,8 @@ kestrel$month <- factor(kestrel$month)
 #make season column
 kestrel <- kestrel %>% 
     mutate(season = case_when(
-        date < "2023/02/23" ~ "early",
-        date >= "2023/02/23" ~  "late"
+        date < "2023/03/01" ~ "early",
+        date >= "2023/03/01" ~  "late"
     ))
 ```
 
@@ -1041,14 +1045,22 @@ p1 <- ggplot(kestrel, aes(x = date, y = wind_speed, color = plot_type)) +
 
 m_wind <- lmer(wind_speed ~ plot_type * season + (1 | plot_id), data = kestrel)
 
+m_lm <- lm(wind_speed ~ plot_type * season, data = kestrel)
+
 # Summary of the model
 summary(m_wind)
+summary(m_lm)
+
+plot(m_wind)
 
 # Anova to test the fixed effects
 anova(m_wind)
 
 # Post-hoc analysis for canopy cover differences by season
-emmeans(m_wind, pairwise ~ plot_type | season)
+emmeans(m_lm, pairwise ~ plot_type* season)
+
+# Post-hoc analysis for canopy cover differences by season
+emmeans(m_wind, pairwise ~ plot_type*season)
 ```
 Output of emmeans tells us that early season contrast between ddf and evg not quite significant (p-val = .08), but as late season increases wind speed in both plot types, late season contrast between ddf and evg is significant at p-val = .03.
 
@@ -1088,11 +1100,14 @@ kestrel_midday <- kestrel_midday %>%
 #make month a factor
 kestrel_midday$month <- factor(kestrel_midday$month)
 
+kestrel_midday <- kestrel_midday %>% 
+  filter(date > "2023/02/09")
+
 #make season column
 kestrel_midday <- kestrel_midday %>% 
     mutate(season = case_when(
-        date < "2023/02/23" ~ "early",
-        date >= "2023/02/23" ~  "late"
+        date < "2023/03/01" ~ "early",
+        date >= "2023/03/01" ~  "late"
     ))
 #make season column
 kestrel_midday <- kestrel_midday %>% 
@@ -1102,10 +1117,10 @@ kestrel_midday <- kestrel_midday %>%
     ))
 
 #filter out dd4 because the rh readings are definitely impacted. I think that the rh sensor was obstructed.
-kestrel_midday <- kestrel_midday %>% 
+kestrel_rh <- kestrel_midday %>% 
   filter(plot_id != "ddf4")
 
-kestrel_midday <- kestrel_midday %>%
+kestrel_rh <- kestrel_rh %>%
   group_by(season, plot_id, plot_type, date, month) %>%
   summarize(mean_temp = mean(temp), mean_rh = mean(rh))
 
@@ -1113,7 +1128,7 @@ kestrel_midday <- kestrel_midday %>%
 ```
 
 ```{r RH plot}
-ggplot(kestrel_midday, aes(x = date, y = mean_rh, color = plot_id)) +
+ggplot(kestrel_rh, aes(x = date, y = mean_rh, color = plot_id)) +
   geom_point(size = .7, alpha = .7) + geom_line(alpha = .8) +
   labs(title = "Daily RH at Different Canopy Levels Across Dry Season",
        x = element_blank(), y = "Relative Humidity (%)", color = "LAI") +
@@ -1138,7 +1153,7 @@ p3
 ```
 
 ```{r rh model, include = FALSE}
-m_rh <- lmer(mean_rh ~ plot_type * season + (1 | plot_id), data = kestrel_midday)
+m_rh <- lmer(mean_rh ~ plot_type * season + (1 | plot_id), data = kestrel_rh)
 
 # Summary of the model
 summary(m_rh)
@@ -1146,8 +1161,8 @@ summary(m_rh)
 # Anova to test the fixed effects
 anova(m_rh)
 
-# Post-hoc analysis for canopy cover differences by month
-emmeans(m_rh, pairwise ~ plot_type | season)
+# Post-hoc analysis for canopy cover differences by season
+emmeans(m_rh, pairwise ~ plot_type* season)
 ```
 
 ```{r arrange mc plots}
@@ -1720,6 +1735,7 @@ behave$season <- factor(behave$season)
 
 #make plot_id a factor
 behave$plot_id <- factor(behave$plot_id)
+
 ```
 
 We're taking a look at the outputs of our behaveplus simulations which have taken all of our fuel variables together and spit out a number for each quadrant, per each season, to make understanding how all of these fuel variables work together to affect fire-feedbacks more interpretable.
@@ -1741,7 +1757,7 @@ Rather than subsetting the plot types and running a linear analysis and plotting
 ```{r ROS segmented}
 m_ros <- lme(ROS ~ LAI*season, random = ~ 1 | plot_id, data = behave)
 
-ms <- segmented.lme(m_ros, ~LAI, z.psi =~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+ms <- segmented.lme(m_ros, ~LAI, z.psi = ~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
 
 summary(ms)
 
@@ -1783,16 +1799,25 @@ pred_data$fit <- with(pred_data, ifelse(
 
 
 
-ggplot() +
+p1 <- ggplot() +
   geom_point(data = behave, aes(x = LAI, y = ROS, color = season)) +
   geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
   labs(
-    title = "Segmented Mixed-Effects Model with Seasonal Interaction",
-    x = "Canopy Cover (LAI)",
+    x = element_blank(),
     y = "Rate of Surface Fire Spread (m/min)",
     color = "Time of Dry Season"
   ) +
-  theme_minimal()
+  theme_bw()
+
+p1 <- p1 +theme(
+    axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+     legend.position = c(0.7, 0.78),
+    axis.title.y = element_text(margin = margin(r = 5)))
+
+p1
 
 ```
 
@@ -1801,9 +1826,9 @@ ggplot() +
 m_fl <- lme(flame_length ~ LAI*season, random = ~ 1 | plot_id, data = behave)
 
 
-ms <- segmented.lme(m_fl, ~LAI, psi = 2.5, z.psi =~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+ms2 <- segmented.lme(m_fl, ~LAI, psi = 2.5, z.psi =~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
 
-summary(ms)
+summary(ms2)
 
 # Create dataframes for prediction
 pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
@@ -1814,7 +1839,7 @@ pred_data <- rbind(pred_data_early, pred_data_late)
 
 
 # Extract fixed effects
-fixed_effects <- fixed.effects(ms)
+fixed_effects <- fixed.effects(ms2)
 
 # Extract fixed effects
 #G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
@@ -1842,16 +1867,23 @@ pred_data$fit <- with(pred_data, ifelse(
 ))
 
 #plot with interaction
-ggplot() +
+p2 <- ggplot() +
   geom_point(data = behave, aes(x = LAI, y = flame_length, color = season)) +
   geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
   labs(
-    title = "Segmented Mixed-Effects Model with Seasonal Interaction",
-    x = "Canopy Cover (LAI)",
+    x = element_blank(),
     y = "Flame Length (m)",
     color = "Time of Dry Season"
   ) +
-  theme_minimal()
+  theme_bw()
+
+p2 <- p2 +theme(
+    axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+     legend.position = c(0.7, 0.78),
+    axis.title.y = element_text(margin = margin(r = 5)))
 ```
 
 ```{r surface fire intensity segmented}
@@ -1860,9 +1892,9 @@ ggplot() +
 m_int <- lme(intensity ~ LAI*season, random = ~ 1 | plot_id, data = behave)
 
 
-ms <- segmented.lme(m_int, ~LAI, psi = 2.5, z.psi =~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+ms3 <- segmented.lme(m_int, ~LAI, psi = 2.5, z.psi =~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
 
-summary(ms)
+summary(ms3)
 
 # Create dataframes for prediction
 pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
@@ -1873,7 +1905,7 @@ pred_data <- rbind(pred_data_early, pred_data_late)
 
 
 # Extract fixed effects
-fixed_effects <- fixed.effects(ms)
+fixed_effects <- fixed.effects(ms3)
 
 # Extract fixed effects
 #G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
@@ -1902,18 +1934,101 @@ pred_data$fit <- with(pred_data, ifelse(
 
 
 #plot with interaction
-ggplot() +
+p3 <- ggplot() +
   geom_point(data = behave, aes(x = LAI, y = intensity, color = season)) +
   geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
   labs(
-    title = "Segmented Mixed-Effects Model with Seasonal Interaction",
     x = "Canopy Cover (LAI)",
     y = "Surface Fire Intensity (kW/m)",
     color = "Time of Dry Season"
   ) +
-  theme_minimal()
+  theme_bw()
+
+p3 <- p3 + theme(
+    axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+     legend.position = c(0.7, 0.78),
+    axis.title.y = element_text(margin = margin(r = 5)))
+
+grid.arrange(p1, p2, p3, ncol = 1)
+```
+```{r pig}
+
+m_pig <- lmer(PIG ~ LAI*season + (1 | plot_id), data = behave)
+
+#getting p-values from the m3 t-values
+t_values <- c(5.073, 3.547, 3.018, 3.596)
+# Calculate p-values
+p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
+# Print p-values
+p_values
+
+###Testing Assumptions
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m_pig)
+plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
+shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
+plotResiduals(sim_residuals) # For visual validation of (iii)
+random_effects <- lme4::ranef(m_pig) # For visual validation of (iv)
+plot(random_effects)
+
+
+#R2 goodness of fit
+r2_values <- r.squaredGLMM(m_pig)
+
+# Display R² values
+print(r2_values)
+
 ```
 
+``` {r PIG transformations}
+m_pig <- lmer((PIG) ~ LAI*season + (1 | plot_id), data = behave)
+
+#getting p-values from the m3 t-values
+t_values <- c(5.073, 3.547, 3.018, 3.596)
+# Calculate p-values
+p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
+# Print p-values
+p_values
+
+###Testing Assumptions
+sim_residuals <- DHARMa::simulateResiduals(fittedModel = m_pig)
+plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
+shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
+plotResiduals(sim_residuals) # For visual validation of (iii)
+random_effects <- lme4::ranef(m_pig) # For visual validation of (iv)
+plot(random_effects)
+
+
+#R2 goodness of fit
+r2_values <- r.squaredGLMM(m_pig)
+```
+
+```{r PIG plot}
+#Now lets graphically represent this
+mylist <- list(LAI=seq(.1,7,by=0.1))
+
+#emmip
+pig_dat <- emmip(m_pig, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
+
+#make ggplot with emmip data
+p4 <- ggplot(data = pig_dat, aes(x = LAI, y = (yvar), color = season)) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL, fill = season), alpha = .3, size = .3) +
+  labs(x="Canopy Cover (LAI)", y = "Probability of Ignition (%)", color = "Season", fill = "Season")+
+  theme_bw()+ ylim(0,100)
+
+#add points from the original data
+p4 + geom_point(data = behave, aes(x = LAI, y = PIG, color = season), alpha = .5) +
+  theme(
+    axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(margin = margin(r = 5)))
+
+```
 
 ####b) Fire behavior Anovas
 
@@ -2310,24 +2425,41 @@ SA_early <- SA1 %>%
 ```{r ROS}
 p1 <- SA_early %>% 
 ggplot(aes(x = variable, y = ROS)) +
-  geom_col(fill = "blue4")+
+  geom_col(fill = "darkred")+
   theme_minimal() + 
-  labs(x = "Factor", y = "Rate of Spread Increase (m/min)", title = "Early Season")+
+  labs(x = "Flammability Factor", y = "Rate of Spread Increase (m/min)", title = "Early Season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
-  ylim(-.3,2)
+  ylim(-.3,2)+
+  theme_bw()
 
 p2 <- SA_late %>% 
   ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
   theme_minimal() + 
-  labs(x = "Factor", y = "Rate of Spread Increase (m/min)", title = "Late Season")+
+  labs(x = "Flammability Factor", y = "Rate of Spread Increase (m/min)", title = "Late Season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
-  ylim(-.3,2)
+  ylim(-.3,2)+
+   theme_bw()
 
-p1
-p2
+p1 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel moisture", "wind speed")) +
+    theme(axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 14),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
+
+p2+ scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel moisture", "wind speed")) +
+    theme(axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 14),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
 
 ```
 
@@ -2388,20 +2520,41 @@ SA_ddf <- SA2 %>%
 
 p1 <- SA_ddf %>% 
 ggplot(aes(x = variable, y = ROS)) +
-  geom_col(fill = "blue4")+
+  geom_col(fill = "darkred")+
   theme_minimal() + 
-  labs(x = "Factor", y = "Rate of spread increase (m/min)", title = "DDF")+
+  labs(x = "Flammability Factor", y = "Rate of spread increase (m/min)", title = "Open Canopy (DDF)")+
   theme(text=element_text(size= 16), legend.position="none", 
-        plot.title = element_text(hjust = 0.5))
+        plot.title = element_text(hjust = 0.5))+
+  theme_bw()
 
 p2 <- SA_evg %>% 
   ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
   theme_minimal() + 
-  labs(x = "Factor", y = "Rate of spread increase (m/min)", title = "EVG")+
+  labs(x = "Flammability Factor", y = "Rate of spread increase (m/min)", title = "Closed Canopy (EVG)")+
   theme(text=element_text(size= 16), legend.position="none", 
-        plot.title = element_text(hjust = 0.5))
-p1
-p2
+        plot.title = element_text(hjust = 0.5)) +
+  theme_bw()
+
+p1 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel moisture", "wind speed")) +
+    theme(axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 14),
+     legend.position = c(1.1, 0.5),
+   axis.title.y = element_text(size = 12, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
+
+
+p2 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel moisture", "wind speed")) +
+    theme(axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 14),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
+   
+
 
 ```
