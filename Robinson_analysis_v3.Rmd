@@ -29,6 +29,7 @@ library(segmented)
 library(car)
 library(gt)
 library(cowplot)
+library(lmerTest)
 ```
 
 ## Introduction
@@ -360,6 +361,8 @@ emtrends(m1, ~ season, var="LAI")
 #SO, late season does not include 0 in the 95% CI but early season does, so
 #litter load is significant across the LAI gradient in the late but not the early season
 ```
+
+Testing the significance and fit of the untransformed model. We have to refit the model with "late" as the reference season to get the late season slope p-value 
 ``` {r litter model fit}
 data$season <- relevel(data$season, ref = "late")
 
@@ -367,15 +370,11 @@ model <- lmer(litter_mass ~ LAI * season + (1 | plot_id), data = data)
 summary(model)
 
 #getting p-values from the m1 t-values
-t_values <- c(1.382, 2.601)
-# Calculate p-values
-p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
-# Print p-values
-p_values
+#early = .180
+#late = .016*
 
 #R2 goodness of fit
 r2_values <- r.squaredGLMM(m1)
-
 
 # Display R² values
 print(r2_values)
@@ -441,7 +440,7 @@ r2_values1 <- r.squaredGLMM(m1)
 r2_values2 <- r.squaredGLMM(m2)
 
 # Display R² values
- print(r2_values1)
+print(r2_values1)
 print(r2_values2)
 
 #AIC
@@ -1975,12 +1974,6 @@ p3 <- ggplot() +
 
 m_pig <- lmer(PIG ~ LAI*season + (1 | plot_id), data = behave)
 
-#getting p-values from the m3 t-values
-t_values <- c(5.073, 3.547, 3.018, 3.596)
-# Calculate p-values
-p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
-# Print p-values
-p_values
 
 ###Testing Assumptions
 sim_residuals <- DHARMa::simulateResiduals(fittedModel = m_pig)
@@ -2016,7 +2009,19 @@ plotSimulatedResiduals(sim_residuals) # For visual validation of (i)
 shapiro_test <- shapiro.test(sim_residuals$scaledResiduals) # For statistical validation of (i)
 plotResiduals(sim_residuals) # For visual validation of (iii)
 random_effects <- lme4::ranef(m_pig2) # For visual validation of (iv)
-plot(random_effects)
+plot
+
+```
+
+```{r PIG fitness tests}
+behave$season <- relevel(behave$season, ref = "late")
+
+m_pig2 <- lmer(pig_sqrt ~ LAI*season + (1 | plot_id), data = behave)
+summary(m_pig2)
+
+#getting p-values from model summaries (lmerTest package applied)
+#early = <.0001***
+#late = <.0001***
 
 
 #R2 goodness of fit
