@@ -360,6 +360,26 @@ emtrends(m1, ~ season, var="LAI")
 #SO, late season does not include 0 in the 95% CI but early season does, so
 #litter load is significant across the LAI gradient in the late but not the early season
 ```
+``` {r litter model fit}
+data$season <- relevel(data$season, ref = "late")
+
+model <- lmer(litter_mass ~ LAI * season + (1 | plot_id), data = data)
+summary(model)
+
+#getting p-values from the m1 t-values
+t_values <- c(1.382, 2.601)
+# Calculate p-values
+p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
+# Print p-values
+p_values
+
+#R2 goodness of fit
+r2_values <- r.squaredGLMM(m1)
+
+
+# Display R² values
+print(r2_values)
+```
 
 ```{r litter plot, include = FALSE}
 #Now lets graphically represent this
@@ -369,22 +389,28 @@ mylist <- list(LAI=seq(0,7,by=.1))
 lit_dat <- emmip(m1, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
-p2 <- ggplot(data = lit_dat, aes(x = LAI, y = yvar, color = season)) +
-  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .3, size = .3) +
-  labs(x="Canopy Cover (LAI)", y = expression("Litter Biomass (g/m"^2*")"), color = "Season", fill = "Season")+
-  theme_bw()
-
+p2 <- ggplot(data = lit_dat, aes(x = LAI, y = yvar, color = season, linetype = season)) +
+  geom_line(size = .8) +
+  geom_ribbon(aes(ymax = UCL, ymin = LCL, fill = season), alpha = .3, size = .3) +
+  labs(x = "Canopy Cover (LAI)", 
+       y = expression("Litter Biomass (g/m"^2*")"), 
+       color = "Season", 
+       fill = "Season") +
+  theme_bw() +
+  scale_linetype_manual(values = c("dashed", "solid")) 
 
 #add points from the original data
-p2 <- p2 + geom_point(data = fine_data, aes(x =LAI, y = litter_mass, color = season), alpha = .7) + theme(
+p2 <- p2 + geom_point(data = fine_data, aes(x =LAI, y = litter_mass, color = season), alpha = .7) +  
+  theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-     legend.position = c(1.1, 0.5),
+     legend.position = c(1.4, 0.5),
     axis.title.y = element_text(margin = margin(r = 5)))
 
 p2
+
 ```
 
 Going to take a peak at Litter as a quadratic (2 order poly graph)
@@ -439,7 +465,8 @@ p2 <- ggplot(data = lit_dat2, aes(x = LAI, y = yvar, color = season)) +
 
 
 #add points from the original data
-p2 <- p2 + geom_point(data = data, aes(x =LAI, y = litter_mass, color = season), alpha = .7) + theme(
+p2 <- p2 + geom_point(data = data, aes(x =LAI, y = litter_mass, color = season), alpha = .7) + 
+  theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
@@ -619,12 +646,6 @@ m3 <- lmer(bulk_sqrt ~ (LAI)*season + (1|plot_id), data = bulk_seasons, REML = T
 plot(m3)
 summary(m3)
 
-#getting p-values from the m3 t-values
-t_values <- c(5.073, 3.547, 3.018, 3.596)
-# Calculate p-values
-p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
-# Print p-values
-p_values
 
 ###Testing Assumptions
 sim_residuals <- DHARMa::simulateResiduals(fittedModel = m3)
@@ -635,14 +656,30 @@ random_effects <- lme4::ranef(m3) # For visual validation of (iv)
 plot(random_effects)
 
 
+
+```
+
+```{r bd fit}
+#make late season ref scenario to get t-val
+bulk_seasons$season <- relevel(bulk_seasons$season, ref = "late")
+
+model <- lmer(bulk_sqrt ~ (LAI)*season + (1|plot_id), data = bulk_seasons, REML = TRUE)
+summary(model)
+
+#getting p-values from the m3 t-values
+t_values <- c(3.685, 5.888)
+# Calculate p-values
+p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
+# Print p-values
+p_values
+
+
 #R2 goodness of fit
 r2_values <- r.squaredGLMM(m3)
 
 
 # Display R² values
 print(r2_values)
-
-
 ```
 
 ```{r bulk seasonal effect plot}
@@ -665,8 +702,10 @@ p4 <- p4 + geom_point(data = bulk_seasons, aes(x = LAI, y = bulk_density, color 
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-     legend.position = c(1.1, 0.5),
-    axis.title.y = element_text(margin = margin(r = 5)))
+     legend.position = c(.2, 0.8),
+    axis.title.y = element_text(margin = margin(r = 5)),
+    legend.background = element_blank(),  # Make the legend background transparent
+    legend.key = element_rect(fill = NA))
 
 #model significance and fit
 p_values
@@ -1154,7 +1193,7 @@ grassfmc_dat <- emmip(m2, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 #make ggplot with emmip data
 p2 <- ggplot(data = grassfmc_dat, aes(x = LAI, y = (yvar), color = season)) +
   geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .3, size = .3) +
-  labs(x=element_blank(), y = "Grass FMC (%)" , color = "Season", fill = "Season")+
+  labs(x="Canopy Cover (LAI)", y = "Grass FMC (%)" , color = "Season", fill = "Season")+
   theme_bw()
 
 #add points from the original data
@@ -1624,9 +1663,10 @@ We're taking a look at the outputs of our behaveplus simulations which have take
 There are 2 main questions we will be approaching:
 
 **a) How do modelled fire effects and PIG change across the canopy gradient?**
-Here we are particularly interested in the presence or absence of a threshold. A threshold indicates that there is a difference in fire recruitment on either side of some boundary determined by canopy cover. The steeper the threshold, the more stark the fire-recruitment on either side of the boundary. 
+Here we use segmented regression because we hypothesize a threshold relationship at the "fire-suppression threshold". A threshold indicates that there is a difference in fire recruitment on either side of some boundary determined by canopy cover. The steeper the threshold, the more stark the differences in fire potential and ultimately fire-feedbacks.
 
-Since we are less concerned with precisely interpreting differences between factors than we are with the identification/visualization of a threshold, we will use the segmented function here (as we did to identify grass thresholds in 1.1).
+After much ado, we landed on fitting the early and late season separately. When both seasons were fit in the same model with season as an interaction, the fits were terrible. But fitting each season independently seems to represent the data well. 95% CIs were obtained for early and late season 1)breakpoints, 2)pre-breakpoint slopes, and 3)post breakpoint slopes using confint.segmented.lme().
+
 
 **b) How do fire effects vary by season in either forest type?**
 Rather than subsetting the plot types and running a linear analysis and plotting, we merely subset each model output variable by plot type in order to run an anova across the season. We know that early and late season data are significantly different from one another, but the Surface fire portion of the summary table will reflect whether fire behavior is significantly different across the season within plot types (because running a normal 2-way anova of the fire outputs and LAI is always violated by non-normality and heteroskedasticity). If we run anova on just the EVG data for example, the data is normally distributed and we see that there is significant difference between early and late season, that would have been obscured if run with the ddf data.
@@ -1636,11 +1676,32 @@ Rather than subsetting the plot types and running a linear analysis and plotting
 
 
 ```{r ROS segmented}
-m_ros <- lme(ROS ~ LAI*season, random = ~ 1 | plot_id, data = behave)
+behave_early <- behave %>% 
+  filter(season == "early")
 
-ms_ros <- segmented.lme(m_ros, ~LAI, z.psi = ~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+behave_late <- behave %>% 
+  filter(season == "late")
 
-summary(ms_ros)
+
+##segmented ROS early ----
+m_rose <- lme(ROS ~ LAI, random = ~ 1 | plot_id, data = behave_early)
+
+
+ms_rose <- segmented.lme(m_rose, ~LAI, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+
+summary(ms_rose)
+
+##segmented ROS late ----
+m_rosl <- lme(ROS ~ LAI, random = ~ 1 | plot_id, data = behave_late)
+
+ms_rosl <- segmented.lme(m_rosl, ~LAI, psi = 2.5, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+
+summary(ms_rosl)
+
+##Confidence Intervals: 
+CI_rose <- confint.segmented.lme(ms_rose)
+CI_rosl <- confint.segmented.lme(ms_rosl)
+
 
 # Create dataframes for prediction
 pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
@@ -1650,138 +1711,97 @@ pred_data_late <- data.frame(LAI = seq(0,7,.1), season = "late")
 pred_data <- rbind(pred_data_early, pred_data_late)
 
 
-# Extract fixed effects
-fixed_effects <- fixed.effects(ms_ros)
+##### Extract early season FL fixed effects
+fixed_effects_early <- fixed.effects(ms_rose)
 
 # Extract fixed effects
 #G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
-intercept <- fixed_effects[1]
-lai_effect <- fixed_effects[2]
-seasonlate_effect <- fixed_effects[3]
-u_effect <- fixed_effects[4]
-breakpoint_early <- fixed_effects[5] 
-breakpoint_late <- fixed_effects[5] + fixed_effects[6]
-u_seasonlate_effect <- fixed_effects[7]
-lai_seasonlate_effect <- fixed_effects[8]
+intercept <- fixed_effects_early[1]
+lai_effect <- fixed_effects_early[2]
+u_effect <- fixed_effects_early[3]
+breakpoint <- fixed_effects_early[4]
+
+
+pred_data_early$fit <- with(pred_data_early, 
+                            ifelse(LAI < breakpoint,
+                                   intercept + lai_effect * LAI,
+                                   intercept + lai_effect * breakpoint + (lai_effect + u_effect) * (LAI - breakpoint)))
 
 
 
-# Calculate fitted values for each segment and season
-pred_data$fit <- with(pred_data, ifelse(
-  season == "early",
-  ifelse(LAI < breakpoint_early,
-         intercept + lai_effect * LAI,
-         intercept + lai_effect * breakpoint_early + (lai_effect + u_effect) * (LAI - breakpoint_early)),
-  ifelse(LAI < breakpoint_late,
-         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * LAI,
-         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * breakpoint_late + 
-           (lai_effect + u_effect + lai_seasonlate_effect + u_seasonlate_effect) * (LAI - breakpoint_late))
-))
+#### Extract LATE season FL fixed effects
+fixed_effects_late <- fixed.effects(ms_rosl)
+
+# Extract fixed effects
+#G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
+intercept <- fixed_effects_late[1]
+lai_effect <- fixed_effects_late[2]
+u_effect <- fixed_effects_late[3]
+breakpoint <- fixed_effects_late[4]
 
 
+pred_data_late$fit <- with(pred_data_late, 
+                           ifelse(LAI < breakpoint,
+                                  intercept + lai_effect * LAI,
+                                  intercept + lai_effect * breakpoint + (lai_effect + u_effect) * (LAI - breakpoint)))
 
-p1 <- ggplot() +
-  geom_point(data = behave, aes(x = LAI, y = ROS, color = season)) +
-  geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
-  labs(
-    x = element_blank(),
-    y = "Rate of Surface Fire Spread (m/min)",
-    color = "Time of Dry Season"
-  ) +
-  theme_bw()
 
-p1 <- p1 +theme(
-    axis.title = element_text(size = 16),   
-    legend.title = element_text(size = 12),     
-    legend.text = element_text(size = 10),        
-    plot.title = element_text(size = 14),
-     legend.position = c(0.74, 0.78),
-    axis.title.y = element_text(margin = margin(r = 5)))
+p2 <- ggplot() +
+  geom_point(data = behave, aes(x = LAI, y = ROS, color = season), alpha = .7) +
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
+  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
+  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "salmon") +
+  geom_errorbarh(aes(xmin = CI_rose[1,4], xmax = CI_rose[2,4], y = max(behave$ROS) * 1.05),
+                 height = 1, color = "salmon", size = .7) +
+  geom_errorbarh(aes(xmin = CI_rosl[1,4], xmax = CI_rosl[2,4], y = max(behave$ROS) * 1.1),
+                 height = 1, color = "cyan3", size = .7) +
+  labs(x = "Canopy Cover (LAI)",  y = expression("Rate of Spread (m/min)")) +
+  theme_bw()+
+  theme(
+    axis.title = element_text(size = 12),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+    legend.position = c(0.70, 0.75),
+    axis.title.y = element_text(margin = margin(r = 5)),
+    legend.background = element_blank(),  # Make the legend background transparent
+    legend.key = element_rect(fill = NA))+
+  xlim(0,6.5)
 
-p1
-
-confint.segmented.lme(ms_ros)
+p2
 
 ```
 
 ```{r Flame Length segmented}
-##segmented FL ----
-m_fl <- lme(flame_length ~ LAI*season, random = ~ 1 | plot_id, data = behave)
+behave_early <- behave %>% 
+  filter(season == "early")
+
+behave_late <- behave %>% 
+  filter(season == "late")
 
 
-ms_fl <- segmented.lme(m_fl, ~LAI, psi = c(2.46), z.psi =~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
-
-summary(ms_fl)
-
-# Create dataframes for prediction
-pred_data_early<- data.frame(LAI = seq(0,7,.05), season = "early")
-pred_data_late <- data.frame(LAI = seq(0,7,.05), season = "late")
-
-# Combine prediction data
-pred_data <- rbind(pred_data_early, pred_data_late)
+##segmented FL early ----
+m_fle <- lme(flame_length ~ LAI, random = ~ 1 | plot_id, data = behave_early)
 
 
-# Extract fixed effects
-fixed_effects <- fixed.effects(ms_fl)
+ms_fle <- segmented.lme(m_fle, ~LAI, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
 
-# Extract fixed effects
-#G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
-intercept <- fixed_effects[1]
-lai_effect <- fixed_effects[2]
-seasonlate_effect <- fixed_effects[3]
-u_effect <- fixed_effects[4]
-breakpoint_early <- fixed_effects[5] 
-breakpoint_late <- fixed_effects[5] + fixed_effects[6]
-u_seasonlate_effect <- fixed_effects[7]
-lai_seasonlate_effect <- fixed_effects[8]
+summary(ms_fle)
 
 
-
-# Calculate fitted values for each segment and season
-pred_data$fit <- with(pred_data, ifelse(
-  season == "early",
-  ifelse(LAI < breakpoint_early,
-         intercept + lai_effect * LAI,
-         intercept + lai_effect * breakpoint_early + (lai_effect + u_effect) * (LAI - breakpoint_early)),
-  ifelse(LAI < breakpoint_late,
-         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * LAI,
-         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * breakpoint_late + 
-           (lai_effect + u_effect + lai_seasonlate_effect + u_seasonlate_effect) * (LAI - breakpoint_late))
-))
-
-#plot with interaction
-p2 <- ggplot() +
-  geom_point(data = behave, aes(x = LAI, y = flame_length, color = season)) +
-  geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
-  labs(
-    x = element_blank(),
-    y = "Flame Length (m)",
-    color = "Time of Dry Season"
-  ) +
-  theme_bw()
-
-p2 <- p2 +theme(
-     axis.title = element_text(size = 16),   
-    legend.title = element_text(size = 12),     
-    legend.text = element_text(size = 10),        
-    plot.title = element_text(size = 14),
-     legend.position = c(0.74, 0.78),
-    axis.title.y = element_text(margin = margin(r = 5)))
-
-p2
-
-confint.segmented.lme(ms_fl)
-```
-
-```{r surface fire intensity segmented}
-
-###intensity----
-m_int <- lme(intensity ~ LAI*season, random = ~ 1 | plot_id, data = behave)
+##segmented FL late ----
+m_fll <- lme(flame_length ~ LAI, random = ~ 1 | plot_id, data = behave_late)
 
 
-ms3 <- segmented.lme(m_int, ~LAI, psi = 2.46, z.psi =~season, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+ms_fll <- segmented.lme(m_fll, ~LAI, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
 
-summary(ms3)
+summary(ms_fll)
+
+
+#confidence intervals
+CI_fle <- confint.segmented.lme(ms_fle)
+CI_fll <- confint.segmented.lme(ms_fll)
 
 # Create dataframes for prediction
 pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
@@ -1791,56 +1811,163 @@ pred_data_late <- data.frame(LAI = seq(0,7,.1), season = "late")
 pred_data <- rbind(pred_data_early, pred_data_late)
 
 
-# Extract fixed effects
-fixed_effects <- fixed.effects(ms3)
+##### Extract early season FL fixed effects
+fixed_effects_early <- fixed.effects(ms_fle)
 
 # Extract fixed effects
 #G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
-intercept <- fixed_effects[1]
-lai_effect <- fixed_effects[2]
-seasonlate_effect <- fixed_effects[3]
-u_effect <- fixed_effects[4]
-breakpoint_early <- fixed_effects[5] 
-breakpoint_late <- fixed_effects[5] + fixed_effects[6]
-u_seasonlate_effect <- fixed_effects[7]
-lai_seasonlate_effect <- fixed_effects[8]
+intercept <- fixed_effects_early[1]
+lai_effect <- fixed_effects_early[2]
+u_effect <- fixed_effects_early[3]
+breakpoint <- fixed_effects_early[4]
 
 
-
-# Calculate fitted values for each segment and season
-pred_data$fit <- with(pred_data, ifelse(
-  season == "early",
-  ifelse(LAI < breakpoint_early,
+pred_data_early$fit <- with(pred_data_early, 
+  ifelse(LAI < breakpoint,
          intercept + lai_effect * LAI,
-         intercept + lai_effect * breakpoint_early + (lai_effect + u_effect) * (LAI - breakpoint_early)),
-  ifelse(LAI < breakpoint_late,
-         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * LAI,
-         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * breakpoint_late + 
-           (lai_effect + u_effect + lai_seasonlate_effect + u_seasonlate_effect) * (LAI - breakpoint_late))
-))
+         intercept + lai_effect * breakpoint + (lai_effect + u_effect) * (LAI - breakpoint)))
 
 
-#plot with interaction
+
+#### Extract LATE season FL fixed effects
+fixed_effects_late <- fixed.effects(ms_fll)
+
+# Extract fixed effects
+#G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
+intercept <- fixed_effects_late[1]
+lai_effect <- fixed_effects_late[2]
+u_effect <- fixed_effects_late[3]
+breakpoint <- fixed_effects_late[4]
+
+
+pred_data_late$fit <- with(pred_data_late, 
+                            ifelse(LAI < breakpoint,
+                                   intercept + lai_effect * LAI,
+                                   intercept + lai_effect * breakpoint + (lai_effect + u_effect) * (LAI - breakpoint)))
+
+
+p1 <- ggplot() +
+  geom_point(data = behave, aes(x = LAI, y = flame_length, color = season), alpha = .7) +
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
+  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
+  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "salmon") +
+  geom_errorbarh(aes(xmin = CI_fle[1,4], xmax = CI_fle[2,4], y = max(behave$flame_length) * 1.05),
+                 height = .15, color = "salmon", size = .7) +
+  geom_errorbarh(aes(xmin = CI_fll[1,4], xmax = CI_fll[2,4], y = max(behave$flame_length) * 1.1),
+                 height = .15, color = "cyan3", size = .7) +
+  labs(x = "Canopy Cover (LAI)",  y = "Flame Length (m)") +
+  theme_bw()+
+  theme(
+    axis.title = element_text(size = 12),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+    legend.position = c(0.70, 0.75),
+    axis.title.y = element_text(margin = margin(r = 5)),
+    legend.background = element_blank(),  # Make the legend background transparent
+    legend.key = element_rect(fill = NA))+
+  xlim(0,6.5)
+
+p1
+
+```
+
+```{r surface fire intensity segmented}
+
+behave_early <- behave %>% 
+  filter(season == "early")
+
+behave_late <- behave %>% 
+  filter(season == "late")
+
+
+##segmented intensity early
+m_inte <- lme(intensity ~ LAI, random = ~ 1 | plot_id, data = behave_early)
+
+
+ms_inte <- segmented.lme(m_inte, ~LAI, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+
+summary(ms_inte)
+
+##segmented ROS late ----
+m_intl <- lme(intensity ~ LAI, random = ~ 1 | plot_id, data = behave_late)
+
+
+ms_intl <- segmented.lme(m_intl, ~LAI, psi = 2.5, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+
+summary(ms_intl)
+
+##Confidence Intervals: 
+CI_inte <- confint.segmented.lme(ms_inte)
+CI_intl <- confint.segmented.lme(ms_intl)
+
+
+# Create dataframes for prediction
+pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
+pred_data_late <- data.frame(LAI = seq(0,7,.1), season = "late")
+
+# Combine prediction data
+pred_data <- rbind(pred_data_early, pred_data_late)
+
+
+##### Extract early season FL fixed effects
+fixed_effects_early <- fixed.effects(ms_inte)
+
+# Extract fixed effects
+#G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
+intercept <- fixed_effects_early[1]
+lai_effect <- fixed_effects_early[2]
+u_effect <- fixed_effects_early[3]
+breakpoint <- fixed_effects_early[4]
+
+
+pred_data_early$fit <- with(pred_data_early, 
+                            ifelse(LAI < breakpoint,
+                                   intercept + lai_effect * LAI,
+                                   intercept + lai_effect * breakpoint + (lai_effect + u_effect) * (LAI - breakpoint)))
+
+
+
+#### Extract LATE season FL fixed effects
+fixed_effects_late <- fixed.effects(ms_intl)
+
+# Extract fixed effects
+#G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
+intercept <- fixed_effects_late[1]
+lai_effect <- fixed_effects_late[2]
+u_effect <- fixed_effects_late[3]
+breakpoint <- fixed_effects_late[4]
+
+
+pred_data_late$fit <- with(pred_data_late, 
+                           ifelse(LAI < breakpoint,
+                                  intercept + lai_effect * LAI,
+                                  intercept + lai_effect * breakpoint + (lai_effect + u_effect) * (LAI - breakpoint)))
+
+
 p3 <- ggplot() +
-  geom_point(data = behave, aes(x = LAI, y = intensity, color = season)) +
-  geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
-  labs(
-    x = element_blank(),
-    y = "Surface Fire Intensity (kW/m)",
-    color = "Time of Dry Season"
-  ) +
-  theme_bw()
-
-p3 <- p3 + theme(
-    axis.title = element_text(size = 16),   
-    legend.title = element_text(size = 12),     
-    legend.text = element_text(size = 10),        
-    plot.title = element_text(size = 14),
-     legend.position = c(0.74, 0.78),
-    axis.title.y = element_text(margin = margin(r = 5)))
-p3
-
-confint.segmented.lme(ms3)
+  geom_point(data = behave, aes(x = LAI, y = intensity, color = season), alpha = .7) +
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
+  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
+  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "salmon") +
+  geom_errorbarh(aes(xmin = CI_inte[1,4], xmax = CI_inte[2,4], y = max(behave$intensity) * 1.05),
+                 height = 170, color = "salmon", size = .7) +
+  geom_errorbarh(aes(xmin = CI_intl[1,4], xmax = CI_intl[2,4], y = max(behave$intensity) * 1.1),
+                 height = 170, color = "cyan3", size = .7) +
+  labs(x = "Canopy Cover (LAI)",  y = expression("Fireline Intensity (kW/m)")) +
+  theme_bw()+
+  theme(
+    axis.title = element_text(size = 12),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+    legend.position = c(0.70, 0.75),
+    axis.title.y = element_text(margin = margin(r = 5)),
+    legend.background = element_blank(),  # Make the legend background transparent
+    legend.key = element_rect(fill = NA))+
+  xlim(0,6.5)
 
 ```
 
@@ -2481,6 +2608,7 @@ p2 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fue
 
 
 ```
+
 ```{r intensity season}
 p1 <- SA_ddf %>% 
 ggplot(aes(x = variable, y = intensity)) +
