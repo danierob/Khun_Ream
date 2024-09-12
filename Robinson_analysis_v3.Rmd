@@ -231,39 +231,36 @@ Past studies suggest that surface fuel composition varies across a gradient of c
 
 In this analysis, we consider the relationship between the average of LAI across the dry season and grass load using fixed. It is important to note that our LAI values for a grass exclusion will be low compared to if we were using wet season LAI because grasses do not grow/change much in the dry season, so their abundance is most influenced by growing/wet season canopy levels). We will join the LAI observation 1+2 data with the averaged early and late season Biomass observations data to assess the relationship. We use observations 1 (Jan. 26) and 2 (Feb. 2) of the LAI data because LAI did not start to decline significantly until LAI ob. 3 (Feb. 8), so averaging obs. 1 and 2 will mitigate deviations in LAI records due to sky conditions at the time of observation without sacrificing data integrity.
 
-``` {r grass data setup, include = FALSE}
+```{r grass biomass segmented}
+data_early <- data_season %>% 
+  filter(season == "early")
 
-#remove the massive bamboo outlier in DDF5 Q4
-z_scores <- scale(data$grass_mass)
-outliers <- abs(z_scores) > 3  # Adjust the threshold as needed
-
-# Create a subset without outliers
-data_outliers <- data[!outliers, ]
-
-```
-
-And we will also use a 3rd order polynomial linear regression to evaluate the overall relationship between LAI and grass mass with random intercepts for plot_id.
-
-``` {r grass segmented.lme, include=FALSE }
-
-data_season <- data_outliers %>% 
-  group_by(plot_id, quad_id, LAI, season) %>% 
-  summarize(grass_mass = mean(grass_mass))
+data_late <- data_season %>% 
+  filter(season == "late")
 
 
-m2 <- lme(grass_mass ~ LAI*season, random = ~ 1 | plot_id, data = data_season)
+##segmented grass early ----
+m_gre <- lme(grass_mass ~ LAI, random = ~ 1 | plot_id, data = data_early)
 
 
-ms2 <- segmented.lme(m2, ~LAI, x.diff=~season, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+ms_gre <- segmented.lme(m_gre, ~LAI, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
 
-summary(ms2)
-confint.segmented.lme(ms2)
+summary(ms_gre)
 
-ms2
 
-```
+##segmented FL late ----
+m_grl <- lme(grass_mass ~ LAI, random = ~ 1 | plot_id, data = data_late)
 
-``` {r grass segmented predictions, include=FALSE}
+
+ms_grl <- segmented.lme(m_grl, ~LAI, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+
+summary(ms_grl)
+
+
+#confidence intervals
+CI_fle <- confint.segmented.lme(ms_gre)
+CI_fll <- confint.segmented.lme(ms_grl)
+
 # Create dataframes for prediction
 pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
 pred_data_late <- data.frame(LAI = seq(0,7,.1), season = "late")
@@ -272,42 +269,54 @@ pred_data_late <- data.frame(LAI = seq(0,7,.1), season = "late")
 pred_data <- rbind(pred_data_early, pred_data_late)
 
 
-# Extract fixed effects
-fixed_effects <- fixed.effects(ms2)
+##### Extract early season FL fixed effects
+fixed_effects_early <- fixed.effects(ms_gre)
 
 # Extract fixed effects
 #G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
-intercept <- fixed_effects[1]
-lai_effect <- fixed_effects[2]
-seasonlate_effect <- fixed_effects[3]
-u_effect <- fixed_effects[4]
-breakpoint <- fixed_effects[5]
-u_seasonlate_effect <- fixed_effects[6]
-lai_seasonlate_effect <- fixed_effects[7]
+intercept <- fixed_effects_early[1]
+lai_effect <- fixed_effects_early[2]
+u_effect <- fixed_effects_early[3]
+breakpoint <- fixed_effects_early[4]
 
 
-# Calculate fitted values for each segment and season
-pred_data$fit <- with(pred_data, ifelse(
-  season == "early",
-  ifelse(LAI < breakpoint,
-         intercept + lai_effect * LAI,
-         intercept + lai_effect * breakpoint + (lai_effect + u_effect) * (LAI - breakpoint)),
-  ifelse(LAI < breakpoint,
-         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * LAI,
-         (intercept + seasonlate_effect) + (lai_effect + lai_seasonlate_effect) * breakpoint + 
-           (lai_effect + u_effect + lai_seasonlate_effect + u_seasonlate_effect) * (LAI - breakpoint))
-))
+pred_data_early$fit <- with(pred_data_early, 
+                            ifelse(LAI < breakpoint,
+                                   intercept + lai_effect * LAI,
+                                   intercept + lai_effect * breakpoint + (lai_effect + u_effect) * (LAI - breakpoint)))
 
-```
 
-```{r grass segmented plot}
+
+#### Extract LATE season FL fixed effects
+fixed_effects_late <- fixed.effects(ms_grl)
+
+# Extract fixed effects
+#G0 is random effects in the breakpoints and U is random effects in the slope-difference parameter.
+intercept <- fixed_effects_late[1]
+lai_effect <- fixed_effects_late[2]
+u_effect <- fixed_effects_late[3]
+breakpoint <- fixed_effects_late[4]
+
+
+pred_data_late$fit <- with(pred_data_late, 
+                           ifelse(LAI < breakpoint,
+                                  intercept + lai_effect * LAI,
+                                  intercept + lai_effect * breakpoint + (lai_effect + u_effect) * (LAI - breakpoint)))
+
+
 p1 <- ggplot() +
   geom_point(data = data_season, aes(x = LAI, y = grass_mass, color = season), alpha = .7) +
-  geom_line(data = pred_data, aes(x = LAI, y = fit, color = season), size = 1) +
-  geom_vline(xintercept = breakpoint, linetype = "dashed") +
-  labs(x = "Canopy Cover (LAI)",  y = expression("Grass Biomass (g/m"^2*")"), color = "Time of Dry Season") +
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
+  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
+  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "salmon") +
+  geom_errorbarh(aes(xmin = CI_fle[1,4], xmax = CI_fle[2,4], y = max(data_season$grass_mass) * 1.05),
+                 height = 15, color = "salmon", size = .7) +
+  geom_errorbarh(aes(xmin = CI_fll[1,4], xmax = CI_fll[2,4], y = max(data_season$grass_mass) * 1.1),
+                 height = 15, color = "cyan3", size = .7) +
+  labs(x = "Canopy Cover (LAI)",  y = expression("Grass Biomass (g/m"^2*")")) +
   theme_bw()+
-    theme(
+  theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
@@ -315,14 +324,12 @@ p1 <- ggplot() +
     legend.position = c(0.70, 0.75),
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
-    legend.key = element_rect(fill = NA))
+    legend.key = element_rect(fill = NA))+
+  xlim(0,6.5)
+
 p1
-
 ```
 
-```{r grass equation}
-summary(ms2)$coefficients
-```
 ### 1. 2) Litter distribution across the canopy gradient
 
 Grass burns readily due to its fine, aerated structure and continuity. As a result, grass is the major fuel type that delineates differences in fire recruitment between open and closed ecosystems. But litter is often a critical component of the fuel load depending on the fuel amount and arrangement. In savanna-forest systems, leaf litter tends to increase as tree density increases (but this is rarely a 1:1 relationship because it is dependent on leaf type), and when grass is excluded by canopy density, litter is the primary source of ignition and the primary fuel carrier. I expect litter to increase across the tree density gradient in our system, as in similar studies. However, it is important to note that the savannas in Cambodia are particularly mesic, or more densely treed, than the savannas of similar study systems on other continents, which may result in more litter in the savanna. While in the closed forest, even the most densely canopied tree stands of our research area have a high degree of deciduousness, which may result in more litter in the closed forest.
@@ -1771,6 +1778,24 @@ p2 <- ggplot() +
 p2
 
 ```
+R gives us the pre-breakpoint slope p-val. To get the post, breakpoint slope (which will all be >0.5 because the slopes are basically flat):
+Post breakpoint slope:
+Post-Breakpoint Slope = pre-breakpoint slope (LAI-term) + Difference in slope after breakpoint (U)
+−3.626+3.603=−0.023
+Standard Error of post-break slope:
+SEPost-Breakpoint = √(1.4851)2+(1.5885)22 = √2.2055+2.5233 = √4.7288 = 2.1745
+Calculate the t-value:
+Using the post-breakpoint slope (-0.023) and the SE (2.1745):
+t=Slope/SE
+−0.023/2.1745= *−0.0106*  = t-value (crazy low t-value, definitely not significant)
+
+Now for CIs:
+crit-t = 2.032
+Margin of error: ME=2.032×2.1745=4.419
+
+Lower Bound = slope−ME = −0.023−4.419 = *−4.442*
+Upper Bound = slope-ME = −0.023+4.419 = *4.396*
+
 
 ```{r Flame Length segmented}
 behave_early <- behave %>% 
@@ -1967,6 +1992,8 @@ p3 <- ggplot() +
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
   xlim(0,6.5)
+
+p3
 
 ```
 
