@@ -1753,7 +1753,6 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p2 <- ggplot() +
-  geom_point(data = behave, aes(x = LAI, y = ROS, color = season), alpha = .7) +
   geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
   geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
   geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
@@ -1762,14 +1761,20 @@ p2 <- ggplot() +
                  height = 1, color = "salmon", size = .7) +
   geom_errorbarh(aes(xmin = CI_rosl[1,4], xmax = CI_rosl[2,4], y = max(behave$ROS) * 1.1),
                  height = 1, color = "cyan3", size = .7) +
-  labs(x = "Canopy Cover (LAI)",  y = expression("Rate of Spread (m/min)")) +
-  theme_bw()+
+  labs(x = "Canopy Cover (LAI)",  y = "Rate of Spread (m/min)", color = "Time of Dry Season", shape = "Time of Dry Season") +
+  theme_bw()
+
+p2 <- p2+
+  geom_point(data = behave, aes(x = LAI, y = ROS, shape = season, color = season), alpha = .7) +
+  scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
+  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("cyan3", "salmon"))))+
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-    legend.position = c(0.70, 0.75),
+    legend.position = c(0.85, 0.85),
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
@@ -1871,7 +1876,6 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p1 <- ggplot() +
-  geom_point(data = behave, aes(x = LAI, y = flame_length, color = season), alpha = .7) +
   geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
   geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
   geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
@@ -1880,14 +1884,21 @@ p1 <- ggplot() +
                  height = .15, color = "salmon", size = .7) +
   geom_errorbarh(aes(xmin = CI_fll[1,4], xmax = CI_fll[2,4], y = max(behave$flame_length) * 1.1),
                  height = .15, color = "cyan3", size = .7) +
-  labs(x = "Canopy Cover (LAI)",  y = "Flame Length (m)") +
-  theme_bw()+
-  theme(
+  labs(x = "Canopy Cover (LAI)",  y = "Flame Length (m)", color = "Time of Dry Season", shape = "Time of Dry Season") +
+  theme_bw()
+
+
+p1 <- p1 +
+  geom_point(data = behave, aes(x = LAI, y = flame_length, shape = season, color = season), alpha = .7) +
+  scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
+  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("cyan3", "salmon"))))+
+theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-    legend.position = c(0.70, 0.75),
+    legend.position = c(0.85, 0.85),
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
@@ -1918,7 +1929,7 @@ summary(ms_inte)
 m_intl <- lme(intensity ~ LAI, random = ~ 1 | plot_id, data = behave_late)
 
 
-ms_intl <- segmented.lme(m_intl, ~LAI, psi = 2.5, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
+ms_intl <- segmented.lme(m_intl, ~LAI, psi = 2.6, random = list(plot_id=pdDiag(~1+LAI+U+G0)))
 
 summary(ms_intl)
 
@@ -1971,7 +1982,6 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p3 <- ggplot() +
-  geom_point(data = behave, aes(x = LAI, y = intensity, color = season), alpha = .7) +
   geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
   geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
   geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
@@ -1980,14 +1990,20 @@ p3 <- ggplot() +
                  height = 170, color = "salmon", size = .7) +
   geom_errorbarh(aes(xmin = CI_intl[1,4], xmax = CI_intl[2,4], y = max(behave$intensity) * 1.1),
                  height = 170, color = "cyan3", size = .7) +
-  labs(x = "Canopy Cover (LAI)",  y = expression("Fireline Intensity (kW/m)")) +
-  theme_bw()+
+  labs(x="Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)kW/m)", color = "Time of Dry Season", shape = "Time of Dry Season")+
+   theme_bw()
+  
+p3 <- p3 +
+geom_point(data = behave, aes(x = LAI, y = intensity, shape = season, color = season), alpha = .7) +
+  scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
+  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("cyan3", "salmon"))))+
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-    legend.position = c(0.70, 0.75),
+    legend.position = c(0.85, 0.85),
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
@@ -2068,18 +2084,21 @@ pig_dat <- emmip(m_pig2, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
 p4 <- ggplot(data = pig_dat, aes(x = LAI, y = (yvar^2), color = season)) +
-  geom_line(size = .8) +
-  labs(x="Canopy Cover (LAI)", y = "Probability of Ignition (%)", color = "Time of Dry Season", fill = "Season")+
+  geom_line(size = .8) + 
+  labs(x="Canopy Cover (LAI)", y = "Probability of Ignition (%)", color = "Time of Dry Season", shape = "Time of Dry Season")+
   theme_bw()
 
 #add points from the original data
-p4 <- p4 + geom_point(data = behave, aes(x = LAI, y = PIG, color = season), alpha = .7) +
+p4 <- p4 + geom_point(data = behave, aes(x = LAI, y = PIG, shape = season, color = season), alpha = .7) +
+  scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
+  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("cyan3", "salmon"))))+
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-    legend.position = c(0.70, 0.75),
+    legend.position = c(0.85, 0.85),
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
