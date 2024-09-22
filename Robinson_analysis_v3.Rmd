@@ -232,10 +232,16 @@ Past studies suggest that surface fuel composition varies across a gradient of c
 In this analysis, we consider the relationship between the average of LAI across the dry season and grass load using fixed. It is important to note that our LAI values for a grass exclusion will be low compared to if we were using wet season LAI because grasses do not grow/change much in the dry season, so their abundance is most influenced by growing/wet season canopy levels). We will join the LAI observation 1+2 data with the averaged early and late season Biomass observations data to assess the relationship. We use observations 1 (Jan. 26) and 2 (Feb. 2) of the LAI data because LAI did not start to decline significantly until LAI ob. 3 (Feb. 8), so averaging obs. 1 and 2 will mitigate deviations in LAI records due to sky conditions at the time of observation without sacrificing data integrity.
 
 ```{r grass biomass segmented}
-data_early <- data_season %>% 
+z_scores <- scale(data$grass_mass)
+outliers <- abs(z_scores) > 3  # Adjust the threshold as needed
+
+# Create a subset without outliers
+data <- data[!outliers, ]
+
+data_early <- data %>% 
   filter(season == "early")
 
-data_late <- data_season %>% 
+data_late <- data %>% 
   filter(season == "late")
 
 
@@ -258,8 +264,8 @@ summary(ms_grl)
 
 
 #confidence intervals
-CI_fle <- confint.segmented.lme(ms_gre)
-CI_fll <- confint.segmented.lme(ms_grl)
+CI_gre <- confint.segmented.lme(ms_gre)
+CI_grl <- confint.segmented.lme(ms_grl)
 
 # Create dataframes for prediction
 pred_data_early<- data.frame(LAI = seq(0,7,.1), season = "early")
@@ -305,29 +311,34 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p1 <- ggplot() +
-  geom_point(data = data_season, aes(x = LAI, y = grass_mass, color = season), alpha = .7) +
   geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
   geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
   geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
   geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "salmon") +
-  geom_errorbarh(aes(xmin = CI_fle[1,4], xmax = CI_fle[2,4], y = max(data_season$grass_mass) * 1.05),
+  geom_errorbarh(aes(xmin = CI_gre[1,4], xmax = CI_gre[2,4], y = max(data$grass_mass) * 1.05),
                  height = 15, color = "salmon", size = .7) +
-  geom_errorbarh(aes(xmin = CI_fll[1,4], xmax = CI_fll[2,4], y = max(data_season$grass_mass) * 1.1),
+  geom_errorbarh(aes(xmin = CI_grl[1,4], xmax = CI_grl[2,4], y = max(data$grass_mass) * 1.1),
                  height = 15, color = "cyan3", size = .7) +
-  labs(x = "Canopy Cover (LAI)",  y = expression("Grass Biomass (g/m"^2*")")) +
-  theme_bw()+
+  labs(x = "Canopy Cover (LAI)",  y = expression("Grass Biomass (g/m"^2*")"), color = "Time of Dry Season", shape = "Time of Dry Season") +
+  theme_bw()
+
+
+ p1 <- p1 + geom_point(data = data, aes(x = LAI, y = grass_mass, shape = season, color = season), alpha = .7) +
+  scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
+  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-    legend.position = c(0.70, 0.75),
+    legend.position = c(0.85, 0.7),
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
-  xlim(0,6.5)
+  xlim(0,6.5)+ ylim(0, 510)
 
-p1
+p1 + theme(legend.position = "none")
 ```
 
 ### 1. 2) Litter distribution across the canopy gradient
@@ -395,27 +406,35 @@ mylist <- list(LAI=seq(0,7,by=.1))
 lit_dat <- emmip(m1, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
-p2 <- ggplot(data = lit_dat, aes(x = LAI, y = yvar, color = season, linetype = season)) +
+p2 <- ggplot(data = lit_dat, aes(x = LAI, y = yvar, color = season, linetype = season, shape = season)) +
   geom_line(size = .8) +
   geom_ribbon(aes(ymax = UCL, ymin = LCL, fill = season), alpha = .3, size = .3) +
   labs(x = "Canopy Cover (LAI)", 
        y = expression("Litter Biomass (g/m"^2*")"), 
-       color = "Season", 
-       fill = "Season") +
-  theme_bw() +
-  scale_linetype_manual(values = c("dashed", "solid")) 
+       color = "Time of Dry Season", 
+       fill = "Time of Dry Season",
+       shape = "Time of Dry Season",
+       linetype = "Time of Dry Season") +
+  theme_bw()
 
-#add points from the original data
-p2 <- p2 + geom_point(data = fine_data, aes(x =LAI, y = litter_mass, color = season), alpha = .7) +  
+
+p2 <- p2 + geom_point(data = data, aes(x = LAI, y = litter_mass, shape = season, color = season), alpha = .7) +
+  scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
+  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_linetype_manual(values = c("dashed", "solid"))+ 
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-     legend.position = c(1.4, 0.5),
-    axis.title.y = element_text(margin = margin(r = 5)))
+    legend.position = c(0.9, 0.9),
+    axis.title.y = element_text(margin = margin(r = 5)),
+    legend.background = element_blank(),  # Make the legend background transparent
+    legend.key = element_rect(fill = NA))+
+  xlim(0,6.5)
 
-p2
+p2 + theme(legend.position = "none")
 
 ```
 
@@ -480,7 +499,7 @@ p2 <- p2 + geom_point(data = data, aes(x =LAI, y = litter_mass, color = season),
      legend.position = c(1.1, 0.5),
     axis.title.y = element_text(margin = margin(r = 5)))
 
-p2
+p2 +  theme(legend.position = "none")
 
 ```
 Not much to separate the quadratic and the linear model so we will stick with linear to make interpretation easier.
@@ -519,6 +538,15 @@ plot(m)
 # Calculate R² values
 r2_fine <- r.squaredGLMM(m)
 
+
+#change reference level for season to get late season slope p-val
+fine_data$season <- relevel(fine_data$season, ref = "late")
+
+model <- lmer(fine_mass ~ LAI*season + (1|plot_id), data = fine_data, REML = TRUE)
+
+summary(model)
+
+
 # Display R² values
 print(r2_fine)
 
@@ -530,8 +558,10 @@ plotResiduals(sim_residuals) # For visual validation of (iii)
 random_effects <- lme4::ranef(m) # For visual validation of (iv)
 plot(random_effects)
 
+```
 
-#model with squared tranformation
+```{r quadratic model (not using)}
+#model with squared tranformation(NOT USING)
 m1 <- lmer(fine_mass ~ LAI*season + I(LAI^2) *season + (1|plot_id), data = fine_data, REML = TRUE)
 summary(m1)
 
@@ -563,20 +593,34 @@ mylist <- list(LAI=seq(0,7,by=.1))
 fine_dat <- emmip(m, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
-p3 <- ggplot(data = fine_dat, aes(x = LAI, y = yvar, color = season)) +
-  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .3, size = .3) +
-  labs(x="Canopy Cover (LAI)", y = expression("Fine Fuel Biomass (g/m"^2*")"), color = "Season", fill = "Season")+
+p3 <- ggplot(data =fine_dat, aes(x = LAI, y = yvar, color = season, linetype = season, shape = season)) +
+  geom_line(size = .8) +
+  geom_ribbon(aes(ymax = UCL, ymin = LCL), alpha = .3, size = .3) +
+  labs(x = "Canopy Cover (LAI)", 
+       y = expression("Fine Fuel Biomass (g/m"^2*")"), 
+       color = "Time of Dry Season", 
+       fill = "Time of Dry Season",
+       shape = "Time of Dry Season",
+       linetype = "Time of Dry Season") +
   theme_bw()
 
 
-#add points from the original data
-p3 <- p3 + geom_point(data = fine_data, aes(x =LAI, y = fine_mass, color = season), alpha = .7) + theme(
+p3 <- p3 + geom_point(data = fine_data, aes(x = LAI, y = fine_mass, shape = season, color = season), alpha = .7) +
+  scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
+  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) + 
+  scale_fill_manual(values = c("early" = "salmon", "late" = "cyan3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_linetype_manual(values = c("dashed", "dashed"))+ 
+  theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-     legend.position = c(1.1, 0.5),
-    axis.title.y = element_text(margin = margin(r = 5)))
+    legend.position = c(0.9, 0.9),
+    axis.title.y = element_text(margin = margin(r = 5)),
+    legend.background = element_blank(),  # Make the legend background transparent
+    legend.key = element_rect(fill = NA))+
+  xlim(0,6.5)
 
 p3
 
@@ -696,22 +740,36 @@ mylist <- list(LAI=seq(.1,7,by=0.1))
 bulk_dat <- emmip(m3, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
-p4 <- ggplot(data = bulk_dat, aes(x = LAI, y = (yvar^2), color = season)) +
-  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL^2, ymin=LCL^2), alpha = .3, size = .3) +
-  labs(x="Canopy Cover (LAI)", y = expression("Fuel bed Denisty (g/m"^3*")"), color = "Season", fill = "Season")+
+p4 <- ggplot(data = bulk_dat, aes(x = LAI, y = yvar^2, color = season, linetype = season, shape = season)) +
+  geom_line(size = .8) +
+  geom_ribbon(aes(ymax = UCL^2, ymin = LCL^2, fill = season), alpha = .3, size = .3) +
+  labs(x = "Canopy Cover (LAI)", 
+       y = expression("Fine Fuel Bulk Density (g/m"^3*")"), 
+       color = "Time of Dry Season", 
+       fill = "Time of Dry Season",
+       shape = "Time of Dry Season",
+       linetype = "Time of Dry Season") +
   theme_bw()
 
-#add points from the original data
-p4 <- p4 + geom_point(data = bulk_seasons, aes(x = LAI, y = bulk_density, color = season), alpha = .5) +
+
+p4 <- p4 + geom_point(data = bulk_seasons, aes(x = LAI, y = bulk_density, shape = season, color = season), alpha = .7) +
+  scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
+  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) + 
+  scale_fill_manual(values = c("early" = "salmon", "late" = "cyan3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_linetype_manual(values = c("solid", "solid"))+ 
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-     legend.position = c(.2, 0.8),
+    legend.position = c(0.9, 0.9),
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
-    legend.key = element_rect(fill = NA))
+    legend.key = element_rect(fill = NA))+
+  xlim(0,6.5)
+
+p4 + theme(legend.position = "none")
 
 #model significance and fit
 p_values
@@ -1160,7 +1218,7 @@ p1 <- p1 + geom_point(data = fmc_seasons, aes(x = LAI, y = litter, color = seaso
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))
 
-p1
+p1 + theme(legend.position = "none")
 
 ```
 **Grass Fuel Moisture Content**
@@ -1774,7 +1832,7 @@ p2 <- p2+
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-    legend.position = c(0.85, 0.85),
+    legend.position = c(0.85, 0.7),
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
@@ -1898,7 +1956,7 @@ theme(
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-    legend.position = c(0.85, 0.85),
+    legend.position = c(0.85, 0.7),
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
@@ -1990,7 +2048,7 @@ p3 <- ggplot() +
                  height = 170, color = "salmon", size = .7) +
   geom_errorbarh(aes(xmin = CI_intl[1,4], xmax = CI_intl[2,4], y = max(behave$intensity) * 1.1),
                  height = 170, color = "cyan3", size = .7) +
-  labs(x="Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)kW/m)", color = "Time of Dry Season", shape = "Time of Dry Season")+
+  labs(x="Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)", color = "Time of Dry Season", shape = "Time of Dry Season")+
    theme_bw()
   
 p3 <- p3 +
@@ -2003,7 +2061,7 @@ geom_point(data = behave, aes(x = LAI, y = intensity, shape = season, color = se
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-    legend.position = c(0.85, 0.85),
+    legend.position = c(0.85, 0.7),
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
