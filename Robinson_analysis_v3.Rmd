@@ -951,9 +951,14 @@ kestrel$month <- factor(kestrel$month)
 #make season column
 kestrel <- kestrel %>% 
     mutate(season = case_when(
-        date < "2023/03/01" ~ "early",
-        date >= "2023/03/01" ~  "late"
+        date < "2023/02/23" ~ "early",
+        date >= "2023/02/23" ~  "late"
     ))
+
+#rain started somewhere around here
+kestrel<- kestrel %>% 
+  filter(date < "2023/04/07")
+
 ```
 
 ```{r wind plot)}
@@ -967,8 +972,11 @@ p1 <- ggplot(kestrel, aes(x = date, y = wind_speed, color = plot_type)) +
         plot.title = element_text(hjust = 0.5))+
   theme_minimal()
 
+p1
+
 ```
 
+The issue with the kestrel wind model is that it is heavily zero inflated and we can't run an anova on it because it violates linear assumptions.
 ```{r wind model}
 
 m_wind <- lmer(wind_speed ~ plot_type * season + (1 | plot_id), data = kestrel)
@@ -990,8 +998,6 @@ emmeans(m_lm, pairwise ~ plot_type* season)
 # Post-hoc analysis for canopy cover differences by season
 emmeans(m_wind, pairwise ~ plot_type*season)
 ```
-Output of emmeans tells us that early season contrast between ddf and evg not quite significant (p-val = .08), but as late season increases wind speed in both plot types, late season contrast between ddf and evg is significant at p-val = .03.
-
 ```{r wind speed individual point plot}
 kestrel_wind <- kestrel %>% 
   group_by(season, plot_id, plot_type) %>% 
@@ -1000,18 +1006,6 @@ kestrel_wind <- kestrel %>%
 ggplot(kestrel_wind, aes(x = plot_type, y = wind_speed, color = season)) +
   geom_point()
 
-```
-**2m Temperatures (Celcius)**
-
-```{r temp max}
-p2 <- ggplot(kestrel_midday, aes(x = date, y = mean_temp, color = plot_type)) +
-  geom_line(aes(group = plot_id), size = .4, alpha = .4) +
-  geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
-  labs(x = element_blank(), y = "Average temperature (C)", color = "Canopy Cover") +
-  scale_color_manual(labels = c("open", "closed"), values = c("red4", "blue4")) + 
-  theme(text=element_text(size= 15), legend.position="none", 
-        plot.title = element_text(hjust = 0.5))+
-  theme_minimal()
 ```
 
 **Relative Humidity (RH%)**
@@ -1028,15 +1022,7 @@ kestrel_midday <- kestrel_midday %>%
 #make month a factor
 kestrel_midday$month <- factor(kestrel_midday$month)
 
-kestrel_midday <- kestrel_midday %>% 
-  filter(date > "2023/02/09")
 
-#make season column
-kestrel_midday <- kestrel_midday %>% 
-    mutate(season = case_when(
-        date < "2023/03/01" ~ "early",
-        date >= "2023/03/01" ~  "late"
-    ))
 #make season column
 kestrel_midday <- kestrel_midday %>% 
     mutate(season = case_when(
@@ -1048,15 +1034,30 @@ kestrel_midday <- kestrel_midday %>%
 kestrel_rh <- kestrel_midday %>% 
   filter(plot_id != "ddf4")
 
-kestrel_rh <- kestrel_rh %>%
+kestrel_rh_month <- kestrel_rh %>%
   group_by(season, plot_id, plot_type, date, month) %>%
   summarize(mean_temp = mean(temp), mean_rh = mean(rh))
 
 
 ```
 
+```{r rh model, include = FALSE}
+m <- lmer(rh ~ season*plot_type + (1|plot_id), data = kestrel_rh)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+summary(emm)
+
+#There was an issue with too many observations so we'll compare with rh by day and it is the same significance wise
+m <- lmer(mean_rh ~ season*plot_type + (1|plot_id), data = kestrel_rh_month)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+summary(emm)
+```
+
 ```{r RH plot}
-ggplot(kestrel_rh, aes(x = date, y = mean_rh, color = plot_id)) +
+ggplot(kestrel_rh_month, aes(x = date, y = mean_rh, color = plot_id)) +
   geom_point(size = .7, alpha = .7) + geom_line(alpha = .8) +
   labs(title = "Daily RH at Different Canopy Levels Across Dry Season",
        x = element_blank(), y = "Relative Humidity (%)", color = "LAI") +
@@ -1067,8 +1068,8 @@ ggplot(kestrel_rh, aes(x = date, y = mean_rh, color = plot_id)) +
 
 ```
 
-```{r rh min}
-p3 <- ggplot(kestrel_midday, aes(x = date, y = mean_rh, color = plot_type)) +
+```{r rh plot by day}
+p3 <- ggplot(kestrel_rh_month, aes(x = date, y = mean_rh, color = plot_type)) +
   geom_line(aes(group = plot_id), size = .4, alpha = .4) +
   geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
   labs(x = element_blank(), y = "Average relative humidity (%)", color = "Canopy Cover") +
@@ -1079,18 +1080,23 @@ p3 <- ggplot(kestrel_midday, aes(x = date, y = mean_rh, color = plot_type)) +
 
 p3
 ```
+**2m Temperatures (Celcius)**
 
-```{r rh model, include = FALSE}
-m_rh <- lmer(mean_rh ~ plot_type * season + (1 | plot_id), data = kestrel_rh)
+```{r temp max}
+kestrel_midday_month <- kestrel_midday %>%
+  group_by(season, plot_id, plot_type, date, month) %>%
+  summarize(mean_temp = mean(temp))
 
-# Summary of the model
-summary(m_rh)
+p2 <- ggplot(kestrel_midday_month, aes(x = date, y = mean_temp, color = plot_type)) +
+  geom_line(aes(group = plot_id), size = .4, alpha = .4) +
+  geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
+  labs(x = element_blank(), y = "Average temperature (C)", color = "Canopy Cover") +
+  scale_color_manual(labels = c("open", "closed"), values = c("red4", "blue4")) + 
+  theme(text=element_text(size= 15), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
 
-# Anova to test the fixed effects
-anova(m_rh)
-
-# Post-hoc analysis for canopy cover differences by season
-emmeans(m_rh, pairwise ~ plot_type* season)
+p2
 ```
 
 ```{r arrange mc plots}
@@ -2407,8 +2413,8 @@ emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
-m2 <- lmer(sqrt(litter_mass) ~ season*plot_type + (1|plot_id), data = fuel_stats)
-emm <- emmeans(m2, ~season*plot_type)
+m <- lmer(litter_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
@@ -2418,21 +2424,26 @@ emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
+###subset early season because only obtained 1,10,100 once
+fuel_stats_early <- fuel_stats %>% 
+  filter(season == "early")
+
 #1-hr load
-m <- lmer(one_hr_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
-emm <- emmeans(m, ~season*plot_type)
+m <- lmer(one_hr_mass ~ plot_type + (1|plot_id), data = fuel_stats_early)
+emm <- emmeans(m, ~plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
 #10-hr load
-m <- lmer(ten_hr_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
-emm <- emmeans(m, ~season*plot_type)
+
+m <- lmer(ten_hr_mass ~ plot_type + (1|plot_id), data = fuel_stats_early)
+emm <- emmeans(m, ~plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
 #100-hr load
-m <- lmer(hundred_hr_mass ~ season*plot_type + (1|plot_id), data = fuel_stats)
-emm <- emmeans(m, ~season*plot_type)
+m <- lmer(hundred_hr_mass ~ plot_type + (1|plot_id), data = fuel_stats_early)
+emm <- emmeans(m, ~plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
@@ -2476,21 +2487,30 @@ emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
-#air temp fm
+#air temp
 m <- lmer(mean_air_temp ~ season*plot_type + (1|plot_id), data = fuel_stats)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
+summary(tukey_results)
+
+#PIG
+m <- lmer(PIG ~ season*plot_type + (1|plot_id), data = fuel_stats)
 emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
 ```
 
+
+
 RH and windspeed are separate because there were not observations at each subplot
 ```{r RH and Wind}
 #RH
-m <- lmer(mean_rh ~ season*plot_type + (1|plot_id), data = kestrel_midday)
+m <- lmer(rh ~ season*plot_type + (1|plot_id), data = kestrel_rh)
 emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
+
 
 plot(m)
 
@@ -2542,7 +2562,8 @@ qqline(residuals_zi, col = "red")
 pairs(emm_zi, adjust = "tukey")
 
 ```
-We are making a separate table to present the results of the fire behavior output because in this analysis we will focus on differences by season within plot_type, because we already know that flammability differences between open and closed are significant. If we were to analyse the model output data with two-way anovas, the difference in scale (e.g. very high ROS in the open canopy vs closed) would obscure changes to flammability in the closed canopy, since the values are so much greater.
+
+We are making a separate table to present the results of the fire behavior output and grass biomass because the segmented regression do not meet the linear assumptions for anova. We already know that flammability differences between open and closed are significant, and the differences between evg plots, while they may be relatively significant, would not be significant at the same scale as the ddf plots. So here we will just subset the ddf to test for significant changes in the ddf plots across season. 
 
 ```{r fire behavior table}
 #create subset by plot_type 
@@ -2553,20 +2574,18 @@ behave_ddf <- behave %>%
   filter(plot_type == "ddf")
 
 #ROS by season
-summary(lmer(ROS ~ season + (1 | plot_id), data = behave_evg))
 summary(lmer(ROS ~ season + (1 | plot_id), data = behave_ddf))
 
 #FL by season
-summary(lmer(flame_length ~ season + (1 | plot_id), data = behave_evg))
 summary(lmer(flame_length ~ season + (1 | plot_id), data = behave_ddf))
 
 #Intensity by season
-summary(lmer(intensity ~ season + (1 | plot_id), data = behave_evg))
 summary(lmer(intensity ~ season + (1 | plot_id), data = behave_ddf))
 
-#PIG by season
-summary(lmer(PIG ~ season + (1 | plot_id), data = behave_evg))
-summary(lmer(PIG ~ season + (1 | plot_id), data = behave_ddf))
+#Grass biomass by season
+summary(lmer(grass_load ~ season + (1 | plot_id), data = behave_ddf))
+
+
 
 ```
 
