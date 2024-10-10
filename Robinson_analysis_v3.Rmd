@@ -147,14 +147,14 @@ gt() %>%
 #we will filter out obs period 5 because records are clearly sketchy from that day due to several bad readings:
 
 
-ggplot(data = LAI_plots, aes(x = date, y = LAI_plot, color = plot_type)) +
+LAI_plot <- ggplot(data = LAI_plots, aes(x = date, y = LAI_plot, color = plot_type)) +
   geom_point(alpha = .5, size = .5) + 
   geom_line(aes(group = plot_id),size = .1) +
   geom_smooth(aes(group = plot_type), fill = "NA", size = .8)+
   scale_color_manual(values = c("ddf" = "brown4", "evg" = "blue4"))+
   scale_color_manual(labels = c("open", "closed"), values = c("red4", "blue4")) +
-  theme_minimal() + 
-  labs(title = "Seasonal Variation in Canopy Cover by Plot Type",
+  theme_bw()+
+  labs(
        x = "Date", y = "Canopy Cover (LAI)", color = "Canopy Cover")
 
 ```
@@ -434,7 +434,7 @@ p2 <- p2 + geom_point(data = data, aes(x = LAI, y = litter_mass, shape = season,
     legend.key = element_rect(fill = NA))+
   xlim(0,6.5)
 
-p2 + theme(legend.position = "none")
+p2 <- p2 + theme(legend.position = "none")
 
 ```
 
@@ -540,7 +540,7 @@ r2_fine <- r.squaredGLMM(m)
 
 
 #change reference level for season to get late season slope p-val
-fine_data$season <- relevel(fine_data$season, ref = "late")
+fine_data$season <- relevel(fine_data$season, ref = "early")
 
 model <- lmer(fine_mass ~ LAI*season + (1|plot_id), data = fine_data, REML = TRUE)
 
@@ -593,7 +593,7 @@ mylist <- list(LAI=seq(0,7,by=.1))
 fine_dat <- emmip(m, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
-p3 <- ggplot(data =fine_dat, aes(x = LAI, y = yvar, color = season, linetype = season, shape = season)) +
+p3 <- ggplot(data =fine_dat, aes(x = LAI, y = yvar, color = season, linetype = season, shape = season, fill = season)) +
   geom_line(size = .8) +
   geom_ribbon(aes(ymax = UCL, ymin = LCL), alpha = .3, size = .3) +
   labs(x = "Canopy Cover (LAI)", 
@@ -781,7 +781,7 @@ r2_values
 
 ```{r arrange fuel plots}
 
-p1 <- p1 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+p1 <- p1 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "none")
 p2 <- p2 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "none")
 p3 <- p3 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "none")
 p4 <- p4 + theme(legend.position = "none")
@@ -1192,12 +1192,10 @@ r2_values <- r.squaredGLMM(m1)
 # Display R² values
 print(r2_values)
 
-#getting p-values from the m1 t-values
-t_values <- c(6.083, 10.360, -1.652, -6.504)
-# Calculate p-values
-p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
-# Print p-values
-p_values
+fmc_seasons$season <- relevel(fmc_seasons$season, ref = "late")
+
+model <- lmer(litter ~ (LAI)*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
+summary(model)
 ```
 
 ```{r litter fmc plot, include = FALSE}
@@ -1207,13 +1205,13 @@ mylist <- list(LAI=seq(.1,7,by=0.1))
 litfmc_dat <- emmip(m1, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
-p1 <- ggplot(data = litfmc_dat, aes(x = LAI, y = (yvar), color = season, shape = season)) +
+p1 <- ggplot(data = litfmc_dat, aes(x = LAI, y = (yvar), color = season, shape = season, fill = season)) +
   geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .3, size = .3) +
   labs(x=element_blank(), y = "Litter FMC (%)" , color = "Time of Dry Season", fill = "Time of Dry Season")+
   theme_bw()
 
 #add points from the original data
-p1 <- p1+ geom_point(data = fmc_seasons, aes(x = LAI, y = litter, shape = season, color = season), alpha = .7) +
+p1 <- p1+ geom_point(data = fmc_seasons, aes(x = LAI, y = litter, shape = season, color = season, fill = season), alpha = .7) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
   scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) + 
   guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
@@ -1250,12 +1248,10 @@ r2_values <- r.squaredGLMM(m2)
 # Display R² values
 print(r2_values)
 
-#getting p-values from the m2 t-values
-t_values <- c(10.641, 3.898, -4.528, -0.663)
-# Calculate p-values
-p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
-# Print p-values
-p_values
+fmc_seasons$season <- relevel(fmc_seasons$season, ref = "early")
+
+model <- lmer(grass ~ (LAI)*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
+summary(model)
 
 ```
 
@@ -1266,20 +1262,28 @@ mylist <- list(LAI=seq(.1,7,by=0.1))
 grassfmc_dat <- emmip(m2, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
-p2 <- ggplot(data = grassfmc_dat, aes(x = LAI, y = (yvar), color = season)) +
+p2 <- ggplot(data = grassfmc_dat, aes(x = LAI, y = (yvar), color = season, shape = season, fill = season)) +
   geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .3, size = .3) +
   labs(x="Canopy Cover (LAI)", y = "Grass FMC (%)" , color = "Season", fill = "Season")+
   theme_bw()
 
+
 #add points from the original data
-p2 <- p2 + geom_point(data = fmc_seasons, aes(x = LAI, y = grass, color = season), alpha = .7) +
+p2 <- p2 + geom_point(data = fmc_seasons, aes(x = LAI, y = grass, shape = season, color = season, fill = season), alpha = .7) +
+  scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
+  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) + 
+  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_linetype_manual(values = c("solid", "solid"))+ 
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-    legend.position = c(1.4, 0.5),
-    axis.title.y = element_text(margin = margin(r = 5)))
+    legend.position = c(0.9, 0.9),
+    axis.title.y = element_text(margin = margin(r = 5)),
+    legend.background = element_blank(),  # Make the legend background transparent
+    legend.key = element_rect(fill = NA))+
+  xlim(0,6.5)
 
 p2
 
@@ -1304,12 +1308,10 @@ r2_values <- r.squaredGLMM(m3)
 # Display R² values
 print(r2_values)
 
-#getting p-values from the m3 t-values
-t_values <- c(17.747, 0.731, -0.820, -2.731)
-# Calculate p-values
-p_values <- 2 * (1 - pt(abs(t_values), df = 91 - 4))
-# Print p-values
-p_values
+fmc_seasons$season <- relevel(fmc_seasons$season, ref = "late")
+
+model <- lmer(woody_leaf ~ (LAI)*season + (1|plot_id), data = fmc_seasons, REML = TRUE)
+summary(model)
 
 
 ```
@@ -1322,21 +1324,27 @@ mylist <- list(LAI=seq(.1,7,by=0.1))
 woodyfmc_dat <- emmip(m3, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
-p3 <- ggplot(data = woodyfmc_dat, aes(x = LAI, y = (yvar), color = season)) +
+p3 <- ggplot(data = woodyfmc_dat, aes(x = LAI, y = (yvar), color = season, shape = season, fill = season, linetype=season)) +
   geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .3, size = .3) +
   labs(x="Canopy Cover (LAI)", y = "Live Woody Leaf FMC (%)" , color = "Season", fill = "Season")+
   theme_bw()
 
 #add points from the original data
-p3 <- p3 + geom_point(data = fmc_seasons, aes(x = LAI, y = woody_leaf, color = season), alpha = .7) +
+p3 <- p3 + geom_point(data = fmc_seasons, aes(x = LAI, y = woody_leaf, shape = season, color = season, fill = season), alpha = .7) +
+  scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
+  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) + 
+  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_linetype_manual(values = c("dashed", "dashed"))+ 
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
     plot.title = element_text(size = 12),
-    legend.position = c(1.4, 0.5),
+    legend.position = c(0.9, 0.9),
     axis.title.y = element_text(margin = margin(r = 5)),
-    axis.title.x = element_text(margin = margin(r = 5)))
+    legend.background = element_blank(),  # Make the legend background transparent
+    legend.key = element_rect(fill = NA))+
+  xlim(0,6.5)
 
 p3
 
@@ -1368,7 +1376,7 @@ pred_data$pred_ten <- predict(m4, newdata = pred_data, re.form = NA)
 
 
 # Scatter plot with fitted lines on the original scale
-p4 <- ggplot(fmc_seasons, aes(x = LAI, y = ten_hr, color = season)) +
+p4 <- ggplot(fmc_seasons, aes(x = LAI, y = ten_hr, color = season, fill = season)) +
   geom_point(alpha = .7, size = 1) +
   geom_line(data = pred_data, aes(x = LAI, y = pred_ten, color = season)) +
   labs(y = "Litter Mass", x = "LAI", title = "Litter Mass vs. LAI by Season")  +
@@ -1388,11 +1396,12 @@ p4
 
 ```{r arrange fmc plots}
 
-p1 <- p1 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
-p2 <- p2 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+p1 <- p1 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "none")
+p2 <- p2 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "none")
+p3 <- p3 + theme(legend.position = "none")
 
 # Combine plots using cowplot
-combined_plot <- plot_grid(p1, p2, p3, ncol = 1, align = "v", rel_heights = c(1, 1, 1))
+combined_plot <- plot_grid(p1, p2, p3, ncol = 1, align = "v", rel_heights = c(1, 1, 1.15))
 
 # Display the final plot
 print(combined_plot)
@@ -1749,7 +1758,7 @@ Rather than subsetting the plot types and running a linear analysis and plotting
 
 #### a) How do modelled fire effects and PIG change across the canopy gradient?
 
-
+##### ROS
 ```{r ROS segmented}
 behave_early <- behave %>% 
   filter(season == "early")
@@ -1870,7 +1879,7 @@ Margin of error: ME=2.032×2.1745=4.419
 Lower Bound = slope−ME = −0.023−4.419 = *−4.442*
 Upper Bound = slope-ME = −0.023+4.419 = *4.396*
 
-
+##### Flame Length
 ```{r Flame Length segmented}
 behave_early <- behave %>% 
   filter(season == "early")
@@ -1977,6 +1986,8 @@ p1
 
 ```
 
+
+##### Intensity
 ```{r surface fire intensity segmented}
 
 behave_early <- behave %>% 
@@ -2082,6 +2093,7 @@ p3 + theme(legend.position = "none")
 
 ```
 
+##### PIG
 ```{r pig}
 
 m_pig <- lmer(PIG ~ LAI*season + (1 | plot_id), data = behave)
@@ -2179,7 +2191,7 @@ p4 + theme(legend.position = "none")
 
 ```{r arrange fmc plots}
 
-p1 <- p1 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
+p1 <- p1 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "none")
 
 p2 <- p2 + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "none")
 
@@ -2389,8 +2401,21 @@ fuel_stats <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data
 fuel_summaries <- fuel_stats %>%
   group_by(plot_type, season) %>%
   summarise(across(everything(), ~ mean(.x, na.rm = TRUE)))
+
+plot_summaries <- fuel_stats %>% 
+  dplyr::select(-quad_id, -season) %>% 
+  group_by(plot_id, plot_type) %>%
+  summarise(across(everything(), ~ mean(.x, na.rm = TRUE)))
+
+plot_seasons <- fuel_stats %>% 
+  dplyr::select(-quad_id) %>% 
+  group_by(plot_id, plot_type, season) %>%
+  summarise(across(everything(), ~ mean(.x, na.rm = TRUE)))
+
 ```
 
+
+Here, we will run anovas and Tukey's significance tests on all of the means of variables to compare across plot type and across time of season.
 ```{r summary stats significance}
 #make season a factor
 fuel_stats$season <- factor(fuel_stats$season)
@@ -2584,9 +2609,6 @@ summary(lmer(intensity ~ season + (1 | plot_id), data = behave_ddf))
 
 #Grass biomass by season
 summary(lmer(grass_load ~ season + (1 | plot_id), data = behave_ddf))
-
-
-
 ```
 
 
@@ -2613,24 +2635,23 @@ SA_early <- SA1 %>%
 p1 <- SA_early %>% 
 ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
-  theme_minimal() + 
-  labs(x = "Flammability Factor", y = "Rate of Spread Increase (m/min)", title = "Early Season")+
+  labs(x = "Environmental Factor", y = "Rate of Spread Increase (m/min)", title = "Early Season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
   ylim(-.3,2)+
-  theme_bw()
+  theme_minimal()
 
 p2 <- SA_late %>% 
   ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
-  theme_minimal() + 
-  labs(x = "Flammability Factor", y = "Rate of Spread Increase (m/min)", title = "Late Season")+
+  labs(x = "Environmental Factor", y = "Rate of Spread Increase (m/min)", title = "Late Season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
   ylim(-.3,2)+
-   theme_bw()
+   theme_minimal()
 
-p1 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel moisture", "wind speed")) +
+
+p1 <- p1 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
     theme(axis.title = element_text(size = 10),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
@@ -2639,7 +2660,7 @@ p1 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fue
     axis.title.y = element_text(size = 12, margin = margin(r = 5)),
     axis.title.x = element_text(size = 12, margin = margin(t = 8)))
 
-p2+ scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel moisture", "wind speed")) +
+p2 <- p2+ scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
     theme(axis.title = element_text(size = 10),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
@@ -2647,47 +2668,106 @@ p2+ scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel
      legend.position = c(1.1, 0.5),
     axis.title.y = element_text(size = 12, margin = margin(r = 5)),
     axis.title.x = element_text(size = 12, margin = margin(t = 8)))
+
 
 ```
 
 ```{r Intensity}
-SA_early %>% 
+p3 <- SA_early %>% 
 ggplot(aes(x = variable, y = intensity)) +
-  geom_col(fill = "blue4")+
-  theme_minimal() + 
-  labs(x = "Factor", y = "Fire Intensity Increase (kW/m)", title = "Early Season")+
+  geom_col(fill = "darkred")+
+  labs(x = "Environmental Factor", y = "Fire Intensity Increase (kW/m)", title = "Early Season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
-  ylim(-50,400)
+  ylim(-50,400)+
+  theme_minimal()
 
-SA_late %>% 
+p4 <- SA_late %>% 
   ggplot(aes(x = variable, y = intensity)) +
   geom_col(fill = "darkred")+
-  theme_minimal() + 
-  labs(x = "Factor", y = "Fire Intensity Increase (kW/m)", title = "Late Season")+
+  labs(x = "Environmental Factor", y = "Fire Intensity Increase (kW/m)", title = "Late Season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
-   ylim(-50,400)
+   ylim(-50,400)+
+  theme_minimal()
+
+p3 <- p3 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
+    theme(axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 14),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
+
+p4 <-p4 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
+    theme(axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 14),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
 ```
 
 ```{r Flame Length}
-SA_early %>% 
+p5 <- SA_early %>% 
 ggplot(aes(x = variable, y = flame_length)) +
-  geom_col(fill = "blue4")+
-  theme_minimal() + 
-  labs(x = "Factor", y = "Flame Length Increase (m)", title = "Early Season")+
+  geom_col(fill = "darkred")+
+  labs(x = "Environmental Factor", y = "Flame Length Increase (m)", title = "Early Season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
-  ylim(-.2,1)
+  ylim(-.2,1)+
+  theme_minimal()
 
-SA_late %>% 
+p6 <- SA_late %>% 
   ggplot(aes(x = variable, y = flame_length)) +
   geom_col(fill = "darkred")+
-  theme_minimal() + 
-  labs(x = "Factor", y = "Flame Length Increase (m)", title = "Late Season")+
+  labs(x = "Environmental Factor", y = "Flame Length Increase (m)", title = "Late Season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
-  ylim(-.2,1)
+  ylim(-.2,1)+
+  theme_minimal()
+
+p5 <- p5 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
+    theme(axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 14),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
+
+p6 <- p6+ scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
+    theme(axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 14),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
+```
+
+```{r stack plots}
+p1 <- p1 + theme(axis.title.x = element_blank())
+
+p2 <- p2 + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+
+p3 <- p3 + theme(plot.title = element_blank(), axis.title.x = element_blank())
+
+p4 <- p4 + theme(plot.title = element_blank(), axis.title.y = element_blank(), axis.title.x = element_blank())
+
+p5 <- p5 + theme(plot.title = element_blank())
+
+p6 <- p6 + theme(plot.title = element_blank(), axis.title.y = element_blank())
+
+
+
+combined_plot <- plot_grid(p1, p2, p3, p4, p5, p6, ncol = 2, align = "v", rel_heights = c(1, 1, 1, 1, 1, 1))
+
+# Display the final plot
+print(combined_plot)
+
 ```
 
 #### b) How do the contributions of flammability factors affect differences in flammability between early and late dry season within each forest type?
@@ -2703,84 +2783,157 @@ filter(plot_type == "evg")
 
 SA_ddf <- SA2 %>% 
   filter(plot_type == "ddf")
+```
 
+```{r ROS Across Season}
 
 p1 <- SA_ddf %>% 
 ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
-  theme_minimal() + 
-  labs(x = "Flammability Factor", y = "Rate of spread increase (m/min)", title = "Open Canopy (DDF)")+
+  labs(x = "Environmental Factor", y = "Rate of Spread Increase (m/min)", title = "Savanna")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
-  theme_bw()
+  theme_minimal()
 
 p2 <- SA_evg %>% 
   ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
-  theme_minimal() + 
-  labs(x = "Flammability Factor", y = "Rate of spread increase (m/min)", title = "Closed Canopy (EVG)")+
+  labs(x = "Environmental Factor", y = "Rate of Spread Increase (m/min)", title = "Forest")+
   theme(text=element_text(size= 16), legend.position="none", 
-        plot.title = element_text(hjust = 0.5)) +
-  theme_bw()
+        plot.title = element_text(hjust = 0.5))+
+   theme_minimal()
 
-p1 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel moisture", "wind speed")) +
+
+p1 <- p1 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
     theme(axis.title = element_text(size = 10),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
-    plot.title = element_text(size = 14),
+    plot.title = element_text(size = 12),
      legend.position = c(1.1, 0.5),
-   axis.title.y = element_text(size = 12, margin = margin(r = 5)),
-    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
+    axis.title.y = element_text(size = 9, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 9, margin = margin(t = 8)))
 
-
-p2 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel moisture", "wind speed")) +
+p2 <- p2+ scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
     theme(axis.title = element_text(size = 10),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
-    plot.title = element_text(size = 14),
+    plot.title = element_text(size = 12),
      legend.position = c(1.1, 0.5),
-    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
-    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
-   
+    axis.title.y = element_text(size = 9, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 9, margin = margin(t = 8)))
 
 
+p1
+p2
 ```
 
 ```{r intensity season}
-p1 <- SA_ddf %>% 
+p3 <- SA_ddf %>% 
 ggplot(aes(x = variable, y = intensity)) +
   geom_col(fill = "darkred")+
-  theme_minimal() + 
-  labs(x = "Flammability Factor", y = "Intensity increase", title = "Open Canopy (DDF)")+
+  labs(x = "Environmental Factor", y = "Fire Intensity Increase (kW/m)", title = "Savanna")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
-  theme_bw()
+  theme_minimal()
 
-p2 <- SA_evg %>% 
+p4 <- SA_evg %>% 
   ggplot(aes(x = variable, y = intensity)) +
   geom_col(fill = "darkred")+
-  theme_minimal() + 
-  labs(x = "Flammability Factor", y = "Intensity Increase", title = "Closed Canopy (EVG)")+
+  labs(x = "Environmental Factor", y = "Fire Intensity Increase (kW/m)", title = "Forest")+
   theme(text=element_text(size= 16), legend.position="none", 
-        plot.title = element_text(hjust = 0.5)) +
-  theme_bw()
+        plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
 
-p1 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel moisture", "wind speed")) +
+p3 <- p3 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
     theme(axis.title = element_text(size = 10),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
-    plot.title = element_text(size = 14),
+    plot.title = element_text(size = 12),
      legend.position = c(1.1, 0.5),
-   axis.title.y = element_text(size = 12, margin = margin(r = 5)),
-    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
+    axis.title.y = element_text(size = 9, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 9, margin = margin(t = 8)))
 
-
-p2 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "fuel moisture", "wind speed")) +
+p4 <-p4 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
     theme(axis.title = element_text(size = 10),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
-    plot.title = element_text(size = 14),
+    plot.title = element_text(size = 12),
      legend.position = c(1.1, 0.5),
-    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
-    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
-```   
+    axis.title.y = element_text(size = 9, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 9, margin = margin(t = 8)))
+
+p3 
+p4
+```
+
+
+```{r flame length season}
+p5 <- SA_ddf %>% 
+ggplot(aes(x = variable, y = flame_length)) +
+  geom_col(fill = "darkred")+
+  labs(x = "Environmental Factor", y = "Flame Length Increase (m)", title = "Savanna")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
+
+p6 <- SA_evg %>% 
+  ggplot(aes(x = variable, y = flame_length)) +
+  geom_col(fill = "darkred")+
+  labs(x = "Environmental Factor", y = "Flame Length Increase (m)", title = "Forest")+
+  theme(text=element_text(size= 16), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
+
+p5 <- p5 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
+    theme(axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(size = 9, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 9, margin = margin(t = 8)))
+
+p6 <- p6+ scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
+    theme(axis.title = element_text(size = 10),   
+    legend.title = element_text(size = 10),     
+    legend.text = element_text(size = 8),        
+    plot.title = element_text(size = 12),
+     legend.position = c(1.1, 0.5),
+    axis.title.y = element_text(size = 9, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 9, margin = margin(t = 8)))
+
+p5 
+p6
+```
+
+```{r stack plots}
+p1 <- p1 + theme(axis.title.x = element_blank())
+
+p3 <- p3 + theme(plot.title = element_blank(), axis.title.x = element_blank())
+
+p5 <- p5 + theme(plot.title = element_blank())
+
+
+
+combined_plot <- plot_grid(p1, p3, p5, ncol = 1, align = "v", rel_heights = c(1, 1, 1))
+
+# Display the final plot
+print(combined_plot)
+
+```
+
+```{r stack forest plots}
+p2 <- p2 + theme(axis.title.x = element_blank())
+
+p4 <- p4 + theme(plot.title = element_blank(), axis.title.x = element_blank())
+
+p6 <- p6 + theme(plot.title = element_blank())
+
+
+
+combined_plot <- plot_grid(p2, p4, p6, ncol = 1, align = "v", rel_heights = c(1, 1, 1))
+
+# Display the final plot
+print(combined_plot)
+
+```
