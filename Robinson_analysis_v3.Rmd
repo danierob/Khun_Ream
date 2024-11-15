@@ -311,22 +311,22 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p1 <- ggplot() +
-  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
-  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
-  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
-  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "salmon") +
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "darkorange3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "darkslategray", size = 1)+
+  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "darkorange3")+
+  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "darkslategray") +
   geom_errorbarh(aes(xmin = CI_gre[1,4], xmax = CI_gre[2,4], y = max(data$grass_mass) * 1.05),
-                 height = 15, color = "salmon", size = .7) +
+                 height = 15, color = "darkslategray", size = .7) +
   geom_errorbarh(aes(xmin = CI_grl[1,4], xmax = CI_grl[2,4], y = max(data$grass_mass) * 1.1),
-                 height = 15, color = "cyan3", size = .7) +
+                 height = 15, color = "darkorange3", size = .7) +
   labs(x = "Canopy Cover (LAI)",  y = expression("Grass Biomass (g/m"^2*")"), color = "Time of Dry Season", shape = "Time of Dry Season") +
   theme_bw()
 
 
- p1 <- p1 + geom_point(data = data, aes(x = LAI, y = grass_mass, shape = season, color = season), alpha = .7) +
+ p1 <- p1 + geom_point(data = data, aes(x = LAI, y = grass_mass, shape = season, color = season)) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
-  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("darkslategray", "darkorange3"))))+
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
@@ -408,7 +408,7 @@ lit_dat <- emmip(m1, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
 #make ggplot with emmip data
 p2 <- ggplot(data = lit_dat, aes(x = LAI, y = yvar, color = season, linetype = season, shape = season)) +
   geom_line(size = .8) +
-  geom_ribbon(aes(ymax = UCL, ymin = LCL, fill = season), alpha = .3, size = .3) +
+  geom_ribbon(aes(ymax = UCL, ymin = LCL, fill = season), alpha = .2, size = .3) +
   labs(x = "Canopy Cover (LAI)", 
        y = expression("Litter Biomass (g/m"^2*")"), 
        color = "Time of Dry Season", 
@@ -418,10 +418,11 @@ p2 <- ggplot(data = lit_dat, aes(x = LAI, y = yvar, color = season, linetype = s
   theme_bw()
 
 
-p2 <- p2 + geom_point(data = data, aes(x = LAI, y = litter_mass, shape = season, color = season), alpha = .7) +
+p2 <- p2 + geom_point(data = data, aes(x = LAI, y = litter_mass, shape = season, color = season)) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
-  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+  scale_fill_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("darkslategray", "darkorange3"))))+
   scale_linetype_manual(values = c("dashed", "solid"))+ 
   theme(
     axis.title = element_text(size = 12),   
@@ -435,6 +436,8 @@ p2 <- p2 + geom_point(data = data, aes(x = LAI, y = litter_mass, shape = season,
   xlim(0,6.5)
 
 p2 <- p2 + theme(legend.position = "none")
+
+p2
 
 ```
 
@@ -502,7 +505,7 @@ p2 <- p2 + geom_point(data = data, aes(x =LAI, y = litter_mass, color = season),
 p2 +  theme(legend.position = "none")
 
 ```
-Not much to separate the quadratic and the linear model so we will stick with linear to make interpretation easier.
+Not much to separate the quadratic and the linear model so we will stick with linear to make interpretation more direct.
 
 
 ### 1. 3) Fine Fuel Load (Litter + Grass) across the dry season
@@ -595,7 +598,7 @@ fine_dat <- emmip(m, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
 #make ggplot with emmip data
 p3 <- ggplot(data =fine_dat, aes(x = LAI, y = yvar, color = season, linetype = season, shape = season, fill = season)) +
   geom_line(size = .8) +
-  geom_ribbon(aes(ymax = UCL, ymin = LCL), alpha = .3, size = .3) +
+  geom_ribbon(aes(ymax = UCL, ymin = LCL), alpha = .2, size = .3) +
   labs(x = "Canopy Cover (LAI)", 
        y = expression("Fine Fuel Biomass (g/m"^2*")"), 
        color = "Time of Dry Season", 
@@ -605,11 +608,11 @@ p3 <- ggplot(data =fine_dat, aes(x = LAI, y = yvar, color = season, linetype = s
   theme_bw()
 
 
-p3 <- p3 + geom_point(data = fine_data, aes(x = LAI, y = fine_mass, shape = season, color = season), alpha = .7) +
+p3 <- p3 + geom_point(data = fine_data, aes(x = LAI, y = fine_mass, shape = season, color = season)) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) + 
-  scale_fill_manual(values = c("early" = "salmon", "late" = "cyan3")) +
-  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) + 
+  scale_fill_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("darkslategray", "darkorange3"))))+
   scale_linetype_manual(values = c("dashed", "dashed"))+ 
   theme(
     axis.title = element_text(size = 12),   
@@ -621,6 +624,8 @@ p3 <- p3 + geom_point(data = fine_data, aes(x = LAI, y = fine_mass, shape = seas
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
   xlim(0,6.5)
+
+p3 <- p3 + theme(legend.position = "none")
 
 p3
 
@@ -742,7 +747,7 @@ bulk_dat <- emmip(m3, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 #make ggplot with emmip data
 p4 <- ggplot(data = bulk_dat, aes(x = LAI, y = yvar^2, color = season, linetype = season, shape = season)) +
   geom_line(size = .8) +
-  geom_ribbon(aes(ymax = UCL^2, ymin = LCL^2, fill = season), alpha = .3, size = .3) +
+  geom_ribbon(aes(ymax = UCL^2, ymin = LCL^2, fill = season), alpha = .2, size = .3) +
   labs(x = "Canopy Cover (LAI)", 
        y = expression("Fine Fuel Bulk Density (g/m"^3*")"), 
        color = "Time of Dry Season", 
@@ -752,11 +757,11 @@ p4 <- ggplot(data = bulk_dat, aes(x = LAI, y = yvar^2, color = season, linetype 
   theme_bw()
 
 
-p4 <- p4 + geom_point(data = bulk_seasons, aes(x = LAI, y = bulk_density, shape = season, color = season), alpha = .7) +
+p4 <- p4 + geom_point(data = bulk_seasons, aes(x = LAI, y = bulk_density, shape = season, color = season)) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) + 
-  scale_fill_manual(values = c("early" = "salmon", "late" = "cyan3")) +
-  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) + 
+  scale_fill_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("darkslategray", "darkorange3"))))+
   scale_linetype_manual(values = c("solid", "solid"))+ 
   theme(
     axis.title = element_text(size = 12),   
@@ -791,6 +796,8 @@ combined_plot <- plot_grid(p1, p2, p3, p4, ncol = 1, align = "v", rel_heights = 
 
 # Display the final plot
 print(combined_plot)
+
+ggsave("biomass_plot.png", plot = last_plot(), width = 7, height = 10, dpi = 600)
 ```
 
 Now, check it out with ddf2 removed. 
@@ -847,6 +854,7 @@ TOMST_V1 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/T
         time = col_time(format = "%H:%M"), 
         soil_temp = col_number(), surface_temp = col_number(), 
         air_temp = col_number(), soil_moisture = col_number()))
+
 
 TOMST_filter <- subset(TOMST_V1, date > "2023/02/10")
 
@@ -966,8 +974,8 @@ kestrel<- kestrel %>%
 p1 <- ggplot(kestrel, aes(x = date, y = wind_speed, color = plot_type)) +
   geom_line(aes(group = plot_id), size = .4, alpha = .4) +
   geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
-  labs(x = element_blank(), y = "Wind Speed (m/s)", color = "Canopy Cover") +
-  scale_color_manual(labels = c("open", "closed"), values = c("red4", "blue4")) + 
+  labs(x = element_blank(), y = "Wind Speed (m/s)", color = "Plot Type") +
+  scale_color_manual(labels = c("savanna", "forest"), values = c("red4", "blue4")) + 
   theme(text=element_text(size= 15), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
   theme_minimal()
@@ -997,14 +1005,27 @@ emmeans(m_lm, pairwise ~ plot_type* season)
 
 # Post-hoc analysis for canopy cover differences by season
 emmeans(m_wind, pairwise ~ plot_type*season)
+
 ```
-```{r wind speed individual point plot}
-kestrel_wind <- kestrel %>% 
-  group_by(season, plot_id, plot_type) %>% 
-  summarise(wind_speed = mean(wind_speed))
-  
-ggplot(kestrel_wind, aes(x = plot_type, y = wind_speed, color = season)) +
-  geom_point()
+ALSO, because DDF2 has low wind speeds for much of the early season, when we include random effects, we have no significance. But, removing DDF2 clears the picture up, and then if we average by month to reduce zero inflation we get a clear picture where the only lacking significance is between early and late SEF plots.
+```{r wind speed no ddf2}
+kestrel$plot_id <- factor(kestrel$plot_id)
+
+kestrel_nodd2 <- kestrel %>%
+  filter(plot_id != "ddf2") %>% 
+  mutate(plot_id = droplevels(plot_id))
+
+m_wind <- lmer(wind_speed ~ plot_type * season + (1 | plot_id), data = kestrel_nodd2)
+
+summary(m_wind)
+
+plot(m_wind)
+
+# Anova to test the fixed effects
+anova(m_wind)
+
+# Post-hoc analysis for canopy cover differences by season
+emmeans(m_wind, pairwise ~ plot_type*season)
 
 ```
 
@@ -1213,8 +1234,8 @@ p1 <- ggplot(data = litfmc_dat, aes(x = LAI, y = (yvar), color = season, shape =
 #add points from the original data
 p1 <- p1+ geom_point(data = fmc_seasons, aes(x = LAI, y = litter, shape = season, color = season, fill = season), alpha = .7) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) + 
-  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) + 
+  guides(shape = guide_legend(override.aes = list(color = c("darkslategray", "darkorange3"))))+
   scale_linetype_manual(values = c("solid", "solid"))+ 
   theme(
     axis.title = element_text(size = 12),   
@@ -1271,8 +1292,8 @@ p2 <- ggplot(data = grassfmc_dat, aes(x = LAI, y = (yvar), color = season, shape
 #add points from the original data
 p2 <- p2 + geom_point(data = fmc_seasons, aes(x = LAI, y = grass, shape = season, color = season, fill = season), alpha = .7) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) + 
-  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) + 
+  guides(shape = guide_legend(override.aes = list(color = c("darkslategray", "darkorange3"))))+
   scale_linetype_manual(values = c("solid", "solid"))+ 
   theme(
     axis.title = element_text(size = 12),   
@@ -1332,8 +1353,8 @@ p3 <- ggplot(data = woodyfmc_dat, aes(x = LAI, y = (yvar), color = season, shape
 #add points from the original data
 p3 <- p3 + geom_point(data = fmc_seasons, aes(x = LAI, y = woody_leaf, shape = season, color = season, fill = season), alpha = .7) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) + 
-  guides(shape = guide_legend(override.aes = list(color = c("salmon", "cyan3"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) + 
+  guides(shape = guide_legend(override.aes = list(color = c("darkslategray", "darkorange3"))))+
   scale_linetype_manual(values = c("dashed", "dashed"))+ 
   theme(
     axis.title = element_text(size = 12),   
@@ -1831,22 +1852,22 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p2 <- ggplot() +
-  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
-  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
-  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
-  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "salmon") +
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "darkorange3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "darkslategray", size = 1)+
+  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "darkorange3")+
+  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "darkslategray") +
   geom_errorbarh(aes(xmin = CI_rose[1,4], xmax = CI_rose[2,4], y = max(behave$ROS) * 1.05),
-                 height = 1, color = "salmon", size = .7) +
+                 height = 1, color = "darkslategray", size = .7) +
   geom_errorbarh(aes(xmin = CI_rosl[1,4], xmax = CI_rosl[2,4], y = max(behave$ROS) * 1.1),
-                 height = 1, color = "cyan3", size = .7) +
+                 height = 1, color = "darkorange3", size = .7) +
   labs(x = "Canopy Cover (LAI)",  y = "Rate of Spread (m/min)", color = "Time of Dry Season", shape = "Time of Dry Season") +
   theme_bw()
 
 p2 <- p2+
   geom_point(data = behave, aes(x = LAI, y = ROS, shape = season, color = season), alpha = .7) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
-  guides(shape = guide_legend(override.aes = list(color = c("cyan3", "salmon"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("darkorange3", "darkslategray"))))+
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
@@ -1954,14 +1975,14 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p1 <- ggplot() +
-  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
-  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
-  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
-  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "salmon") +
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "darkorange3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "darkslategray", size = 1)+
+  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "darkorange3")+
+  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "darkslategray") +
   geom_errorbarh(aes(xmin = CI_fle[1,4], xmax = CI_fle[2,4], y = max(behave$flame_length) * 1.05),
-                 height = .15, color = "salmon", size = .7) +
+                 height = .15, color = "darkslategray", size = .7) +
   geom_errorbarh(aes(xmin = CI_fll[1,4], xmax = CI_fll[2,4], y = max(behave$flame_length) * 1.1),
-                 height = .15, color = "cyan3", size = .7) +
+                 height = .15, color = "darkorange3", size = .7) +
   labs(x = "Canopy Cover (LAI)",  y = "Flame Length (m)", color = "Time of Dry Season", shape = "Time of Dry Season") +
   theme_bw()
 
@@ -1969,8 +1990,8 @@ p1 <- ggplot() +
 p1 <- p1 +
   geom_point(data = behave, aes(x = LAI, y = flame_length, shape = season, color = season), alpha = .7) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
-  guides(shape = guide_legend(override.aes = list(color = c("cyan3", "salmon"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("darkorange3", "darkslategray"))))+
 theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
@@ -2062,22 +2083,22 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p3 <- ggplot() +
-  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "cyan3")+
-  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "salmon", size = 1)+
-  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "cyan3")+
-  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "salmon") +
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "darkorange3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "darkslategray", size = 1)+
+  geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "darkorange3")+
+  geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "darkslategray") +
   geom_errorbarh(aes(xmin = CI_inte[1,4], xmax = CI_inte[2,4], y = max(behave$intensity) * 1.05),
-                 height = 170, color = "salmon", size = .7) +
+                 height = 170, color = "darkslategray", size = .7) +
   geom_errorbarh(aes(xmin = CI_intl[1,4], xmax = CI_intl[2,4], y = max(behave$intensity) * 1.1),
-                 height = 170, color = "cyan3", size = .7) +
+                 height = 170, color = "darkorange3", size = .7) +
   labs(x="Canopy Cover (LAI)", y = "Fireline Intenisty (kW/m)", color = "Time of Dry Season", shape = "Time of Dry Season")+
    theme_bw()
   
 p3 <- p3 +
 geom_point(data = behave, aes(x = LAI, y = intensity, shape = season, color = season), alpha = .7) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
-  guides(shape = guide_legend(override.aes = list(color = c("cyan3", "salmon"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("darkorange3", "darkslategray"))))+
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
@@ -2170,10 +2191,10 @@ p4 <- ggplot(data = pig_dat, aes(x = LAI, y = (yvar^2), color = season)) +
   theme_bw()
 
 #add points from the original data
-p4 <- p4 + geom_point(data = behave, aes(x = LAI, y = PIG, shape = season, color = season), alpha = .7) +
+p4 <- p4 + geom_point(data = behave, aes(x = LAI, y = PIG, shape = season, color = season), alpha = .7, size = .8) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "salmon", "late" = "cyan3")) +
-  guides(shape = guide_legend(override.aes = list(color = c("cyan3", "salmon"))))+
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+  guides(shape = guide_legend(override.aes = list(color = c("darkorange3", "darkslategray"))))+
   theme(
     axis.title = element_text(size = 12),   
     legend.title = element_text(size = 10),     
@@ -2183,7 +2204,7 @@ p4 <- p4 + geom_point(data = behave, aes(x = LAI, y = PIG, shape = season, color
     axis.title.y = element_text(margin = margin(r = 5)),
     legend.background = element_blank(),  # Make the legend background transparent
     legend.key = element_rect(fill = NA))+
-  xlim(0,6.5)
+  xlim(0,6.5) + ylim(0,100)
 
 p4 + theme(legend.position = "none")
 
@@ -2635,40 +2656,42 @@ SA_early <- SA1 %>%
 p1 <- SA_early %>% 
 ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
-  labs(x = "Environmental Factor", y = "Rate of Spread Increase (m/min)", title = "Early Season")+
-  theme(text=element_text(size= 16), legend.position="none", 
+  labs(x = "Fuel Factor", y = "Rate of Spread Increase (m/min)", title = "Early season influence on higher fire potential in savanna")+
+  theme(text=element_text(size= 14), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
   ylim(-.3,2)+
-  theme_minimal()
+  theme_bw()
 
 p2 <- SA_late %>% 
   ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
-  labs(x = "Environmental Factor", y = "Rate of Spread Increase (m/min)", title = "Late Season")+
-  theme(text=element_text(size= 16), legend.position="none", 
+  labs(x = "Fuel Factor", y = "Rate of Spread Increase (m/min)", title = "Late season influence on higher fire potential in savanna")+
+  theme(text=element_text(size= 14), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
   ylim(-.3,2)+
-   theme_minimal()
+   theme_bw()
 
 
-p1 <- p1 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
+p1 <- p1 + scale_x_discrete(labels = c("fuel class", "fuel bulk density", "fuel load", "fuel moisture", "wind speed")) +
     theme(axis.title = element_text(size = 10),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
-    plot.title = element_text(size = 14),
+    plot.title = element_text(size = 12),
      legend.position = c(1.1, 0.5),
-    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
-    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
+    axis.title.y = element_text(size = 11, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 11, margin = margin(t = 8)))
 
-p2 <- p2+ scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
+p2 <- p2+ scale_x_discrete(labels = c("fuel class", "fuel bulk density", "fuel load", "fuel moisture", "wind speed")) +
     theme(axis.title = element_text(size = 10),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
-    plot.title = element_text(size = 14),
+    plot.title = element_text(size = 12),
      legend.position = c(1.1, 0.5),
-    axis.title.y = element_text(size = 12, margin = margin(r = 5)),
-    axis.title.x = element_text(size = 12, margin = margin(t = 8)))
-
+    axis.title.y = element_text(size = 11, margin = margin(r = 5)),
+    axis.title.x = element_text(size = 11, margin = margin(t = 8)))
+ 
+p1
+p2
 
 ```
 
@@ -2790,21 +2813,21 @@ SA_ddf <- SA2 %>%
 p1 <- SA_ddf %>% 
 ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
-  labs(x = "Environmental Factor", y = "Rate of Spread Increase (m/min)", title = "Savanna")+
+  labs(x = "Fuel Factor", y = "Rate of Spread Increase (m/min)", title = "Influence on higher fire potential in late season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
-  theme_minimal()
+  theme_bw()
 
 p2 <- SA_evg %>% 
   ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkred")+
-  labs(x = "Environmental Factor", y = "Rate of Spread Increase (m/min)", title = "Forest")+
+  labs(x = "Fuel Factor", y = "Rate of Spread Increase (m/min)", title = "Forest")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
-   theme_minimal()
+   theme_bw()
 
 
-p1 <- p1 + scale_x_discrete(labels = c("fuel class", "fuel density", "fuel load", "FMC", "wind speed")) +
+p1 <- p1 + scale_x_discrete(labels = c("fuel class", "fuel bulk density", "fuel load", "fuel moisture", "wind speed")) +
     theme(axis.title = element_text(size = 10),   
     legend.title = element_text(size = 10),     
     legend.text = element_text(size = 8),        
