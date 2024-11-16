@@ -985,7 +985,7 @@ TOMST_time_issue <- TOMST_time_issue %>%
 
 ### 2. 2) Microclimate Kestrel (RH, Wind, Temp) varies by LAI across the season
 
-**Wind Speed**
+####Wind Speed
 This is just for illustrative purposes to go with the behaveplus plots to visual explain the difference in wind speed.
 ``` {r wind setup, include = FALSE}
 #daily max windspeed
@@ -1123,10 +1123,10 @@ p2
 
 ```
 
-**Relative Humidity (RH%)**
+####Relative Humidity
 ```{r RH setup}
 kestrel_midday <- kestrel_V1 %>% 
-  filter(hour(date_time) > 11, hour(date_time) < 19) 
+  filter(hour(date_time) > 10, hour(date_time) < 19) 
 
 kestrel_midday <- kestrel_midday %>% 
   mutate(year = "2023")
@@ -1157,18 +1157,15 @@ kestrel_rh_month <- kestrel_rh %>%
 ```
 
 ```{r rh model, include = FALSE}
+
+emm_options(pbkrtest.limit = 10000)
+
 m <- lmer(rh ~ season*plot_type + (1|plot_id), data = kestrel_rh)
 emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 summary(emm)
 
-#There was an issue with too many observations so we'll compare with rh by day and it is the same significance wise
-m <- lmer(mean_rh ~ season*plot_type + (1|plot_id), data = kestrel_rh_month)
-emm <- emmeans(m, ~season*plot_type)
-tukey_results <- pairs(emm, adjust = "tukey")
-summary(tukey_results)
-summary(emm)
 ```
 
 ```{r RH plot}
@@ -1195,6 +1192,7 @@ p3 <- ggplot(kestrel_rh_month, aes(x = date, y = mean_rh, color = plot_type)) +
 
 p3
 ```
+
 **2m Temperatures (Celcius)**
 
 ```{r temp max}
@@ -2654,7 +2652,6 @@ emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
-
 plot(m)
 
 m <- lm(mean_rh ~ season*plot_type, data = kestrel_midday)
@@ -2662,47 +2659,11 @@ emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
-#wind speed######### working on this
-m <- lmer(wind_speed ~ season*plot_type + (1|plot_id), data = kestrel)
-emm <- emmeans(m, ~ plot_type*season)
-tukey_results <- pairs(emm)
+#wind speed
+m <- lmer(wind_speed ~ season*plot_type + (1|plot_id), data = kestrel_speeds)
+emm <- emmeans(m, ~season*plot_type)
+tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
-summary(m)
-
-pairwise_comparisons <- contrast(emm, method = "pairwise", adjust = "tukey")
-print(pairwise_comparisons)
-
-#ZERO INFLATED
-install.packages("glmmTMB")
-library(glmmTMB)
-
-# Fit a zero-inflated model
-zi_model <- glmmTMB(wind_speed ~ season * plot_type + (1 | plot_id), 
-                    ziformula = ~1, 
-                    family = nbinom2, 
-                    data = kestrel)
-
-# Model summary
-summary(zi_model)
-
-# Compute estimated marginal means
-emm_zi <- emmeans(zi_model, ~ season * plot_type)
-summary(emm_zi)
-
-# Extract residuals
-residuals_zi <- residuals(zi_model, type = "pearson")
-fitted_zi <- predict(zi_model, type = "response")
-
-plot(fitted_zi, residuals_zi,
-     xlab = "Fitted Values", ylab = "Pearson Residuals",
-     main = "Residuals vs Fitted Values")
-abline(h = 0, col = "red")
-
-qqnorm(residuals_zi)
-qqline(residuals_zi, col = "red")
-
-# Pairwise comparisons
-pairs(emm_zi, adjust = "tukey")
 
 ```
 
