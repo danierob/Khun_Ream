@@ -864,8 +864,8 @@ TOMST_filter <- subset(TOMST_V1, date > "2023/02/10")
 
 TOMST_seasons <- TOMST_filter %>% 
   mutate(season = case_when(
-    date < "2023/03/1" ~ "early",
-    date >= "2023/03/1" ~  "late"
+    date < "2023/02/23" ~ "early",
+    date >= "2023/02/23" ~  "late"
   ))
 
 #establish daytime range to find daytime temp avg during the time period where we sampled(rather than max temp for each day which was crazy hot (like 50C sometimes) in the late season)
@@ -909,6 +909,26 @@ p <- ggplot(data = temp_dat, aes(x = LAI, y = yvar, color = season)) +
 #add points from the original data
 p + geom_point(data = LAI_avgxTOMST_seasons, aes(x = LAI, y = mean_air_temp), alpha = .5) 
 ```
+
+```{r tomst lmer}
+ m_lmer <- lmer((mean_air_temp) ~ LAI*season + (1 | plot_id), data = data)
+summary(m_lmer)
+
+mylist <- list(LAI=seq(.1,7,by=0.1))
+
+temp_dat <- emmip(m_lmer, season ~ LAI, at=mylist , CIs=TRUE, plotit = FALSE)
+
+#make ggplot with emmip data
+p <- ggplot(data = temp_dat, aes(x = LAI, y = yvar, color = season)) +
+  geom_line(size = .8) + 
+  labs(x="Canopy Cover (LAI)", y="Temp", color = "Season", fill = "Season")+
+  theme_bw()
+
+#add points from the original data
+p + geom_point(data = LAI_avgxTOMST_seasons, aes(x = LAI, y = mean_air_temp, color = plot_id), alpha = .5)
+```
+
+
 This graph represents the issue I was having with the random effects because the slopes of almost all of the plots is more positive than the data across all plots, so when random effects were included the data was fit poorly and to a shallow slope, obscuring the relationship across the mosaic. 
 ```{r tomst plot id issue}
 m_lm2 <- lm((mean_air_temp) ~ LAI + as.factor(plot_id), data = data)
@@ -926,6 +946,44 @@ p <- ggplot(data = temp_dat2, aes(x = LAI, y = yvar, color = plot_id)) +
 p + geom_point(data = LAI_avgxTOMST_seasons, aes(x = LAI, y = mean_air_temp), alpha = .5) 
 ```
 
+11 of the TOMST have an issue where the UTC and/or timing is incorrect until a shift on Feb 9 when I attached the loggers to the computer and they auto-adjusted to local time. So for 10 plots (DDF2: center, DDF5: 2 and 3, DDF6 - center, EVG3: 2, 3, 4, center, EVG4: 2, 4) the timing of TOMST data is inaccurate prior to Feb 9 and for 1 plot (DDF3: Q2) timing is innacurate prior to Feb 2.
+
+I will omit these 11 plots prior to the error dates (Feb 1 and Feb 9), but include them after. I am doing this rather than just setting the start date to Feb 9 to give a better representation of "early" season temps. Recording starts on Jan 16 for all plots but DDf5 and Jan 26 for DDF5. Temperatures starkly rose in early Feb, but then again in early March. So I want to capture the average between the January and early February temps as the early season. We are only using this data to compare averages of temp via Anova, so the omission of 10 loggers (4 ddf and 6 evg) will not affect interpretation. 
+
+If we look more directly at loggers and January temps in the future we will address each logger individually.
+```{r tomst time-issue temp setup}
+
+#load in tomst
+TOMST_V2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/TOMST/TOMST_V2.csv", 
+    col_types = cols(date = col_date(format = "%Y.%m.%d"), 
+        date_time = col_datetime(format = "%Y.%m.%d %H:%M"), 
+        time = col_time(format = "%H:%M"), 
+        soil_temp = col_number(), surface_temp = col_number(), 
+        air_temp = col_number(), soil_moisture = col_number()))
+
+#early = Jan 15 - Feb 22 (except DDF5 which starts Jan 25)
+#late = Feb 23 - Apr 11
+
+TOMST_seasons <- TOMST_V2 %>% 
+  mutate(season = case_when(
+    date < "2023/02/23" ~ "early",
+    date >= "2023/02/23" ~  "late"
+  ))
+
+#establish daytime range to find daytime temp avg during the time period where we sampled(rather than max temp for each day which was crazy hot (like 50C sometimes) in the late season)
+TOMST_seasons <- TOMST_seasons %>% 
+  filter(hour(date_time) > 10, hour(date_time) < 19) 
+
+
+#now average by variable for midday range across season
+TOMST_seasons <- TOMST_seasons %>%
+  group_by(season, plot_id, quad_id, plot_type) %>%
+  summarize(mean_air_temp = mean(air_temp), mean_surface_temp = mean(surface_temp), mean_soil_temp = mean(soil_temp), mean_soil_moisture = mean(soil_moisture))
+         
+
+
+
+```
 
 ### 2. 2) Microclimate Kestrel (RH, Wind, Temp) varies by LAI across the season
 
@@ -2350,7 +2408,7 @@ fm_summaries <- LAIxfm_obs %>%
 ```{r add tomst microclimate to summaries, include=FALSE}
 tomst_summaries <- TOMST_seasons %>% 
   group_by(plot_type, season) %>% 
-  summarize(mean_air_temp = mean(mean_air_temp))
+  summarize(mean_air_temp = mean(mean_air_temp, na.rm = TRUE))
 ```
 
 ```{r add kestrel data, include=FALSE}
@@ -2534,7 +2592,9 @@ tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
 #air temp
-m <- lmer(mean_air_temp ~ season*plot_type + (1|plot_id), data = fuel_stats)
+#changed on Nov 2024 to reflect TOMST time issue and Feb 23 cut-off date. Fuel stats still uses Mar 1 mid season cutoff date with Feb 12 start date (originally just set start date past the time issue, but have not gone back to include the plots that weren't affected to have  a better representation of early season weather.
+#I will address more thoroughly in the future but need to submit thesis 
+m <- lmer(mean_air_temp ~ season*plot_type + (1|plot_id), data = TOMST_seasons)
 emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
