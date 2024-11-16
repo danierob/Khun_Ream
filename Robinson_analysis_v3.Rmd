@@ -964,24 +964,22 @@ TOMST_V2 <- read_csv("C:/Users/d/Desktop/UBC 2023/Robinson-Project-MSc/KH_data/T
 #early = Jan 15 - Feb 22 (except DDF5 which starts Jan 25)
 #late = Feb 23 - Apr 11
 
-TOMST_seasons <- TOMST_V2 %>% 
+TOMST_time_issue <- TOMST_V2 %>% 
   mutate(season = case_when(
     date < "2023/02/23" ~ "early",
     date >= "2023/02/23" ~  "late"
   ))
 
 #establish daytime range to find daytime temp avg during the time period where we sampled(rather than max temp for each day which was crazy hot (like 50C sometimes) in the late season)
-TOMST_seasons <- TOMST_seasons %>% 
+TOMST_time_issue <- TOMST_time_issue %>% 
   filter(hour(date_time) > 10, hour(date_time) < 19) 
 
 
 #now average by variable for midday range across season
-TOMST_seasons <- TOMST_seasons %>%
+TOMST_time_issue <- TOMST_time_issue %>%
   group_by(season, plot_id, quad_id, plot_type) %>%
   summarize(mean_air_temp = mean(air_temp), mean_surface_temp = mean(surface_temp), mean_soil_temp = mean(soil_temp), mean_soil_moisture = mean(soil_moisture))
          
-
-
 
 ```
 
@@ -1040,6 +1038,16 @@ p1 <- ggplot(kestrel, aes(x = date, y = wind_speed, color = plot_type)) +
 
 p1
 
+p2 <- ggplot(kestrel, aes(x = date, y = wind_speed, color = plot_id)) +
+  geom_line(aes(group = plot_id), size = .4, alpha = .4) +
+  geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
+  labs(x = element_blank(), y = "Wind Speed (m/s)", color = "Plot Type") +
+  theme(text=element_text(size= 15), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
+
+p2
+
 ```
 
 The issue with the kestrel wind model is that it is heavily zero inflated and we can't run an anova on it because it violates linear assumptions.
@@ -1066,14 +1074,17 @@ emmeans(m_wind, pairwise ~ plot_type*season)
 
 ```
 ALSO, because DDF2 has low wind speeds for much of the early season, when we include random effects, we have no significance. But, removing DDF2 clears the picture up, and then if we average by month to reduce zero inflation we get a clear picture where the only lacking significance is between early and late SEF plots.
-```{r wind speed no ddf2}
+
+We will also remove EVG 3, which clocked 0mph wind speeds for most of the season. While we did expect winds to be low in the dense canopy plots, 0mph is unrealistic, so we will focus on the 2 ddf plots (ddf4 and ddf6) and 2 evg plots (evg 2 and evg 5) that do have wind data for comparisons. This fixes the zero inflation and poorly representative significance.
+```{r wind speed no ddf2 or evg3}
 kestrel$plot_id <- factor(kestrel$plot_id)
 
-kestrel_nodd2 <- kestrel %>%
-  filter(plot_id != "ddf2") %>% 
+kestrel_speeds <- kestrel %>%
+  filter(plot_id != "ddf2") %>%
+  filter(plot_id != "evg3") %>%
   mutate(plot_id = droplevels(plot_id))
 
-m_wind <- lmer(wind_speed ~ plot_type * season + (1 | plot_id), data = kestrel_nodd2)
+m_wind <- lmer(wind_speed ~ plot_type * season + (1 | plot_id), data = kestrel_speeds)
 
 summary(m_wind)
 
@@ -1084,6 +1095,31 @@ anova(m_wind)
 
 # Post-hoc analysis for canopy cover differences by season
 emmeans(m_wind, pairwise ~ plot_type*season)
+
+```
+
+```{r wind plots no ddf2 or evg 3}
+ 
+p1 <- ggplot(kestrel_speeds, aes(x = date, y = wind_speed, color = plot_type)) +
+  geom_line(aes(group = plot_id), size = .4, alpha = .4) +
+  geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
+  labs(x = element_blank(), y = "Wind Speed (m/s)", color = "Plot Type") +
+  scale_color_manual(labels = c("savanna", "forest"), values = c("red4", "blue4")) + 
+  theme(text=element_text(size= 15), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
+
+p1
+
+p2 <- ggplot(kestrel_speeds, aes(x = date, y = wind_speed, color = plot_id)) +
+  geom_line(aes(group = plot_id), size = .4, alpha = .4) +
+  geom_smooth(aes(group = plot_type), fill = "NA", size = .6) +
+  labs(x = element_blank(), y = "Wind Speed (m/s)", color = "Plot Type") +
+  theme(text=element_text(size= 15), legend.position="none", 
+        plot.title = element_text(hjust = 0.5))+
+  theme_minimal()
+
+p2
 
 ```
 
@@ -2406,7 +2442,7 @@ fm_summaries <- LAIxfm_obs %>%
 ```
 
 ```{r add tomst microclimate to summaries, include=FALSE}
-tomst_summaries <- TOMST_seasons %>% 
+tomst_summaries <- TOMST_time_issue %>% 
   group_by(plot_type, season) %>% 
   summarize(mean_air_temp = mean(mean_air_temp, na.rm = TRUE))
 ```
@@ -2461,6 +2497,8 @@ fuel_stats  <- fuel_stats  %>%
 ```
 
 ##### Fuel Stats
+
+If reading in the fuel stats below note that tomst temp data is still reflecting tomst_seasons and not tomst_time_issue data!
 
 ```{r fuel stats df}
 
@@ -2594,7 +2632,7 @@ summary(tukey_results)
 #air temp
 #changed on Nov 2024 to reflect TOMST time issue and Feb 23 cut-off date. Fuel stats still uses Mar 1 mid season cutoff date with Feb 12 start date (originally just set start date past the time issue, but have not gone back to include the plots that weren't affected to have  a better representation of early season weather.
 #I will address more thoroughly in the future but need to submit thesis 
-m <- lmer(mean_air_temp ~ season*plot_type + (1|plot_id), data = TOMST_seasons)
+m <- lmer(mean_air_temp ~ season*plot_type + (1|plot_id), data = TOMST_time_issue)
 emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
@@ -2606,7 +2644,6 @@ tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
 
 ```
-
 
 
 RH and windspeed are separate because there were not observations at each subplot
