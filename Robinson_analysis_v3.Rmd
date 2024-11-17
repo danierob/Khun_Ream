@@ -1271,7 +1271,7 @@ fmc_seasons <- LAIxfm_obs %>%
 
 
 ```
-**Litter Fuel Moisture Content**
+####Litter Fuel Moisture Content
 
 Litter is the weirdest fuel type, since we didn't start systematically collecting litter until observation 4, though we have several litter values for the first few observations, so given the consistency between the other fuel types between observations 1-4, I believe the total averages for "early season" are sufficient.
 
@@ -1319,14 +1319,15 @@ litfmc_dat <- emmip(m1, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
 p1 <- ggplot(data = litfmc_dat, aes(x = LAI, y = (yvar), color = season, shape = season, fill = season)) +
-  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .3, size = .3) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .2, size = .3) +
   labs(x=element_blank(), y = "Litter FMC (%)" , color = "Time of Dry Season", fill = "Time of Dry Season")+
   theme_bw()
 
 #add points from the original data
-p1 <- p1+ geom_point(data = fmc_seasons, aes(x = LAI, y = litter, shape = season, color = season, fill = season), alpha = .7) +
+p1 <- p1+ geom_point(data = fmc_seasons, aes(x = LAI, y = litter, shape = season, color = season, fill = season)) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) + 
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+    scale_fill_manual(values = c("early" = "darkslategray", "late" = "darkorange3"))+
   guides(shape = guide_legend(override.aes = list(color = c("darkslategray", "darkorange3"))))+
   scale_linetype_manual(values = c("solid", "solid"))+ 
   theme(
@@ -1342,8 +1343,9 @@ p1 <- p1+ geom_point(data = fmc_seasons, aes(x = LAI, y = litter, shape = season
 
 p1 + theme(legend.position = "none")
 
+
 ```
-**Grass Fuel Moisture Content**
+####Grass Fuel Moisture Content
 
 ```{r grass fmc analysis, include = FALSE}
 
@@ -1376,15 +1378,16 @@ grassfmc_dat <- emmip(m2, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
 p2 <- ggplot(data = grassfmc_dat, aes(x = LAI, y = (yvar), color = season, shape = season, fill = season)) +
-  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .3, size = .3) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .2, size = .3) +
   labs(x="Canopy Cover (LAI)", y = "Grass FMC (%)" , color = "Season", fill = "Season")+
   theme_bw()
 
 
 #add points from the original data
-p2 <- p2 + geom_point(data = fmc_seasons, aes(x = LAI, y = grass, shape = season, color = season, fill = season), alpha = .7) +
+p2 <- p2 + geom_point(data = fmc_seasons, aes(x = LAI, y = grass, shape = season, color = season, fill = season), alpha = 1) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) + 
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+    scale_fill_manual(values = c("early" = "darkslategray", "late" = "darkorange3"))+
   guides(shape = guide_legend(override.aes = list(color = c("darkslategray", "darkorange3"))))+
   scale_linetype_manual(values = c("solid", "solid"))+ 
   theme(
@@ -1398,11 +1401,11 @@ p2 <- p2 + geom_point(data = fmc_seasons, aes(x = LAI, y = grass, shape = season
     legend.key = element_rect(fill = NA))+
   xlim(0,6.5)
 
-p2
+p2 + theme(legend.position = "none")
 
 ```
 
-**woody Leaf FMC**
+####Woody Leaf FMC
 
 ```{r woody_leaf fmc analysis, include = FALSE}
 
@@ -1438,14 +1441,15 @@ woodyfmc_dat <- emmip(m3, season ~ (LAI), at=mylist , CIs=TRUE, plotit = FALSE)
 
 #make ggplot with emmip data
 p3 <- ggplot(data = woodyfmc_dat, aes(x = LAI, y = (yvar), color = season, shape = season, fill = season, linetype=season)) +
-  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .3, size = .3) +
+  geom_line(size = .8) + geom_ribbon(aes(ymax=UCL, ymin=LCL), alpha = .2, size = .3) +
   labs(x="Canopy Cover (LAI)", y = "Live Woody Leaf FMC (%)" , color = "Season", fill = "Season")+
   theme_bw()
 
 #add points from the original data
-p3 <- p3 + geom_point(data = fmc_seasons, aes(x = LAI, y = woody_leaf, shape = season, color = season, fill = season), alpha = .7) +
+p3 <- p3 + geom_point(data = fmc_seasons, aes(x = LAI, y = woody_leaf, shape = season, color = season, fill = season), alpha = 1) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
-  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) + 
+  scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
+  scale_fill_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
   guides(shape = guide_legend(override.aes = list(color = c("darkslategray", "darkorange3"))))+
   scale_linetype_manual(values = c("dashed", "dashed"))+ 
   theme(
@@ -1459,11 +1463,11 @@ p3 <- p3 + geom_point(data = fmc_seasons, aes(x = LAI, y = woody_leaf, shape = s
     legend.key = element_rect(fill = NA))+
   xlim(0,6.5)
 
-p3
+p3+ theme(legend.position = "none")
 
 ```
 
-**10-hr FMC**
+####10-hr FMC
 
 
 ```{r 10-hr fmc analysis, include=FALSE}
@@ -1518,6 +1522,9 @@ combined_plot <- plot_grid(p1, p2, p3, ncol = 1, align = "v", rel_heights = c(1,
 
 # Display the final plot
 print(combined_plot)
+
+#export
+ggsave("FMC_plot.png", plot = last_plot(), width = 7, height = 9, dpi = 600)
 ```
 
 
@@ -1944,8 +1951,8 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p2 <- ggplot() +
-  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "darkorange3")+
-  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "darkslategray", size = 1)+
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = .8, color = "darkorange3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "darkslategray", size = .8)+
   geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "darkorange3")+
   geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "darkslategray") +
   geom_errorbarh(aes(xmin = CI_rose[1,4], xmax = CI_rose[2,4], y = max(behave$ROS) * 1.05),
@@ -1956,7 +1963,7 @@ p2 <- ggplot() +
   theme_bw()
 
 p2 <- p2+
-  geom_point(data = behave, aes(x = LAI, y = ROS, shape = season, color = season), alpha = .7) +
+  geom_point(data = behave, aes(x = LAI, y = ROS, shape = season, color = season)) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
   scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
   guides(shape = guide_legend(override.aes = list(color = c("darkorange3", "darkslategray"))))+
@@ -1971,7 +1978,7 @@ p2 <- p2+
     legend.key = element_rect(fill = NA))+
   xlim(0,6.5)
 
-p2
+p2+ theme(legend.position = "none")
 
 ```
 R gives us the pre-breakpoint slope p-val. To get the post, breakpoint slope (which will all be >0.5 because the slopes are basically flat):
@@ -2067,8 +2074,8 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p1 <- ggplot() +
-  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "darkorange3")+
-  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "darkslategray", size = 1)+
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = .8, color = "darkorange3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "darkslategray", size = .8)+
   geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "darkorange3")+
   geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "darkslategray") +
   geom_errorbarh(aes(xmin = CI_fle[1,4], xmax = CI_fle[2,4], y = max(behave$flame_length) * 1.05),
@@ -2080,7 +2087,7 @@ p1 <- ggplot() +
 
 
 p1 <- p1 +
-  geom_point(data = behave, aes(x = LAI, y = flame_length, shape = season, color = season), alpha = .7) +
+  geom_point(data = behave, aes(x = LAI, y = flame_length, shape = season, color = season)) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
   scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
   guides(shape = guide_legend(override.aes = list(color = c("darkorange3", "darkslategray"))))+
@@ -2095,7 +2102,7 @@ theme(
     legend.key = element_rect(fill = NA))+
   xlim(0,6.5)
 
-p1
+p1 + theme(legend.position = "none")
 
 ```
 
@@ -2175,8 +2182,8 @@ pred_data_late$fit <- with(pred_data_late,
 
 
 p3 <- ggplot() +
-  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = 1, color = "darkorange3")+
-  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "darkslategray", size = 1)+
+  geom_line(data = pred_data_late, aes(x = LAI, y = fit), size = .8, color = "darkorange3")+
+  geom_line(data = pred_data_early, aes(x = LAI, y = fit), color = "darkslategray", size = .8)+
   geom_vline(xintercept = fixed_effects_late[4], linetype = "dashed", color = "darkorange3")+
   geom_vline(xintercept = fixed_effects_early[4], linetype = "dashed", color = "darkslategray") +
   geom_errorbarh(aes(xmin = CI_inte[1,4], xmax = CI_inte[2,4], y = max(behave$intensity) * 1.05),
@@ -2187,7 +2194,7 @@ p3 <- ggplot() +
    theme_bw()
   
 p3 <- p3 +
-geom_point(data = behave, aes(x = LAI, y = intensity, shape = season, color = season), alpha = .7) +
+geom_point(data = behave, aes(x = LAI, y = intensity, shape = season, color = season)) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
   scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
   guides(shape = guide_legend(override.aes = list(color = c("darkorange3", "darkslategray"))))+
@@ -2283,7 +2290,7 @@ p4 <- ggplot(data = pig_dat, aes(x = LAI, y = (yvar^2), color = season)) +
   theme_bw()
 
 #add points from the original data
-p4 <- p4 + geom_point(data = behave, aes(x = LAI, y = PIG, shape = season, color = season), alpha = .7, size = .8) +
+p4 <- p4 + geom_point(data = behave, aes(x = LAI, y = PIG, shape = season, color = season)) +
   scale_shape_manual(values = c("early" = 16, "late" = 17)) + 
   scale_color_manual(values = c("early" = "darkslategray", "late" = "darkorange3")) +
   guides(shape = guide_legend(override.aes = list(color = c("darkorange3", "darkslategray"))))+
@@ -2317,8 +2324,11 @@ combined_plot <- plot_grid(p1, p2, p3, p4, ncol = 1, align = "v", rel_heights = 
 
 # Display the final plot
 print(combined_plot)
-```
 
+#export
+ggsave("fire_potential_plot.png", plot = last_plot(), width = 7, height = 9, dpi = 600)
+
+```
 
 
 ####b) Fire behavior Anovas
@@ -2647,17 +2657,14 @@ summary(tukey_results)
 RH and windspeed are separate because there were not observations at each subplot
 ```{r RH and Wind}
 #RH
+#have to increase recoord limit for emmeans. Takes a while to process.
+emm_options(pbkrtest.limit = 10000)
+
 m <- lmer(rh ~ season*plot_type + (1|plot_id), data = kestrel_rh)
 emm <- emmeans(m, ~season*plot_type)
 tukey_results <- pairs(emm, adjust = "tukey")
 summary(tukey_results)
-
-plot(m)
-
-m <- lm(mean_rh ~ season*plot_type, data = kestrel_midday)
-emm <- emmeans(m, ~season*plot_type)
-tukey_results <- pairs(emm, adjust = "tukey")
-summary(tukey_results)
+summary(emm)
 
 #wind speed
 m <- lmer(wind_speed ~ season*plot_type + (1|plot_id), data = kestrel_speeds)
