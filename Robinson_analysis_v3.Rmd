@@ -2949,7 +2949,7 @@ ggplot(aes(x = variable, y = ROS)) +
 p2 <- SA_evg %>% 
   ggplot(aes(x = variable, y = ROS)) +
   geom_col(fill = "darkslategray")+
-  labs(x = "Fuel Factor", y = "Rate of Spread Increase (m/min)", title = "Forest")+
+  labs(x = "Fuel Factor", y = "Rate of Spread Increase (m/min)", title = "Influence on higher fire potential in late season")+
   theme(text=element_text(size= 14), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
    theme_bw()
@@ -2990,7 +2990,7 @@ ggplot(aes(x = variable, y = intensity)) +
 p4 <- SA_evg %>% 
   ggplot(aes(x = variable, y = intensity)) +
   geom_col(fill = "darkslategray")+
-  labs(x = "Fuel Factor", y = "Fire Intensity Increase (kW/m)", title = "Forest")+
+  labs(x = "Fuel Factor", y = "Fire Intensity Increase (kW/m)", title = "Influence on higher fire potential in late season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
   theme_bw()
@@ -3030,7 +3030,7 @@ ggplot(aes(x = variable, y = flame_length)) +
 p6 <- SA_evg %>% 
   ggplot(aes(x = variable, y = flame_length)) +
   geom_col(fill = "darkslategray")+
-  labs(x = "Fuel Factor", y = "Flame Length Increase (m)", title = "Forest")+
+  labs(x = "Fuel Factor", y = "Flame Length Increase (m)", title = "Influence on higher fire potential in late season")+
   theme(text=element_text(size= 16), legend.position="none", 
         plot.title = element_text(hjust = 0.5))+
   theme_bw()
@@ -3085,9 +3085,11 @@ p6 <- p6 + theme(plot.title = element_blank())
 
 
 
-combined_plot <- plot_grid(p2, p4, p6, ncol = 1, align = "v", rel_heights = c(1, 1, 1))
+combined_plot <- plot_grid(p2, p4, p6, ncol = 1, align = "v", rel_heights = c(1, 1, 1.1))
 
 # Display the final plot
 print(combined_plot)
+
+ggsave("forest_factor_influences_between_season_plot.png", plot = last_plot(), width = 6, height = 8, dpi = 600)
 
 ```
